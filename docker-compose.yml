@@ -1,0 +1,20 @@
+services:
+  friclaw:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./data/config.json:/root/.friclaw/config.json:ro
+      - ./data/memory:/root/.friclaw/memory
+      - ./data/workspaces:/root/.friclaw/workspaces
+      - ./data/logs:/root/.friclaw/logs
+      - ~/.claude:/root/.claude:ro
+    environment:
+      - FEISHU_APP_ID=${FEISHU_APP_ID:-}
+      - FEISHU_APP_SECRET=${FEISHU_APP_SECRET:-}
+      - FEISHU_ENCRYPT_KEY=${FEISHU_ENCRYPT_KEY:-}
+      - FEISHU_VERIFICATION_TOKEN=${FEISHU_VERIFICATION_TOKEN:-}
+      - WECOM_BOT_ID=${WECOM_BOT_ID:-}
+      - WECOM_SECRET=${WECOM_SECRET:-}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
