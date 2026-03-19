@@ -1,0 +1,42 @@
+// src/daemon.ts
+import { logger } from './utils/logger'
+import type { Dispatcher } from './dispatcher'
+
+const SHUTDOWN_TIMEOUT_MS = 30_000
+
+// Exported for testing — takes exit fn as injectable dependency
+export function createShutdownHandler(
+  dispatcher: Dispatcher,
+  exit: (code: number) => void = process.exit,
+) {
+  let shuttingDown = false
+
+  return async function shutdown(signal: string): Promise<void> {
+    if (shuttingDown) return
+    shuttingDown = true
+
+    logger.info({ signal }, 'Graceful shutdown initiated')
+
+    const timer = setTimeout(() => {
+      logger.error('Shutdown timed out after 30s, forcing exit')
+      exit(1)
+    }, SHUTDOWN_TIMEOUT_MS)
+
+    try {
+      await dispatcher.shutdown()
+      clearTimeout(timer)
+      logger.info('Graceful shutdown complete')
+      exit(0)
+    } catch (err) {
+      clearTimeout(timer)
+      logger.error({ err }, 'Error during shutdown')
+      exit(1)
+    }
+  }
+}
+
+export function registerShutdownHandlers(dispatcher: Dispatcher): void {
+  const shutdown = createShutdownHandler(dispatcher)
+  process.on('SIGTERM', () => shutdown('SIGTERM'))
+  process.on('SIGINT', () => shutdown('SIGINT'))
+}
