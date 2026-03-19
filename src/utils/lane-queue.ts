@@ -1,32 +1,56 @@
 // src/utils/lane-queue.ts
-export class LaneQueue {
-  private queue: Array<() => Promise<void>> = []
-  private running = false
 
-  async enqueue<T>(task: () => Promise<T>): Promise<T> {
+type Task<T> = () => Promise<T>
+
+interface Lane {
+  queue: Array<{
+    task: Task<unknown>
+    resolve: (v: unknown) => void
+    reject: (e: unknown) => void
+  }>
+  running: boolean
+}
+
+export class LaneQueue {
+  private lanes = new Map<string, Lane>()
+  private maxLanes: number
+
+  constructor(maxLanes = 100) {
+    this.maxLanes = maxLanes
+  }
+
+  enqueue<T>(laneKey: string, task: Task<T>): Promise<T> {
     return new Promise<T>((resolve, reject) => {
-      this.queue.push(async () => {
-        try {
-          resolve(await task())
-        } catch (err) {
-          reject(err)
-        }
+      let lane = this.lanes.get(laneKey)
+      if (!lane) {
+        lane = { queue: [], running: false }
+        this.lanes.set(laneKey, lane)
+      }
+      lane.queue.push({
+        task: task as Task<unknown>,
+        resolve: resolve as (v: unknown) => void,
+        reject,
       })
-      this.drain()
+      if (!lane.running) this.drain(laneKey)
     })
   }
 
-  private async drain(): Promise<void> {
-    if (this.running) return
-    this.running = true
-    while (this.queue.length > 0) {
-      const task = this.queue.shift()!
-      await task()
+  private async drain(laneKey: string): Promise<void> {
+    const lane = this.lanes.get(laneKey)!
+    lane.running = true
+    while (lane.queue.length > 0) {
+      const { task, resolve, reject } = lane.queue.shift()!
+      try {
+        resolve(await task())
+      } catch (e) {
+        reject(e)
+      }
     }
-    this.running = false
+    lane.running = false
+    this.lanes.delete(laneKey)
   }
 
-  get size(): number {
-    return this.queue.length
+  activeLanes(): number {
+    return this.lanes.size
   }
 }
