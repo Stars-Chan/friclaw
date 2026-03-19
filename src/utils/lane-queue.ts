@@ -2,6 +2,15 @@
 
 type Task<T> = () => Promise<T>
 
+function withTimeout<T>(task: Task<T>, ms: number): Task<T> {
+  return () => Promise.race([
+    task(),
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(`Task timeout after ${ms}ms`)), ms)
+    ),
+  ])
+}
+
 interface Lane {
   queue: Array<{
     task: Task<unknown>
@@ -19,7 +28,7 @@ export class LaneQueue {
     this.maxLanes = maxLanes
   }
 
-  enqueue<T>(laneKey: string, task: Task<T>): Promise<T> {
+  enqueue<T>(laneKey: string, task: Task<T>, timeoutMs = 300_000): Promise<T> {
     return new Promise<T>((resolve, reject) => {
       let lane = this.lanes.get(laneKey)
       if (!lane) {
@@ -31,7 +40,7 @@ export class LaneQueue {
         this.lanes.set(laneKey, lane)
       }
       lane.queue.push({
-        task: task as Task<unknown>,
+        task: withTimeout(task, timeoutMs) as Task<unknown>,
         resolve: resolve as (v: unknown) => void,
         reject,
       })

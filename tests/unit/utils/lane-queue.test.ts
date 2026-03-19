@@ -101,4 +101,22 @@ describe('LaneQueue', () => {
     await Promise.all([b1, b2])
     expect(q.activeLanes()).toBe(0)
   })
+
+  it('times out a slow task and rejects the caller', async () => {
+    const q = new LaneQueue()
+    const slow = () => new Promise<void>(r => setTimeout(r, 200))
+    await expect(q.enqueue('user-a', slow, 50))
+      .rejects.toThrow('Task timeout after 50ms')
+  })
+
+  it('lane continues processing after a timeout', async () => {
+    const q = new LaneQueue()
+    const results: string[] = []
+    const slow = () => new Promise<void>(r => setTimeout(r, 200))
+    await Promise.allSettled([
+      q.enqueue('user-a', slow, 50),
+      q.enqueue('user-a', async () => { results.push('ok') }),
+    ])
+    expect(results).toEqual(['ok'])
+  })
 })
