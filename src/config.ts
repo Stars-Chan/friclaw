@@ -106,7 +106,10 @@ export async function loadConfig(): Promise<FriClawConfig> {
   const merged = deepMerge(fileConfig, buildEnvOverrides())
   const result = ConfigSchema.safeParse(merged)
   if (!result.success) {
-    throw new Error(`Invalid config at ${configPath}: ${result.error.message}`)
+    const lines = result.error.errors
+      .map(err => `  ${err.path.join('.')}: ${err.message}`)
+      .join('\n')
+    throw new Error(`配置错误：\n${lines}`)
   }
   return result.data
 }

@@ -55,7 +55,16 @@ describe('loadConfig', () => {
     const tmpPath = '/tmp/friclaw-test-invalid.json'
     await Bun.write(tmpPath, JSON.stringify({ dashboard: { port: 'not-a-number' } }))
     process.env.FRICLAW_CONFIG = tmpPath
-    await expect(loadConfig()).rejects.toThrow('Invalid config')
+    await expect(loadConfig()).rejects.toThrow('配置错误')
+    try { unlinkSync(tmpPath) } catch {}
+  })
+
+  it('error message includes field path', async () => {
+    const tmpPath = '/tmp/friclaw-test-path.json'
+    await Bun.write(tmpPath, JSON.stringify({ dashboard: { port: 'bad' } }))
+    process.env.FRICLAW_CONFIG = tmpPath
+    await expect(loadConfig()).rejects.toThrow('dashboard.port')
+    try { unlinkSync(tmpPath) } catch {}
   })
 
   it('returns default agent maxConcurrent', async () => {
