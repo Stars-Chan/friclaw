@@ -2,6 +2,7 @@
 import { loadConfig } from './config'
 import { MemoryManager } from './memory/manager'
 import { SessionManager } from './session/manager'
+import { ClaudeCodeAgent } from './agent/claude-code'
 import { Dispatcher } from './dispatcher'
 import { startDashboard } from './dashboard/api'
 import { registerShutdownHandlers } from './daemon'
@@ -21,14 +22,14 @@ async function main(): Promise<void> {
     timeoutMs: config.workspaces.sessionTimeout * 1000,
   })
 
-  // Agent stub — will be replaced in module 08
-  const agent = {
-    handle: async (_session: unknown, _msg: unknown) => {
-      logger.info('Agent stub: message received (not yet implemented)')
-    },
-  }
+  const agent = new ClaudeCodeAgent({
+    soulContent: memory.identity.read(),
+  })
 
-  const dispatcher = new Dispatcher(sessionManager, agent, () => memory.shutdown())
+  const dispatcher = new Dispatcher(sessionManager, agent, async () => {
+    await agent.dispose()
+    await memory.shutdown()
+  })
 
   if (config.dashboard.enabled) {
     await startDashboard(config.dashboard.port, dispatcher)
