@@ -3,12 +3,15 @@
 type Task<T> = () => Promise<T>
 
 function withTimeout<T>(task: Task<T>, ms: number): Task<T> {
-  return () => Promise.race([
-    task(),
-    new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error(`Task timeout after ${ms}ms`)), ms)
-    ),
-  ])
+  return () => {
+    let handle: ReturnType<typeof setTimeout>
+    return Promise.race([
+      task().finally(() => clearTimeout(handle)),
+      new Promise<never>((_, reject) => {
+        handle = setTimeout(() => reject(new Error(`Task timeout after ${ms}ms`)), ms)
+      }),
+    ])
+  }
 }
 
 interface Lane {
