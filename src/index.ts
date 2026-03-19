@@ -43,8 +43,3 @@ main().catch((err) => {
   logger.error({ err }, 'Fatal startup error')
   process.exit(1)
 })
-
-main().catch((err) => {
-  logger.error({ err }, 'Fatal startup error')
-  process.exit(1)
-})
