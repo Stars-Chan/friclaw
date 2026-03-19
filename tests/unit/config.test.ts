@@ -1,11 +1,16 @@
 // tests/unit/config.test.ts
-import { describe, it, expect, beforeEach } from 'bun:test'
+import { describe, it, expect, beforeEach, afterEach } from 'bun:test'
+import { unlinkSync } from 'fs'
 import { loadConfig } from '../../src/config'
 
 describe('loadConfig', () => {
   beforeEach(() => {
     // Point to nonexistent file so we always get defaults
     process.env.FRICLAW_CONFIG = '/tmp/friclaw-test-nonexistent.json'
+  })
+
+  afterEach(() => {
+    delete process.env.FRICLAW_CONFIG
   })
 
   it('returns default agent config', async () => {
@@ -35,5 +40,21 @@ describe('loadConfig', () => {
     const config = await loadConfig()
     expect(config.dashboard.port).toBe(4000)
     expect(config.dashboard.enabled).toBe(true) // default preserved
+
+    try { unlinkSync(tmpPath) } catch {}
+  })
+
+  it('throws on malformed JSON', async () => {
+    const tmpPath = '/tmp/friclaw-test-malformed.json'
+    await Bun.write(tmpPath, '{ invalid json }')
+    process.env.FRICLAW_CONFIG = tmpPath
+    await expect(loadConfig()).rejects.toThrow('Failed to parse config')
+  })
+
+  it('throws on invalid field type', async () => {
+    const tmpPath = '/tmp/friclaw-test-invalid.json'
+    await Bun.write(tmpPath, JSON.stringify({ dashboard: { port: 'not-a-number' } }))
+    process.env.FRICLAW_CONFIG = tmpPath
+    await expect(loadConfig()).rejects.toThrow('Invalid config')
   })
 })

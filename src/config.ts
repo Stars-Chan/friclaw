@@ -49,8 +49,16 @@ export async function loadConfig(): Promise<FriClawConfig> {
 
   let raw: unknown = {}
   if (existsSync(configPath)) {
-    raw = JSON.parse(readFileSync(configPath, 'utf-8'))
+    try {
+      raw = JSON.parse(readFileSync(configPath, 'utf-8'))
+    } catch (e) {
+      throw new Error(`Failed to parse config at ${configPath}: ${(e as Error).message}`)
+    }
   }
 
-  return ConfigSchema.parse(raw)
+  const result = ConfigSchema.safeParse(raw)
+  if (!result.success) {
+    throw new Error(`Invalid config at ${configPath}: ${result.error.message}`)
+  }
+  return result.data
 }
