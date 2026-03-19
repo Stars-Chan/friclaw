@@ -1,14 +1,12 @@
 # FriClaw 详细设计文档
 
-> 基于 NeoClaw 架构，打造全新的 AI 智能助手项目
->
-> **版本**: 1.0.0
+> **版本**: 2.0.0
 > **作者**: Stars-Chan
-> **日期**: 2026-03-13
+> **日期**: 2026-03-19
 
 ---
 
-## 📋 目录
+## 目录
 
 - [1. 项目概述](#1-项目概述)
 - [2. 核心架构](#2-核心架构)
@@ -25,23 +23,19 @@
 
 ### 1.1 项目背景
 
-FriClaw (Friday + Claw) 是一个基于 AI 的智能助手系统，参考 NeoClaw 的核心架构设计。项目名称来源于：
-- **Friday**: 来自钢铁侠 J.A.R.V.I.S. 的继任者 F.R.I.D.A.Y.，象征智能、冷静、高效的 AI 助手
-- **Claw**: 象征强大的工具能力和抓取信息的精准性
+FriClaw (Friday + Claw) 是一个以"全能 AI 管家"为定位的私人智能助手系统。项目名称来源于：
+- **Friday**: 来自钢铁侠 F.R.I.D.A.Y.，象征随时待命、主动感知、深度理解主人需求的智能管家
+- **Claw**: 象征强大的工具执行能力，能精准抓取信息、驱动工具、完成复杂任务
+
+FriClaw 不是一个通用聊天机器人，而是专属于你的私人管家——它了解你的习惯、记住你的偏好、主动提醒你该做的事，并在你需要时调动一切工具帮你完成任务。
 
 ### 1.2 核心目标
 
-1. **多平台接入**: 支持飞书、企业微信、Slack 等即时通讯平台
-2. **智能对话**: 基于 LLM 的自然语言理解和生成能力
-3. **任务自动化**: 支持定时任务、脚本执行、工作流编排
-4. **持久记忆**: 三层记忆系统确保长期记忆的完整性和可检索性
-5. **可扩展性**: MCP (Model Context Protocol) 支持插件化扩展
-
-### 1.3 目标用户
-
-- **个人用户**: 需要个人助手管理日常任务和信息的用户
-- **开发团队**: 需要团队智能助手协助开发和运维的团队
-- **企业**: 需要定制化智能客服或内部助手的组织
+1. **随时可达**: 通过飞书、企业微信等日常工作平台接入，无需切换工具
+2. **深度理解**: 基于 Claude Code 的强大推理能力，理解复杂意图，执行多步骤任务
+3. **长期记忆**: 三层记忆系统持久化你的偏好、知识和历史，越用越懂你（可选向量检索增强）
+4. **主动服务**: 基于模式识别主动提醒、定时执行任务，而不只是被动响应
+5. **工具全能**: MCP 协议支持无限扩展工具能力，脚本、文件、API 一手掌控
 
 ---
 
@@ -54,45 +48,35 @@ FriClaw (Friday + Claw) 是一个基于 AI 的智能助手系统，参考 NeoCla
 │                        FriClaw 系统架构                           │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                   │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐           │
-│  │   飞书网关    │  │  企业微信网关  │  │   Slack网关   │           │
-│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘           │
-│         │                  │                  │                 │
-│         └──────────────────┼──────────────────┘                 │
-│                            ▼                                     │
-│                 ┌─────────────────────┐                        │
-│                 │   网关路由器          │                        │
-│                 └──────────┬──────────┘                        │
-│                            │                                     │
-│         ┌──────────────────┼──────────────────┐                │
-│         ▼                  ▼                  ▼                │
-│  ┌─────────────┐   ┌─────────────┐   ┌─────────────┐           │
-│  │  会话管理器   │   │  事件分发器   │   │  消息解析器   │           │
-│  └──────┬──────┘   └──────┬──────┘   └──────┬──────┘           │
-│         │                 │                  │                 │
-│         └─────────────────┼──────────────────┘                 │
-│                           ▼                                      │
-│                  ┌─────────────────┐                            │
-│                  │   AI Agent 核心   │                            │
-│                  │   (LLM + Tools)   │                            │
-│                  └─────────┬───────┘                            │
-│                            │                                     │
-│         ┌──────────────────┼──────────────────┐                │
-│         ▼                  ▼                  ▼                │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐          │
-│  │   内存系统     │  │   MCP 服务    │  │   定时任务     │          │
-│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘          │
-│         │                  │                  │                 │
-│         ▼                  ▼                  ▼                 │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐          │
-│  │ SQLite + FTS │  │  插件系统      │  │  Cron 调度器  │          │
-│  └──────────────┘  └──────────────┘  └──────────────┘          │
+│  ┌──────────────┐  ┌──────────────┐                              │
+│  │   飞书网关    │  │  企业微信网关  │  ← 外部平台 WebSocket        │
+│  └──────┬───────┘  └──────┬───────┘                              │
+│         └──────────────────┘                                      │
+│                    ▼                                              │
+│         ┌─────────────────────┐                                  │
+│         │   消息路由器 (Dispatcher) │                             │
+│         └──────────┬──────────┘                                  │
+│                    │                                              │
+│         ┌──────────┼──────────┐                                  │
+│         ▼          ▼          ▼                                  │
+│    会话管理器    Lane Queue   消息解析器                            │
+│         └──────────┼──────────┘                                  │
+│                    ▼                                              │
+│         ┌─────────────────────┐                                  │
+│         │  Claude Code Agent  │                                  │
+│         └──────────┬──────────┘                                  │
+│                    │                                              │
+│         ┌──────────┼──────────┐                                  │
+│         ▼          ▼          ▼                                  │
+│      内存系统    MCP 服务    定时任务                               │
+│    (三层记忆)   (热重载)   (Cron调度)                              │
 │                                                                   │
 ├─────────────────────────────────────────────────────────────────┤
-│                    工作空间层 (Per-Session)                      │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐        │
-│  │ Workspace1│  │ Workspace2│  │ Workspace3│  │    ...   │        │
-│  └──────────┘  └──────────┘  └──────────┘  └──────────┘        │
+│                    工作空间层 (Per-Session)                        │
+│         Workspace1   Workspace2   Workspace3   ...               │
+├─────────────────────────────────────────────────────────────────┤
+│                    Dashboard (ws://127.0.0.1:3000)                 │
+│                        Web Dashboard                                │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -100,332 +84,264 @@ FriClaw (Friday + Claw) 是一个基于 AI 的智能助手系统，参考 NeoCla
 
 #### 2.2.1 网关层 (Gateway Layer)
 
-负责与外部平台对接，处理平台特定的消息格式和认证。
-
-```typescript
-interface IGateway {
-  name: string;
-  platform: 'feishu' | 'wecom' | 'slack';
-  connect(): Promise<void>;
-  send(chatId: string, content: MessageContent): Promise<void>;
-  onMessage(handler: MessageHandler): void;
-  disconnect(): Promise<void>;
-}
-```
+负责与外部平台对接，处理平台特定的消息格式和认证。每个平台对应一个独立的网关实现，统一抽象为标准的消息收发接口。支持 WebSocket 长连接保持实时通信。
 
 #### 2.2.2 会话层 (Session Layer)
 
-管理用户会话、上下文维护、工作空间隔离。
-
-```typescript
-interface ISessionManager {
-  createSession(userId: string, chatId: string): ISession;
-  getSession(sessionId: string): ISession | null;
-  closeSession(sessionId: string): void;
-  listSessions(userId: string): ISession[];
-}
-
-interface ISession {
-  id: string;
-  userId: string;
-  chatId: string;
-  platform: string;
-  context: ConversationContext;
-  workspace: Workspace;
-}
-```
+管理用户会话、上下文维护、工作空间隔离。每个会话拥有独立的工作空间目录和 Lane Queue，确保同一会话的消息严格串行处理，不同会话之间完全并行。
 
 #### 2.2.3 Agent 层 (Agent Layer)
 
-AI 核心引擎，负责理解用户意图、调用工具、生成响应。
-
-```typescript
-interface IAgent {
-  model: string;
-  tools: Tool[];
-  process(message: Message): Promise<Response>;
-  think(context: ConversationContext): Promise<Thought>;
-  execute(toolCall: ToolCall): Promise<ToolResult>;
-}
-```
+AI 核心引擎，负责理解用户意图、调用工具、生成响应。通过 stdin/stdout 与 Claude Code CLI 子进程通信，每个 conversationId 对应一个长驻子进程，支持流式事件输出（thinking_delta、text_delta、tool_use、done）。
 
 #### 2.2.4 内存层 (Memory Layer)
 
-三层记忆系统，确保 AI 的长期记忆能力。
-
-```typescript
-interface IMemorySystem {
-  // Identity 层 - 只读，系统定义
-  identity: IdentityMemory;
-
-  // Knowledge 层 - 读写，用户知识
-  knowledge: KnowledgeMemory;
-
-  // Episode 层 - 只读，自动生成
-  episodes: EpisodeMemory;
-
-  // 全文搜索
-  search(query: string, options?: SearchOptions): Promise<Memory[]>;
-}
-```
+三层记忆系统 + 向量检索，确保 AI 的长期记忆能力。Identity 层定义 AI 身份，Knowledge 层存储用户知识，Episode 层记录历史摘要。混合检索结合 SQLite FTS5 关键词搜索和 Qdrant 语义搜索，提供高准确率的记忆召回。
 
 #### 2.2.5 扩展层 (Extension Layer)
 
-MCP 服务器和插件系统，支持功能扩展。
-
-```typescript
-interface IMCPServer {
-  name: string;
-  type: 'stdio' | 'sse' | 'http';
-  tools: MCPTool[];
-  resources: MCPResource[];
-  connect(): Promise<void>;
-  callTool(name: string, args: any): Promise<any>;
-}
-```
+MCP 服务器和插件系统，支持功能扩展。支持热重载，每次启动新子进程时重新读取配置，无需重启主进程即可生效新的 MCP 服务。
 
 ---
 
 ## 3. 系统设计
 
-### 3.1 网关设计
+### 3.1 并发控制设计
 
-#### 3.1.1 飞书网关 (Feishu Gateway)
+#### Lane Queue 机制
 
-**连接方式**: WebSocket 长连接
-**配置参数**:
-```typescript
-interface FeishuConfig {
-  appId: string;
-  appSecret: string;
-  encryptKey?: string;
-  verificationToken?: string;
-  events: string[]; // 订阅的事件类型
-}
-```
+FriClaw 采用 Lane Queue 代替 Mutex，实现串行消息处理。
 
-**消息格式**:
-```typescript
-interface FeishuMessage {
-  msg_type: 'text' | 'post' | 'image' | 'interactive';
-  content: {
-    text?: string;
-    post?: PostContent;
-    image_key?: string;
-  };
-  sender: {
-    user_id: string;
-    union_id: string;
-  };
-  chat_id: string;
-  timestamp: number;
-}
-```
+Lane Queue 是一个任务队列，调用方将任务 enqueue 后等待执行完成，队列内部自动按 FIFO 顺序依次执行，无需手动管理锁的获取和释放。
 
-#### 3.1.2 企业微信网关 (WeCom Gateway)
+相比 Mutex 的优势：
+- 语义更清晰（队列 vs 锁）
+- 无需 try-finally 包裹，自动处理异常
+- 严格保证 FIFO 执行顺序
+- 调用方代码更简洁
 
-**连接方式**: WebSocket 长连接
-**配置参数**:
-```typescript
-interface WeComConfig {
-  botId: string;
-  secret: string;
-}
-```
+每个会话拥有独立的 Lane Queue，会话间完全并行，会话内严格串行。
 
-**协议格式**:
-```typescript
-interface WeComSubscribe {
-  cmd: 'aibot_subscribe';
-  headers: {
-    req_id: string;
-  };
-  body: {
-    bot_id: string;
-    secret: string;
-  };
-}
+### 3.2 网关设计
 
-interface WeComMessage {
-  msgtype: 'text' | 'image' | 'file';
-  text?: { content: string };
-  image?: { media_id: string };
-  from_user: string;  // 私聊
-  chat_id?: string;  // 群聊
-  timestamp: number;
-}
-```
+#### 飞书网关 (Feishu Gateway)
 
-### 3.2 会话管理设计
+- 连接方式：WebSocket 长连接
+- 认证：AppID + AppSecret，支持消息加密验证
+- 消息类型：text、post（富文本）、image、interactive（卡片）
+- 流式响应：使用 Feishu Card JSON 2.0 + cardkit API，懒创建卡片后增量更新，支持 thinking 状态展示
 
-#### 3.2.1 会话生命周期
+#### 企业微信网关 (WeCom Gateway)
+
+- 连接方式：WebSocket 长连接
+- 认证：BotID + Secret
+- 消息类型：text、image、file
+- 流式响应：通过分块消息更新模拟流式效果，使用 debounced flush 减少更新频率
+
+### 3.3 会话管理设计
+
+#### 会话生命周期
 
 ```
-┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐
-│  创建会话  │ -> │  活跃状态  │ -> │  挂起状态  │ -> │  关闭会话  │
-└──────────┘    └──────────┘    └──────────┘    └──────────┘
-     │                │                │                │
-     │                │                │                │
-     ▼                ▼                ▼                ▼
- 初始化工作空间    处理消息       超时未活动      清理资源
- 加载内存上下文    更新上下文      保存快照        释放内存
+创建会话 → 活跃状态 → 挂起状态 → 关闭会话
+   │           │           │           │
+初始化工作空间  Lane Queue  超时未活动   清理资源
+加载内存上下文  处理消息    保存快照     释放内存
 ```
 
-#### 3.2.2 工作空间设计
+#### 工作空间设计
 
-每个会话对应一个独立的工作空间目录：
+每个会话对应一个独立的工作空间目录，包含：
+- 会话元数据（session.json）
+- 对话上下文（context.json）
+- 可用工具配置（tools.json）
+- Skills 符号链接（.claude/skills/）
+- MCP 配置（.mcp.json）
+- 会话记录（memory/）
+- 临时文件（temp/）
+- 缓存数据（cache/）
 
-```
-~/.friclaw/workspaces/
-├── {session_id}/
-│   ├── .friclaw/
-│   │   ├── session.json      # 会话元数据
-│   │   ├── context.json      # 对话上下文
-│   │   └── tools.json        # 可用工具配置
-│   ├── memory/
-│   │   └── {conversation_id}.md  # 会话记录
-│   ├── temp/
-│   │   └── {task_id}/        # 临时文件
-│   └── cache/
-│       └── {key}/            # 缓存数据
-```
+### 3.4 内存系统设计
 
-### 3.3 内存系统设计
-
-#### 3.3.1 三层记忆架构
+#### 三层记忆架构
 
 ```
 ┌─────────────────────────────────────────────────────────┐
 │                    FriClaw 内存系统                       │
 ├─────────────────────────────────────────────────────────┤
-│                                                           │
-│  ┌───────────────────────────────────────────────────┐   │
-│  │  Identity 层 (只读) - AI 身份、性格、价值观         │   │
-│  │  - SOUL.md                                        │   │
-│  │  - 系统加载时初始化                               │   │
-│  └───────────────────────────────────────────────────┘   │
-│                           ↑                                │
-│                           │ 自动注入到上下文               │
-│                           ↓                                │
-│  ┌───────────────────────────────────────────────────┐   │
-│  │  Knowledge 层 (读写) - 用户知识、偏好、联系人        │   │
-│  │  - owner-profile.md                               │   │
-│  │  - preferences.md                                 │   │
-│  │  - people.md                                      │   │
-│  │  - projects.md                                    │   │
-│  │  - notes.md                                       │   │
-│  └───────────────────────────────────────────────────┘   │
-│                           ↑                                │
-│                           │ 检索并注入                     │
-│                           ↓                                │
-│  ┌───────────────────────────────────────────────────┐   │
-│  │  Episode 层 (只读) - 会话摘要、历史记录           │   │
-│  │  - {date}_episodes.md                             │   │
-│  │  - 自动生成，定时更新                               │   │
-│  └───────────────────────────────────────────────────┘   │
-│                           ↑                                │
-│                           │ 语义搜索                       │
-│                           ↓                                │
-│  ┌───────────────────────────────────────────────────┐   │
-│  │  SQLite 全文搜索 (FTS5)                           │   │
-│  │  - memory 表                                       │   │
-│  │  - memory_fts 全文索引                              │   │
-│  └───────────────────────────────────────────────────┘   │
-│                                                           │
+│  Identity 层 (只读) - AI 身份、性格、价值观                │
+│  SOUL.md，系统启动时加载，注入所有对话上下文               │
+├─────────────────────────────────────────────────────────┤
+│  Knowledge 层 (读写) - 用户知识、偏好、联系人              │
+│  owner-profile.md / preferences.md / people.md          │
+│  projects.md / notes.md，按需检索注入                    │
+├─────────────────────────────────────────────────────────┤
+│  Episode 层 (只读) - 会话摘要、历史记录                   │
+│  {date}_episodes.md，自动生成，定时更新                   │
+├─────────────────────────────────────────────────────────┤
+│  混合检索系统                                             │
+│  ├─ SQLite FTS5 - 关键词全文搜索                         │
+│  └─ Qdrant 向量检索 - 语义相似度搜索                      │
 └─────────────────────────────────────────────────────────┘
 ```
 
-#### 3.3.2 数据库 Schema
+#### 数据库设计
 
-```sql
--- 内存表
-CREATE TABLE memory (
-  id TEXT PRIMARY KEY,           -- 唯一标识符
-  category TEXT NOT NULL,        -- identity/knowledge/episode
-  title TEXT NOT NULL,           -- 标题
-  content TEXT NOT NULL,         -- Markdown 内容
-  tags TEXT NOT NULL DEFAULT '', -- 标签 (JSON 数组)
-  date TEXT NOT NULL             -- 日期 (YYYY-MM-DD)
-);
+内存表存储所有记忆条目，字段包括：id、category（identity/knowledge/episode）、title、content（Markdown）、tags（JSON 数组）、date、embedding（向量，可选）。
 
--- 全文搜索索引
-CREATE VIRTUAL TABLE memory_fts USING fts5(
-  id, category, title, content, tags, date,
-  content='memory',
-  content_rowid='rowid',
-  tokenize='unicode61'
-);
+FTS5 虚拟表与内存表通过触发器保持同步，支持 INSERT/UPDATE/DELETE 的实时索引更新，使用 unicode61 分词器支持中文。
 
--- 触发器保持同步
-CREATE TRIGGER memory_ai AFTER INSERT ON memory
-  INSERT INTO memory_fts(rowid, id, category, title, content, tags, date)
-    VALUES (new.rowid, new.id, new.category, new.title, new.content, new.tags, new.date);
+#### 向量检索设计
 
-CREATE TRIGGER memory_ad AFTER DELETE ON memory
-  INSERT INTO memory_fts(memory_fts, rowid, id, category, title, content, tags, date)
-    VALUES ('delete', old.rowid, old.id, old.category, old.title, old.content, old.tags, old.date);
+向量检索采用混合搜索策略：
+1. FTS5 关键词搜索召回候选集（limit × 2）
+2. Qdrant 向量搜索召回候选集（limit × 2）
+3. 对两个候选集进行 Rerank 重排序，取 top-N 返回
 
-CREATE TRIGGER memory_au AFTER UPDATE ON memory
-  INSERT INTO memory_fts(memory_fts, rowid, id, category, title, content, tags, date)
-    VALUES ('delete', old.rowid, old.id, old.category, old.title, old.content, old.tags, old.date);
-  INSERT INTO memory_fts(rowid, id, category, title, content, tags, date)
-    VALUES (new.rowid, new.id, new.category, new.title, new.content, new.tags, new.date);
-```
+Embedding 模型优先使用 `text-embedding-3-large`（云端）或 `bge-large-zh-v1.5`（本地，降低成本）。
 
-### 3.4 MCP 服务设计
+### 3.5 MCP 服务设计
 
-#### 3.4.1 MCP 工具定义
-
-```typescript
-interface MCPTool {
-  name: string;
-  description: string;
-  inputSchema: JSONSchema;
-  handler: (args: any) => Promise<any>;
-}
-
-interface MCPResource {
-  uri: string;
-  name: string;
-  description: string;
-  mimeType?: string;
-  get: () => Promise<ResourceContent>;
-}
-```
-
-#### 3.4.2 内置 MCP 服务
+#### 内置 MCP 服务
 
 | 服务名称 | 功能描述 |
 |---------|---------|
-| `friclaw-memory` | 内存读写、全文搜索 |
+| `friclaw-memory` | 内存读写、全文搜索、向量检索 |
 | `friclaw-cron` | 定时任务管理 |
 | `friclaw-workspace` | 工作空间管理 |
 | `friclaw-gateway` | 网关消息发送 |
 | `friclaw-diagnostics` | 系统诊断、日志 |
 
-### 3.5 定时任务设计
+#### MCP 热重载机制
 
-```typescript
-interface CronJob {
-  id: string;
-  label?: string;
-  enabled: boolean;
+每次为 conversationId 启动新的 Claude Code 子进程时，重新从磁盘读取配置（不使用缓存），将内置 MCP 服务与用户配置的 MCP 服务合并，写入工作空间的 `.mcp.json`。这样修改 MCP 配置后，下一个新会话即可生效，无需重启主进程。
 
-  // 一次性任务
-  runAt?: Date;
+### 3.6 定时任务设计
 
-  // 循环任务 (cron 表达式)
-  cronExpr?: string;
+CronJob 支持两种模式：
+- **一次性任务**：指定 `runAt` 时间点执行一次
+- **循环任务**：指定 cron 表达式周期执行
 
-  // 执行配置
-  message: string;  // 发送给 AI 的提示词
+每个任务携带一条发送给 AI 的提示词 `message`，触发时由调度器以该用户身份发起对话。记录 lastRun、nextRun、runCount 等执行状态。
 
-  // 执行状态
-  lastRun?: Date;
-  nextRun?: Date;
-  runCount: number;
-}
+### 3.7 智能路由设计
+
+根据请求复杂度自动选择合适的模型，降低成本：
+
+| 复杂度 | 判断依据 | 模型 |
+|--------|---------|------|
+| simple | 短文本、无代码、无多步骤 | claude-haiku-4-5 |
+| medium | 中等长度、有代码 | claude-sonnet-4-6 |
+| complex | 多步骤推理、分析评估 | claude-opus-4-6 |
+
+判断依据包括：文本长度、是否含代码块、是否含多步骤关键词、是否含推理分析关键词。
+
+### 3.8 控制面板设计
+
+Dashboard 是 FriClaw 的**统一管理入口**，通过 WebSocket 接口连接，提供实时状态和会话管理能力。
+
+#### Dashboard 架构
+
 ```
+FriClaw Core (ws://127.0.0.1:3000)
+  └─ Web Dashboard    ← 可视化管理界面
+
+注：飞书 / 企业微信是外部平台网关，通过各自平台的 WebSocket 协议
+连接，不经过 Dashboard 端点。
+```
+
+所有客户端连接到同一个 WebSocket 端点，通过 `clientType` 字段区分身份。服务端广播的状态变更（网关上线/下线、任务触发、配置变更）会实时推送给所有已连接的客户端，保持多端状态同步。
+
+#### 连接模型
+
+每个客户端连接后发送 `hello` 握手，声明自己的类型和能力。服务端维护连接注册表，按 clientType 分组管理。断线后自动从注册表移除，支持客户端自动重连。
+
+客户端类型：
+- `webchat`：Web 聊天界面，需要流式响应
+- `dashboard`：控制面板，需要系统状态推送
+
+#### 消息协议
+
+**客户端 → 服务端：**
+
+| 消息类型 | 说明 |
+|---------|------|
+| `hello` | 握手，声明 clientType |
+| `chat.send` | 发送聊天消息，携带 sessionId 和 content |
+| `session.create` | 创建新会话 |
+| `session.clear` | 清空会话历史 |
+| `cron.create` | 创建定时任务 |
+| `cron.toggle` | 启停定时任务 |
+| `cron.delete` | 删除定时任务 |
+| `memory.search` | 搜索记忆 |
+| `memory.save` | 保存知识 |
+| `memory.delete` | 删除记忆条目 |
+| `config.get` | 获取当前配置 |
+| `config.update` | 更新配置（热重载） |
+| `log.subscribe` | 订阅实时日志流 |
+
+**服务端 → 客户端：**
+
+| 消息类型 | 说明 |
+|---------|------|
+| `welcome` | 握手响应，返回服务端版本和当前状态 |
+| `chat.stream_start` | 流式响应开始 |
+| `chat.stream_delta` | 增量内容（thinking_delta / text_delta） |
+| `chat.stream_end` | 流式响应结束，携带完整统计信息 |
+| `system.status` | 系统状态快照（主动推送或响应查询） |
+| `gateway.event` | 网关状态变更（连接/断开/消息统计更新） |
+| `cron.fired` | 定时任务触发通知 |
+| `config.changed` | 配置变更广播 |
+| `log.line` | 实时日志行 |
+| `error` | 错误信息 |
+
+#### 功能模块
+
+**聊天模块（Chat）**
+
+直接与 FriClaw AI 对话，等同于飞书/企业微信中的交互体验。支持：
+- 多会话管理，左侧边栏展示会话列表
+- 流式响应实时渲染，Markdown + 代码高亮
+- 可折叠的 AI 思考过程（thinking）面板
+- 每条消息展示模型、耗时、token 用量、成本
+
+**控制模块（Control）**
+
+系统运行状态的实时监控，数据通过 WebSocket 推送自动更新：
+- 概览：活跃会话数、消息总量、模型调用成本、系统健康状态
+- 频道：各平台网关的连接状态和消息统计
+- 会话：当前所有活跃会话列表，支持强制关闭
+- 定时任务：Cron 任务的创建、启停、执行历史
+- 用量：按时间维度的 token 消耗和成本统计
+
+**记忆模块（Memory）**
+
+三层记忆的可视化管理：
+- 浏览 Identity / Knowledge / Episode 各层条目
+- 支持关键词 + 语义混合搜索
+- Knowledge 层支持在线编辑和删除
+- Episode 层展示历史会话摘要时间线
+
+**设置模块（Settings）**
+
+- 配置：在线查看和修改 config.json，保存后热重载生效
+- MCP：管理已连接的 MCP 服务，查看可用工具列表
+- 日志：实时日志流，支持级别过滤
+
+#### 数据持久化
+
+会话列表和消息历史存储在浏览器 localStorage，无需后端额外存储。系统状态（网关连接、任务列表）由服务端内存维护，客户端连接时通过 `welcome` 消息获取完整快照。
+
+#### 技术栈
+
+| 层 | 技术 |
+|----|------|
+| 前端框架 | React 18 + TypeScript |
+| 构建工具 | Vite |
+| 样式 | Tailwind CSS |
+| 图标 | Lucide React |
+| Markdown 渲染 | react-markdown + react-syntax-highlighter |
+| 通信 | WebSocket（Dashboard 统一接口） |
 
 ---
 
@@ -435,34 +351,27 @@ interface CronJob {
 
 | 组件 | 技术选型 | 说明 |
 |------|---------|------|
-| **运行时** | Bun | 高性能 JS 运行时 |
-| **语言** | TypeScript | 类型安全、开发效率 |
-| **LLM** | GLM-4.7 | 主要模型；支持 Claude 备用 |
-| **数据库** | SQLite + FTS5 | 内置、高性能、全文搜索 |
-| **协议** | MCP (Model Context Protocol) | 工具调用标准 |
-| **网络** | WebSocket | 实时双向通信 |
-| **配置** | JSON | 简单易读 |
+| 运行时 | Bun | 高性能 JS 运行时，内置 SQLite |
+| 语言 | TypeScript | 类型安全、开发效率 |
+| LLM | Claude Code | 支持模型切换（Opus/Sonnet/Haiku） |
+| 数据库 | SQLite + FTS5 | 内置、高性能、全文搜索 |
+| 向量数据库 | Qdrant | 语义搜索（可选） |
+| 协议 | MCP | 工具调用标准 |
+| 网络 | WebSocket | 实时双向通信 |
+| 并发控制 | Lane Queue | 串行执行队列 |
 
-### 4.2 依赖管理
+### 4.2 主要依赖
 
-```json
-{
-  "dependencies": {
-    "@anthropic-ai/sdk": "^0.24.0",
-    "@modelcontextprotocol/sdk": "^1.0.0",
-    "better-sqlite3": "^10.0.0",
-    "zod": "^3.22.0",
-    "ws": "^8.16.0",
-    "node-cron": "^3.0.3",
-    "winston": "^3.11.0"
-  },
-  "devDependencies": {
-    "typescript": "^5.3.0",
-    "prettier": "^3.1.0",
-    "vitest": "^1.1.0"
-  }
-}
-```
+| 依赖 | 用途 |
+|------|------|
+| `@anthropic-ai/sdk` | Claude API 调用 |
+| `@modelcontextprotocol/sdk` | MCP 协议实现 |
+| `@qdrant/js-client-rest` | 向量数据库客户端 |
+| `better-sqlite3` | SQLite 操作 |
+| `zod` | 配置和数据校验 |
+| `ws` | WebSocket 客户端 |
+| `node-cron` | 定时任务调度 |
+| `winston` | 日志系统 |
 
 ---
 
@@ -470,242 +379,46 @@ interface CronJob {
 
 ### 5.1 配置模型
 
-```typescript
-interface FriClawConfig {
-  // AI 配置
-  agent: {
-    type: 'claude_code' | 'custom';
-    model: string;           // glm-4.7, claude-opus-4-6, etc.
-    summaryModel?: string;
-    allowedTools: string[];
-    timeoutSecs: number;
-  };
+FriClawConfig 包含以下配置域：
 
-  // 网关配置
-  gateways: {
-    feishu?: FeishuConfig;
-    wecom?: WeComConfig;
-    slack?: SlackConfig;
-  };
-
-  // 内存配置
-  memory: {
-    dir: string;              // ~/.friclaw/memory
-    searchLimit: number;      // 默认搜索返回数量
-  };
-
-  // MCP 配置
-  mcpServers: Record<string, MCPServerConfig>;
-
-  // 工作空间配置
-  workspaces: {
-    dir: string;             // ~/.friclaw/workspaces
-    maxSessions: number;      // 最大会话数
-    sessionTimeout: number;    // 会话超时 (秒)
-  };
-
-  // 定时任务配置
-  cron: {
-    enabled: boolean;
-    scheduler: string;       // node-cron / 自定义
-    maxConcurrentJobs: number;
-  };
-
-  // 日志配置
-  logging: {
-    level: 'debug' | 'info' | 'warn' | 'error';
-    dir: string;             // ~/.friclaw/logs
-    maxSize: string;         // 单个日志文件最大大小
-    maxFiles: number;         // 保留的日志文件数量
-  };
-
-  // Dashboard 配置
-  dashboard: {
-    enabled: boolean;
-    port: number;
-    cors: boolean;
-    auth?: {
-      enabled: boolean;
-      username?: string;
-      password?: string;
-    };
-  };
-}
-```
+- **agent**: AI 类型（claude_code）、模型选择、摘要模型、允许的工具列表、超时时间
+- **gateways**: 飞书、企业微信各自的认证配置
+- **memory**: 记忆目录、搜索返回数量、是否启用向量检索、向量数据库地址
+- **mcpServers**: 用户自定义 MCP 服务配置（stdio/http/sse）
+- **skillsDir**: Skills 目录路径
+- **workspaces**: 工作空间目录、最大会话数、会话超时时间
+- **cron**: 是否启用、最大并发任务数
+- **logging**: 日志级别、目录、文件大小和数量限制
+- **dashboard**: 是否启用、端口、CORS、认证配置
 
 ### 5.2 消息模型
 
-```typescript
-interface Message {
-  id: string;
-  sessionId: string;
-  platform: string;
-
-  // 发送者信息
-  from: {
-    userId: string;
-    userName?: string;
-    isBot: boolean;
-  };
-
-  // 接收者信息
-  to: {
-    chatId: string;
-    chatType: 'private' | 'group' | 'topic';
-  };
-
-  // 消息内容
-  type: 'text' | 'image' | 'file' | 'interactive' | 'command';
-  content: MessageContent;
-
-  // 元数据
-  timestamp: Date;
-  messageId?: string;        // 平台原始消息 ID
-  replyTo?: string;          // 回复的消息 ID
-}
-
-interface MessageContent {
-  text?: string;
-  image?: { url: string; key: string };
-  file?: { url: string; name: string; size: number };
-  interactive?: InteractiveContent;
-  command?: { name: string; args: Record<string, any> };
-}
-```
+Message 包含：
+- 会话标识（sessionId、platform）
+- 发送者信息（userId、userName、isBot）
+- 接收者信息（chatId、chatType：private/group/topic）
+- 消息内容（type：text/image/file/interactive/command，content）
+- 元数据（timestamp、messageId、replyTo）
 
 ### 5.3 响应模型
 
-```typescript
-interface Response {
-  sessionId: string;
-  platform: string;
-
-  // 回复内容
-  content: ResponseContent;
-
-  // 动作
-  actions?: ResponseAction[];
-
-  // 元数据
-  timestamp: Date;
-  replyTo?: string;
-  threadId?: string;
-}
-
-interface ResponseContent {
-  text?: string;
-  markdown?: string;
-  interactive?: InteractiveContent;
-}
-
-interface ResponseAction {
-  type: 'send_message' | 'update_message' | 'delete_message' | 'open_url';
-  target?: string;
-  data: any;
-}
-```
+Response 包含：
+- 会话标识（sessionId、platform）
+- 回复内容（text、markdown、interactive）
+- 动作列表（send_message/update_message/delete_message/open_url）
+- 元数据（timestamp、replyTo、threadId）
 
 ---
 
 ## 6. API 设计
 
-### 6.1 内部 API
+FriClaw 不提供独立的 REST HTTP API。所有客户端操作（会话管理、记忆读写、定时任务、配置变更）统一通过 3.8 节定义的 Dashboard WebSocket 协议完成。
 
-#### 6.1.1 会话管理 API
+唯一的 HTTP 端点是健康检查：
 
-```typescript
-// 创建会话
-POST /api/sessions
-Body: { userId: string, chatId: string, platform: string }
-Response: { sessionId: string }
-
-// 获取会话
-GET /api/sessions/:sessionId
-Response: { session: ISession }
-
-// 关闭会话
-DELETE /api/sessions/:sessionId
-Response: { success: boolean }
-
-// 列出用户会话
-GET /api/users/:userId/sessions
-Response: { sessions: ISession[] }
-```
-
-#### 6.1.2 内存 API
-
-```typescript
-// 搜索记忆
-GET /api/memory/search?q={query}&category={category}&limit={limit}
-Response: { results: Memory[] }
-
-// 读取记忆
-GET /api/memory/:id
-Response: { memory: Memory }
-
-// 保存知识
-POST /api/memory/knowledge
-Body: { id: string, content: string, tags: string[] }
-Response: { success: boolean }
-
-// 列出所有记忆
-GET /api/memory/list?category={category}
-Response: { memories: Memory[] }
-```
-
-#### 6.1.3 定时任务 API
-
-```typescript
-// 创建任务
-POST /api/cron
-Body: {
-  label?: string,
-  runAt?: Date,
-  cronExpr?: string,
-  message: string
-}
-Response: { jobId: string }
-
-// 列出任务
-GET /api/cron?includeDisabled={boolean}
-Response: { jobs: CronJob[] }
-
-// 更新任务
-PATCH /api/cron/:jobId
-Body: { label?: string, message?: string, enabled?: boolean, ... }
-Response: { success: boolean }
-
-// 删除任务
-DELETE /api/cron/:jobId
-Response: { success: boolean }
-```
-
-### 6.2 MCP 协议
-
-#### 6.2.1 工具调用
-
-```typescript
-// 工具列表
-GET /mcp/tools
-Response: { tools: MCPTool[] }
-
-// 调用工具
-POST /mcp/tools/:name
-Body: { args: any }
-Response: { result: any, error?: string }
-```
-
-#### 6.2.2 资源访问
-
-```typescript
-// 资源列表
-GET /mcp/resources
-Response: { resources: MCPResource[] }
-
-// 读取资源
-GET /mcp/resources/{uri}
-Response: { content: ResourceContent }
-```
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | /health | 返回服务运行状态和版本信息 |
 
 ---
 
@@ -713,204 +426,87 @@ Response: { content: ResourceContent }
 
 ### 7.1 单机部署
 
+主进程管理所有网关 Worker 和 Claude Code 子进程池。文件系统布局：
+
 ```
-┌─────────────────────────────────────────────────────────┐
-│                      单机部署架构                           │
-├─────────────────────────────────────────────────────────┤
-│                                                           │
-│  ┌──────────────┐                                        │
-│  │   FriClaw    │  ← 主进程                              │
-│  │   Process    │                                        │
-│  └───┬──────┬───┘                                        │
-│      │      │                                             │
-│      │      │                                            │
-│      ▼      ▼                                            │
-│  ┌───────┐ ┌───────┐                                    │
-│  │ Gateway│ │  MCP  │  ← 子进程 / Workers               │
-│  │ Workers│ │Servers│                                    │
-│  └───────┘ └───────┘                                    │
-│                                                           │
-│  ┌───────────────────────────────────────────────────┐   │
-│  │            文件系统                               │   │
-│  │  ~/.friclaw/                                     │   │
-│  │    ├── config.json                               │   │
-│  │    ├── memory/                                    │   │
-│  │    ├── workspaces/                               │   │
-│  │    ├── logs/                                      │   │
-│  │    └── cache/                                     │   │
-│  └───────────────────────────────────────────────────┘   │
-│                                                           │
-└─────────────────────────────────────────────────────────┘
+~/.friclaw/
+├── config.json       # 主配置文件
+├── memory/           # 记忆数据库
+├── workspaces/       # 会话工作空间
+├── logs/             # 日志文件
+└── cache/            # 缓存数据
 ```
 
 ### 7.2 Docker 部署
 
-```dockerfile
-# FriClaw Dockerfile
-FROM oven/bun:1.1 AS base
+基于 `oven/bun:1.1` 镜像，多阶段构建。memory、workspaces、logs、cache 四个目录挂载为 Volume 持久化数据，暴露 3000 端口供 Dashboard 访问。
 
-WORKDIR /app
+### 7.3 配置文件结构
 
-# 安装依赖
-COPY package.json bun.lockb ./
-RUN bun install --frozen-lockfile
+配置文件为 JSON 格式，支持环境变量占位符（如 `${FEISHU_APP_ID}`）。关键配置项：
 
-# 复制源代码
-COPY tsconfig.json ./
-COPY src ./src
+- agent.model：默认 `claude-sonnet-4-6`
+- agent.summaryModel：默认 `claude-haiku-4-5`（用于生成摘要，降低成本）
+- memory.vectorEnabled：是否启用 Qdrant 向量检索
+- workspaces.sessionTimeout：会话超时时间（秒）
 
-# 构建
-RUN bun run build
+### 7.4 环境变量
 
-# 运行时镜像
-FROM oven/bun:1.1
-WORKDIR /app
+| 变量 | 说明 |
+|------|------|
+| FEISHU_APP_ID / APP_SECRET | 飞书应用凭证 |
+| FEISHU_ENCRYPT_KEY / VERIFICATION_TOKEN | 飞书消息加密 |
+| WECOM_BOT_ID / SECRET | 企业微信凭证 |
+| OPENAI_API_KEY | 向量 Embedding 密钥（仅启用 Qdrant 时需要） |
+| FRICLAW_VECTOR_ENABLED | 是否启用向量检索 |
+| FRICLAW_VECTOR_ENDPOINT | Qdrant 服务地址 |
+| LOG_LEVEL | 日志级别 |
+| PORT | Dashboard 端口 |
 
-COPY --from=base /app/dist ./dist
-COPY --from=base /app/node_modules ./node_modules
-COPY package.json ./
-
-# 创建目录
-RUN mkdir -p /app/memory /app/workspaces /app/logs /app/cache
-
-VOLUME ["/app/memory", "/app/workspaces", "/app/logs", "/app/cache"]
-
-EXPOSE 3000
-
-CMD ["bun", "run", "dist/index.js"]
-```
-
-```yaml
-# docker-compose.yml
-version: '3.8'
-
-services:
-  friclaw:
-    build: .
-    container_name: friclaw
-    restart: unless-stopped
-    volumes:
-      - ./config:/app/config:ro
-      - friclaw_memory:/app/memory
-      - friclaw_workspaces:/app/workspaces
-      - friclaw_logs:/app/logs
-      - friclaw_cache:/app/cache
-    ports:
-      - "3000:3000"
-    environment:
-      - NODE_ENV=production
-      - LOG_LEVEL=info
-
-volumes:
-  friclaw_memory:
-  friclaw_workspaces:
-  friclaw_logs:
-  friclaw_cache:
-```
-
-### 7.3 配置文件示例
-
-```json
-{
-  "$schema": "https://friclaw.dev/schema/config.json",
-  "agent": {
-    "type": "claude_code",
-    "model": "glm-4.7",
-    "summaryModel": "glm-4.7",
-    "allowedTools": [],
-    "timeoutSecs": 600
-  },
-  "gateways": {
-    "feishu": {
-      "appId": "${FEISHU_APP_ID}",
-      "appSecret": "${FEISHU_APP_SECRET}",
-      "encryptKey": "${FEISHU_ENCRYPT_KEY}",
-      "verificationToken": "${FEISHU_VERIFICATION_TOKEN}",
-      "events": ["message", "im.message.receive_v1"]
-    },
-    "wecom": {
-      "botId": "${WECOM_BOT_ID}",
-      "secret": "${WECOM_SECRET}"
-    }
-  },
-  "memory": {
-    "dir": "~/.friclaw/memory",
-    "searchLimit": 5
-  },
-  "mcpServers": {
-    "friclaw-memory": {
-      "type": "stdio",
-      "command": "bun",
-      "args": ["run", "dist/mcp/memory-server.js"]
-    }
-  },
-  "workspaces": {
-    "dir": "~/.friclaw/workspaces",
-    "maxSessions": 1000,
-    "sessionTimeout": 3600
-  },
-  "cron": {
-    "enabled": true,
-    "scheduler": "node-cron",
-    "maxConcurrentJobs": 10
-  },
-  "logging": {
-    "level": "info",
-    "dir": "~/.friclaw/logs",
-    "maxSize": "100m",
-    "maxFiles": 7
-  },
-  "dashboard": {
-    "enabled": true,
-    "port": 3000,
-    "cors": true
-  }
-}
-```
+> Claude API Key 由 Claude Code 自身管理（存储在 `~/.claude/`），FriClaw 无需单独配置。
 
 ---
 
 ## 8. 开发计划
 
-### 8.1 阶段一：核心功能 (MVP)
+### 阶段一：核心功能 (MVP)
 
 | 任务 | 状态 | 优先级 |
 |------|------|--------|
 | 项目初始化 & 架构搭建 | ✅ 完成 | P0 |
 | 配置系统 | ✅ 完成 | P0 |
-| 内存系统 (SQLite + FTS) | 🔄 进行中 | P0 |
+| Lane Queue 实现 | 🔄 进行中 | P0 |
+| 内存系统 (SQLite + FTS5) | 🔄 进行中 | P0 |
 | MCP 基础框架 | 📋 待开始 | P0 |
-| 飞书网关 | 📋 待开始 | P1 |
 | 会话管理 | 📋 待开始 | P0 |
-| AI Agent 集成 | 📋 待开始 | P0 |
+| 消息路由器 (Dispatcher) | 📋 待开始 | P0 |
+| Claude Code Agent 集成 | 📋 待开始 | P0 |
+| 文件安全机制 | 📋 待开始 | P0 |
+| 飞书网关 | 📋 待开始 | P0 |
 
-### 8.2 阶段二：平台扩展
+### 阶段二：平台扩展
 
 | 任务 | 优先级 |
 |------|--------|
 | 企业微信网关 | P1 |
-| Slack 网关 | P2 |
-| Discord 网关 | P3 |
 | 网关测试 & 文档 | P1 |
+| Web Dashboard | P1 |
+| 部署架构 (Docker + 单机) | P1 |
 
-### 8.3 阶段三：高级功能
-
-| 任务 | 优先级 |
-|------|--------|
-| 定时任务系统 | P1 |
-| Web Dashboard | P2 |
-| 插件系统 | P2 |
-| 工作流编排 | P3 |
-
-### 8.4 阶段四：企业级特性
+### 阶段三：高级功能
 
 | 任务 | 优先级 |
 |------|--------|
-| 多租户支持 | P2 |
-| 认证授权 | P2 |
-| 审计日志 | P2 |
-| 监控告警 | P2 |
-| 数据备份 | P3 |
+| 向量检索 (Qdrant) | P2 |
+| 定时任务系统 | P2 |
+| 智能路由 | P2 |
+
+### 阶段四：智能增强
+
+| 任务 | 优先级 |
+|------|--------|
+| 主动服务能力 | P3 |
+| 深度个性化 | P3 |
 
 ---
 
@@ -923,117 +519,73 @@ friclaw/
 ├── src/
 │   ├── index.ts              # 入口文件
 │   ├── config.ts             # 配置加载
-│   │
+│   ├── dispatcher.ts         # 消息路由
+│   ├── daemon.ts             # 守护进程
 │   ├── gateway/              # 网关层
-│   │   ├── index.ts
-│   │   ├── base.ts           # 基类
+│   │   ├── base.ts
 │   │   ├── feishu.ts
-│   │   ├── wecom.ts
-│   │   └── slack.ts
-│   │
+│   │   └── wecom.ts
 │   ├── session/              # 会话层
-│   │   ├── index.ts
 │   │   ├── manager.ts
 │   │   └── context.ts
-│   │
 │   ├── agent/                # Agent 层
-│   │   ├── index.ts
-│   │   ├── core.ts
-│   │   ├── tools.ts
-│   │   └── llm.ts
-│   │
+│   │   ├── claude-code.ts
+│   │   ├── file-guard.ts
+│   │   └── types.ts
 │   ├── memory/               # 内存层
-│   │   ├── index.ts
 │   │   ├── identity.ts
 │   │   ├── knowledge.ts
 │   │   ├── episode.ts
 │   │   ├── database.ts
-│   │   └── mcp-server.ts     # MCP 内存服务
-│   │
+│   │   ├── vector-store.ts
+│   │   ├── manager.ts
+│   │   └── mcp-server.ts
 │   ├── mcp/                  # MCP 框架
-│   │   ├── index.ts
 │   │   ├── client.ts
 │   │   └── server.ts
-│   │
-│   ├── workspace/            # 工作空间
-│   │   ├── index.ts
-│   │   ├── manager.ts
-│   │   └── isolation.ts
-│   │
+│   ├── utils/                # 工具函数
+│   │   ├── lane-queue.ts
+│   │   ├── logger.ts
+│   │   └── cache.ts
 │   ├── cron/                 # 定时任务
-│   │   ├── index.ts
 │   │   ├── scheduler.ts
-│   │   └── jobs.ts
-│   │
+│   │   └── types.ts
 │   ├── dashboard/            # Web Dashboard
-│   │   ├── index.ts
 │   │   ├── api.ts
 │   │   └── ui/
-│   │
-│   ├── utils/                # 工具函数
-│   │   ├── logger.ts
-│   │   ├── retry.ts
-│   │   └── cache.ts
-│   │
 │   └── types/                # 类型定义
-│       ├── index.ts
 │       ├── gateway.ts
 │       ├── agent.ts
 │       └── memory.ts
-│
-├── docs/                     # 文档
+├── docs/
 │   ├── DESIGN.md
 │   ├── API.md
-│   └── DEPLOYMENT.md
-│
-├── tests/                    # 测试
+│   ├── DEPLOYMENT.md
+│   └── design/
+│       ├── MUTEX_VS_LANE_QUEUE.md
+│       ├── OPENCLAW_LEARNINGS.md
+│       ├── OPTIMIZATION_PLAN.md
+│       ├── NEOCLAW_ANALYSIS.md
+│       └── STRATEGY.md
+├── tests/
 │   ├── unit/
 │   ├── integration/
 │   └── e2e/
-│
-├── scripts/                  # 脚本
-│   ├── build.ts
-│   ├── dev.ts
-│   └── lint.ts
-│
 ├── package.json
 ├── tsconfig.json
-├── bun.lockb
 └── README.md
 ```
 
-### B. 环境变量
-
-```bash
-# AI 配置
-FRICLAW_MODEL=glm-4.7
-FRICLAW_MODEL_API_KEY=xxx
-
-# 飞书配置
-FEISHU_APP_ID=cli_xxx
-FEISHU_APP_SECRET=xxx
-FEISHU_ENCRYPT_KEY=xxx
-FEISHU_VERIFICATION_TOKEN=xxx
-
-# 企业微信配置
-WECOM_BOT_ID=xxx
-WECOM_SECRET=xxx
-
-# 服务配置
-LOG_LEVEL=info
-PORT=3000
-```
-
-### C. 参考资源
+### B. 参考资源
 
 - [NeoClaw 项目](https://github.com/neoclaw/neoclaw)
 - [Model Context Protocol](https://modelcontextprotocol.io/)
 - [飞书开放平台](https://open.feishu.cn/)
 - [企业微信 API](https://developer.work.weixin.qq.com/)
-- [GLM API](https://open.bigmodel.cn/)
 - [Claude API](https://docs.anthropic.com/)
+- [Qdrant 向量数据库](https://qdrant.tech/)
 
 ---
 
-**文档版本**: 1.0.0
-**最后更新**: 2026-03-13
+**文档版本**: 2.0.0
+**最后更新**: 2026-03-19

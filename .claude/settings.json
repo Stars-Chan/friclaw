@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "Read(//Users/chen/workspace/ai/neoclaw/**)",
+      "Bash(/Users/chen/workspace/ai/friclaw/docs/modules/12-gateway-testing.md:*)",
+      "Bash(mv 17-dispatcher.md 07-dispatcher.md)",
+      "Bash(mv 07-claude-code-agent.md 08-claude-code-agent.md)",
+      "Bash(mv 08-file-guard.md 09-file-guard.md)",
+      "Bash(mv 09-feishu-gateway.md 10-feishu-gateway.md)",
+      "Bash(mv 10-wecom-gateway.md 11-wecom-gateway.md)",
+      "Bash(mv 11-web-dashboard.md 12-web-dashboard.md)",
+      "Bash(mv 12-gateway-testing.md 13-gateway-testing.md)",
+      "Bash(mv 13-cron-scheduler.md 14-cron-scheduler.md)",
+      "Bash(mv 14-smart-routing.md 15-smart-routing.md)",
+      "Bash(mv 15-vector-search.md 16-vector-search.md)",
+      "Bash(mv 16-proactive-service.md 17-proactive-service.md)",
+      "Bash(mv 18-deployment.md 18-deployment.md)"
+    ]
+  }
+}
