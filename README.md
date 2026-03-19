@@ -74,10 +74,7 @@ Apache License 2.0
 
 Stars-Chan
 
-### B. 参考资源
+## 参考资源
+感谢以下项目的作者
 - [NeoClaw 项目](https://github.com/amszuidas/neoclaw)
 - [OpenClaw 项目](https://github.com/openclaw/openclaw)
-- [Model Context Protocol](https://modelcontextprotocol.io/)
-- [飞书开放平台](https://open.feishu.cn/)
-- [企业微信 API](https://developer.work.weixin.qq.com/)
-- [Claude API](https://docs.anthropic.com/)
