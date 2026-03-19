@@ -7,6 +7,7 @@ import { join } from 'path'
 const AgentSchema = z.object({
   model: z.string().default('claude-sonnet-4-6'),
   summaryModel: z.string().default('claude-haiku-4-5'),
+  maxConcurrent: z.number().default(5),
   timeout: z.number().default(300_000),
 }).default({})
 
@@ -33,12 +34,28 @@ const LoggingSchema = z.object({
   dir: z.string().default(join(homedir(), '.friclaw', 'logs')),
 }).default({})
 
+const GatewaysSchema = z.object({
+  feishu: z.object({
+    enabled: z.boolean().default(false),
+    appId: z.string().optional(),
+    appSecret: z.string().optional(),
+    encryptKey: z.string().optional(),
+    verificationToken: z.string().optional(),
+  }).default({}),
+  wecom: z.object({
+    enabled: z.boolean().default(false),
+    botId: z.string().optional(),
+    secret: z.string().optional(),
+  }).default({}),
+}).default({})
+
 export const ConfigSchema = z.object({
   agent: AgentSchema,
   memory: MemorySchema,
   workspaces: WorkspacesSchema,
   dashboard: DashboardSchema,
   logging: LoggingSchema,
+  gateways: GatewaysSchema,
 })
 
 export type FriClawConfig = z.infer<typeof ConfigSchema>

@@ -57,4 +57,28 @@ describe('loadConfig', () => {
     process.env.FRICLAW_CONFIG = tmpPath
     await expect(loadConfig()).rejects.toThrow('Invalid config')
   })
+
+  it('returns default agent maxConcurrent', async () => {
+    const config = await loadConfig()
+    expect(config.agent.maxConcurrent).toBe(5)
+  })
+
+  it('returns default gateways config', async () => {
+    const config = await loadConfig()
+    expect(config.gateways.feishu.enabled).toBe(false)
+    expect(config.gateways.wecom.enabled).toBe(false)
+  })
+
+  it('merges partial gateway config from file', async () => {
+    const tmpPath = '/tmp/friclaw-test-gateway.json'
+    await Bun.write(tmpPath, JSON.stringify({
+      gateways: { feishu: { enabled: true, appId: 'test-id' } }
+    }))
+    process.env.FRICLAW_CONFIG = tmpPath
+    const config = await loadConfig()
+    expect(config.gateways.feishu.enabled).toBe(true)
+    expect(config.gateways.feishu.appId).toBe('test-id')
+    expect(config.gateways.wecom.enabled).toBe(false) // default preserved
+    try { unlinkSync(tmpPath) } catch {}
+  })
 })
