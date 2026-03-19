@@ -73,4 +73,32 @@ describe('LaneQueue', () => {
     await q.enqueue('user-a', async () => {})
     expect(q.activeLanes()).toBe(0)
   })
+
+  it('rejects when maxLanes is exceeded', async () => {
+    const q = new LaneQueue(2)
+    const blocker = () => new Promise<void>(r => setTimeout(r, 50))
+    q.enqueue('lane-1', blocker)
+    q.enqueue('lane-2', blocker)
+    await expect(q.enqueue('lane-3', async () => {}))
+      .rejects.toThrow('Lane limit reached: 2')
+  })
+
+  it('stats returns queue depth per lane', async () => {
+    const q = new LaneQueue()
+    const t1 = q.enqueue('user-a', () => new Promise(r => setTimeout(r, 50)))
+    const t2 = q.enqueue('user-a', async () => {})
+    const t3 = q.enqueue('user-a', async () => {})
+    // drain shifts t1 before awaiting, so: queue=[t2,t3], running=true → depth=3
+    expect(q.stats()['user-a']).toBe(3)
+    await Promise.all([t1, t2, t3])
+  })
+
+  it('activeLanes returns count of active lanes', async () => {
+    const q = new LaneQueue()
+    const b1 = q.enqueue('user-a', () => new Promise(r => setTimeout(r, 50)))
+    const b2 = q.enqueue('user-b', () => new Promise(r => setTimeout(r, 50)))
+    expect(q.activeLanes()).toBe(2)
+    await Promise.all([b1, b2])
+    expect(q.activeLanes()).toBe(0)
+  })
 })

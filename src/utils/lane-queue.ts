@@ -23,6 +23,10 @@ export class LaneQueue {
     return new Promise<T>((resolve, reject) => {
       let lane = this.lanes.get(laneKey)
       if (!lane) {
+        if (this.lanes.size >= this.maxLanes) {
+          reject(new Error(`Lane limit reached: ${this.maxLanes}`))
+          return
+        }
         lane = { queue: [], running: false }
         this.lanes.set(laneKey, lane)
       }
@@ -52,5 +56,13 @@ export class LaneQueue {
 
   activeLanes(): number {
     return this.lanes.size
+  }
+
+  stats(): Record<string, number> {
+    const result: Record<string, number> = {}
+    for (const [key, lane] of this.lanes) {
+      result[key] = lane.queue.length + (lane.running ? 1 : 0)
+    }
+    return result
   }
 }
