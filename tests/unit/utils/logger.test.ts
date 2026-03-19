@@ -10,9 +10,7 @@ describe('logger', () => {
     expect(typeof logger.warn).toBe('function')
   })
 
-  it('respects LOG_LEVEL env var', () => {
-    process.env.LOG_LEVEL = 'warn'
-    // Re-import won't work due to module cache; test the level directly
-    expect(logger.level).toBeDefined()
+  it('initializes with info level by default', () => {
+    expect(logger.level).toBe('info')
   })
 })
