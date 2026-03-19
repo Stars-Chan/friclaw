@@ -15,7 +15,29 @@
       "Bash(mv 14-smart-routing.md 15-smart-routing.md)",
       "Bash(mv 15-vector-search.md 16-vector-search.md)",
       "Bash(mv 16-proactive-service.md 17-proactive-service.md)",
-      "Bash(mv 18-deployment.md 18-deployment.md)"
+      "Bash(mv 18-deployment.md 18-deployment.md)",
+      "Bash(bun init:*)",
+      "Bash(bun install:*)",
+      "Bash(bun pm:*)",
+      "Bash(curl -s --max-time 10 https://registry.npmjs.org/zod/latest)",
+      "Bash(curl -s --max-time 10 \"https://registry.npmjs.org/@types/bun\")",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); versions=list\\(d[''''versions''''].keys\\(\\)\\); print\\(versions[-5:]\\)\")",
+      "Bash(bun --version)",
+      "Bash(curl -s --max-time 10 \"https://registry.npmjs.org/pino/latest\")",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(d[''''version'''']\\)\")",
+      "Bash(bun upgrade:*)",
+      "Bash(npm --version)",
+      "Bash(npm install:*)",
+      "Bash(grep -E \"^\\(@anthropic-ai|better-sqlite3|pino|zod|@types\\)$\")",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(bun test:*)",
+      "Bash(bun run:*)",
+      "Bash(git push:*)",
+      "Read(//Users/chen/.claude/plugins/cache/claude-plugins-official/superpowers/5.0.4/skills/subagent-driven-development/**)"
+    ],
+    "additionalDirectories": [
+      "/Users/chen/workspace/ai/friclaw/docs/superpowers"
     ]
   }
 }
