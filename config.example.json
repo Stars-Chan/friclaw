@@ -1,0 +1,35 @@
+{
+  "agent": {
+    "model": "claude-sonnet-4-6",
+    "summaryModel": "claude-haiku-4-5",
+    "maxConcurrent": 5,
+    "timeout": 300000
+  },
+  "memory": {
+    "dir": "~/.friclaw/memory",
+    "searchLimit": 10,
+    "vectorEnabled": false,
+    "vectorEndpoint": "http://localhost:6333"
+  },
+  "workspaces": {
+    "dir": "~/.friclaw/workspaces",
+    "maxSessions": 10,
+    "sessionTimeout": 3600
+  },
+  "dashboard": {
+    "enabled": true,
+    "port": 3000
+  },
+  "logging": {
+    "level": "info",
+    "dir": "~/.friclaw/logs"
+  },
+  "gateways": {
+    "feishu": {
+      "enabled": false
+    },
+    "wecom": {
+      "enabled": false
+    }
+  }
+}
