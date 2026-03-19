@@ -28,6 +28,7 @@ describe('createShutdownHandler', () => {
     await handler('SIGINT') // second call
 
     expect(shutdown).toHaveBeenCalledTimes(1)
+    expect(exit).toHaveBeenCalledTimes(1)
   })
 
   it('exits with code 1 when dispatcher.shutdown throws', async () => {
