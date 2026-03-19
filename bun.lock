@@ -1,0 +1,211 @@
+{
+  "lockfileVersion": 1,
+  "configVersion": 0,
+  "workspaces": {
+    "": {
+      "name": "friclaw",
+      "dependencies": {
+        "@anthropic-ai/sdk": "^0.39.0",
+        "better-sqlite3": "^11.0.0",
+        "pino": "^9.0.0",
+        "zod": "^3.23.0",
+      },
+      "devDependencies": {
+        "@types/better-sqlite3": "^7.6.0",
+        "@types/bun": "^1.3.11",
+        "typescript": "^5.4.0",
+      },
+    },
+  },
+  "packages": {
+    "@anthropic-ai/sdk": ["@anthropic-ai/sdk@0.39.0", "http://npm.dev.casstime.com/@anthropic-ai/sdk/-/sdk-0.39.0.tgz", { "dependencies": { "@types/node": "^18.11.18", "@types/node-fetch": "^2.6.4", "abort-controller": "^3.0.0", "agentkeepalive": "^4.2.1", "form-data-encoder": "1.7.2", "formdata-node": "^4.3.2", "node-fetch": "^2.6.7" } }, ""],
+
+    "@pinojs/redact": ["@pinojs/redact@0.4.0", "http://npm.dev.casstime.com/@pinojs/redact/-/redact-0.4.0.tgz", {}, ""],
+
+    "@types/better-sqlite3": ["@types/better-sqlite3@7.6.13", "http://npm.dev.casstime.com/@types/better-sqlite3/-/better-sqlite3-7.6.13.tgz", { "dependencies": { "@types/node": "*" } }, ""],
+
+    "@types/bun": ["@types/bun@1.3.11", "http://npm.dev.casstime.com/@types/bun/-/bun-1.3.11.tgz", { "dependencies": { "bun-types": "1.3.11" } }, ""],
+
+    "@types/node": ["@types/node@25.5.0", "http://npm.dev.casstime.com/@types/node/-/node-25.5.0.tgz", { "dependencies": { "undici-types": "~7.18.0" } }, ""],
+
+    "@types/node-fetch": ["@types/node-fetch@2.6.13", "http://npm.dev.casstime.com/@types/node-fetch/-/node-fetch-2.6.13.tgz", { "dependencies": { "@types/node": "*", "form-data": "^4.0.4" } }, ""],
+
+    "abort-controller": ["abort-controller@3.0.0", "http://npm.dev.casstime.com/abort-controller/-/abort-controller-3.0.0.tgz", { "dependencies": { "event-target-shim": "^5.0.0" } }, ""],
+
+    "agentkeepalive": ["agentkeepalive@4.6.0", "http://npm.dev.casstime.com/agentkeepalive/-/agentkeepalive-4.6.0.tgz", { "dependencies": { "humanize-ms": "^1.2.1" } }, ""],
+
+    "asynckit": ["asynckit@0.4.0", "http://npm.dev.casstime.com/asynckit/-/asynckit-0.4.0.tgz", {}, ""],
+
+    "atomic-sleep": ["atomic-sleep@1.0.0", "http://npm.dev.casstime.com/atomic-sleep/-/atomic-sleep-1.0.0.tgz", {}, ""],
+
+    "base64-js": ["base64-js@1.5.1", "http://npm.dev.casstime.com/base64-js/-/base64-js-1.5.1.tgz", {}, ""],
+
+    "better-sqlite3": ["better-sqlite3@11.10.0", "http://npm.dev.casstime.com/better-sqlite3/-/better-sqlite3-11.10.0.tgz", { "dependencies": { "bindings": "^1.5.0", "prebuild-install": "^7.1.1" } }, ""],
+
+    "bindings": ["bindings@1.5.0", "http://npm.dev.casstime.com/bindings/-/bindings-1.5.0.tgz", { "dependencies": { "file-uri-to-path": "1.0.0" } }, ""],
+
+    "bl": ["bl@4.1.0", "http://npm.dev.casstime.com/bl/-/bl-4.1.0.tgz", { "dependencies": { "buffer": "^5.5.0", "inherits": "^2.0.4", "readable-stream": "^3.4.0" } }, ""],
+
+    "buffer": ["buffer@5.7.1", "http://npm.dev.casstime.com/buffer/-/buffer-5.7.1.tgz", { "dependencies": { "base64-js": "^1.3.1", "ieee754": "^1.1.13" } }, ""],
+
+    "bun-types": ["bun-types@1.3.11", "http://npm.dev.casstime.com/bun-types/-/bun-types-1.3.11.tgz", { "dependencies": { "@types/node": "*" } }, ""],
+
+    "call-bind-apply-helpers": ["call-bind-apply-helpers@1.0.2", "http://npm.dev.casstime.com/call-bind-apply-helpers/-/call-bind-apply-helpers-1.0.2.tgz", { "dependencies": { "es-errors": "^1.3.0", "function-bind": "^1.1.2" } }, ""],
+
+    "chownr": ["chownr@1.1.4", "http://npm.dev.casstime.com/chownr/-/chownr-1.1.4.tgz", {}, ""],
+
+    "combined-stream": ["combined-stream@1.0.8", "http://npm.dev.casstime.com/combined-stream/-/combined-stream-1.0.8.tgz", { "dependencies": { "delayed-stream": "~1.0.0" } }, ""],
+
+    "decompress-response": ["decompress-response@6.0.0", "http://npm.dev.casstime.com/decompress-response/-/decompress-response-6.0.0.tgz", { "dependencies": { "mimic-response": "^3.1.0" } }, ""],
+
+    "deep-extend": ["deep-extend@0.6.0", "http://npm.dev.casstime.com/deep-extend/-/deep-extend-0.6.0.tgz", {}, ""],
+
+    "delayed-stream": ["delayed-stream@1.0.0", "http://npm.dev.casstime.com/delayed-stream/-/delayed-stream-1.0.0.tgz", {}, ""],
+
+    "detect-libc": ["detect-libc@2.1.2", "http://npm.dev.casstime.com/detect-libc/-/detect-libc-2.1.2.tgz", {}, ""],
+
+    "dunder-proto": ["dunder-proto@1.0.1", "http://npm.dev.casstime.com/dunder-proto/-/dunder-proto-1.0.1.tgz", { "dependencies": { "call-bind-apply-helpers": "^1.0.1", "es-errors": "^1.3.0", "gopd": "^1.2.0" } }, ""],
+
+    "end-of-stream": ["end-of-stream@1.4.5", "http://npm.dev.casstime.com/end-of-stream/-/end-of-stream-1.4.5.tgz", { "dependencies": { "once": "^1.4.0" } }, ""],
+
+    "es-define-property": ["es-define-property@1.0.1", "http://npm.dev.casstime.com/es-define-property/-/es-define-property-1.0.1.tgz", {}, ""],
+
+    "es-errors": ["es-errors@1.3.0", "http://npm.dev.casstime.com/es-errors/-/es-errors-1.3.0.tgz", {}, ""],
+
+    "es-object-atoms": ["es-object-atoms@1.1.1", "http://npm.dev.casstime.com/es-object-atoms/-/es-object-atoms-1.1.1.tgz", { "dependencies": { "es-errors": "^1.3.0" } }, ""],
+
+    "es-set-tostringtag": ["es-set-tostringtag@2.1.0", "http://npm.dev.casstime.com/es-set-tostringtag/-/es-set-tostringtag-2.1.0.tgz", { "dependencies": { "es-errors": "^1.3.0", "get-intrinsic": "^1.2.6", "has-tostringtag": "^1.0.2", "hasown": "^2.0.2" } }, ""],
+
+    "event-target-shim": ["event-target-shim@5.0.1", "http://npm.dev.casstime.com/event-target-shim/-/event-target-shim-5.0.1.tgz", {}, ""],
+
+    "expand-template": ["expand-template@2.0.3", "http://npm.dev.casstime.com/expand-template/-/expand-template-2.0.3.tgz", {}, ""],
+
+    "file-uri-to-path": ["file-uri-to-path@1.0.0", "http://npm.dev.casstime.com/file-uri-to-path/-/file-uri-to-path-1.0.0.tgz", {}, ""],
+
+    "form-data": ["form-data@4.0.5", "http://npm.dev.casstime.com/form-data/-/form-data-4.0.5.tgz", { "dependencies": { "asynckit": "^0.4.0", "combined-stream": "^1.0.8", "es-set-tostringtag": "^2.1.0", "hasown": "^2.0.2", "mime-types": "^2.1.12" } }, ""],
+
+    "form-data-encoder": ["form-data-encoder@1.7.2", "http://npm.dev.casstime.com/form-data-encoder/-/form-data-encoder-1.7.2.tgz", {}, ""],
+
+    "formdata-node": ["formdata-node@4.4.1", "http://npm.dev.casstime.com/formdata-node/-/formdata-node-4.4.1.tgz", { "dependencies": { "node-domexception": "1.0.0", "web-streams-polyfill": "4.0.0-beta.3" } }, ""],
+
+    "fs-constants": ["fs-constants@1.0.0", "http://npm.dev.casstime.com/fs-constants/-/fs-constants-1.0.0.tgz", {}, ""],
+
+    "function-bind": ["function-bind@1.1.2", "http://npm.dev.casstime.com/function-bind/-/function-bind-1.1.2.tgz", {}, ""],
+
+    "get-intrinsic": ["get-intrinsic@1.3.0", "http://npm.dev.casstime.com/get-intrinsic/-/get-intrinsic-1.3.0.tgz", { "dependencies": { "call-bind-apply-helpers": "^1.0.2", "es-define-property": "^1.0.1", "es-errors": "^1.3.0", "es-object-atoms": "^1.1.1", "function-bind": "^1.1.2", "get-proto": "^1.0.1", "gopd": "^1.2.0", "has-symbols": "^1.1.0", "hasown": "^2.0.2", "math-intrinsics": "^1.1.0" } }, ""],
+
+    "get-proto": ["get-proto@1.0.1", "http://npm.dev.casstime.com/get-proto/-/get-proto-1.0.1.tgz", { "dependencies": { "dunder-proto": "^1.0.1", "es-object-atoms": "^1.0.0" } }, ""],
+
+    "github-from-package": ["github-from-package@0.0.0", "http://npm.dev.casstime.com/github-from-package/-/github-from-package-0.0.0.tgz", {}, ""],
+
+    "gopd": ["gopd@1.2.0", "http://npm.dev.casstime.com/gopd/-/gopd-1.2.0.tgz", {}, ""],
+
+    "has-symbols": ["has-symbols@1.1.0", "http://npm.dev.casstime.com/has-symbols/-/has-symbols-1.1.0.tgz", {}, ""],
+
+    "has-tostringtag": ["has-tostringtag@1.0.2", "http://npm.dev.casstime.com/has-tostringtag/-/has-tostringtag-1.0.2.tgz", { "dependencies": { "has-symbols": "^1.0.3" } }, ""],
+
+    "hasown": ["hasown@2.0.2", "http://npm.dev.casstime.com/hasown/-/hasown-2.0.2.tgz", { "dependencies": { "function-bind": "^1.1.2" } }, ""],
+
+    "humanize-ms": ["humanize-ms@1.2.1", "http://npm.dev.casstime.com/humanize-ms/-/humanize-ms-1.2.1.tgz", { "dependencies": { "ms": "^2.0.0" } }, ""],
+
+    "ieee754": ["ieee754@1.2.1", "http://npm.dev.casstime.com/ieee754/-/ieee754-1.2.1.tgz", {}, ""],
+
+    "inherits": ["inherits@2.0.4", "http://npm.dev.casstime.com/inherits/-/inherits-2.0.4.tgz", {}, ""],
+
+    "ini": ["ini@1.3.8", "http://npm.dev.casstime.com/ini/-/ini-1.3.8.tgz", {}, ""],
+
+    "math-intrinsics": ["math-intrinsics@1.1.0", "http://npm.dev.casstime.com/math-intrinsics/-/math-intrinsics-1.1.0.tgz", {}, ""],
+
+    "mime-db": ["mime-db@1.52.0", "http://npm.dev.casstime.com/mime-db/-/mime-db-1.52.0.tgz", {}, ""],
+
+    "mime-types": ["mime-types@2.1.35", "http://npm.dev.casstime.com/mime-types/-/mime-types-2.1.35.tgz", { "dependencies": { "mime-db": "1.52.0" } }, ""],
+
+    "mimic-response": ["mimic-response@3.1.0", "http://npm.dev.casstime.com/mimic-response/-/mimic-response-3.1.0.tgz", {}, ""],
+
+    "minimist": ["minimist@1.2.8", "http://npm.dev.casstime.com/minimist/-/minimist-1.2.8.tgz", {}, ""],
+
+    "mkdirp-classic": ["mkdirp-classic@0.5.3", "http://npm.dev.casstime.com/mkdirp-classic/-/mkdirp-classic-0.5.3.tgz", {}, ""],
+
+    "ms": ["ms@2.1.3", "http://npm.dev.casstime.com/ms/-/ms-2.1.3.tgz", {}, ""],
+
+    "napi-build-utils": ["napi-build-utils@2.0.0", "http://npm.dev.casstime.com/napi-build-utils/-/napi-build-utils-2.0.0.tgz", {}, ""],
+
+    "node-abi": ["node-abi@3.89.0", "http://npm.dev.casstime.com/node-abi/-/node-abi-3.89.0.tgz", { "dependencies": { "semver": "^7.3.5" } }, ""],
+
+    "node-domexception": ["node-domexception@1.0.0", "http://npm.dev.casstime.com/node-domexception/-/node-domexception-1.0.0.tgz", {}, ""],
+
+    "node-fetch": ["node-fetch@2.7.0", "http://npm.dev.casstime.com/node-fetch/-/node-fetch-2.7.0.tgz", { "dependencies": { "whatwg-url": "^5.0.0" }, "peerDependencies": { "encoding": "^0.1.0" }, "optionalPeers": ["encoding"] }, ""],
+
+    "on-exit-leak-free": ["on-exit-leak-free@2.1.2", "http://npm.dev.casstime.com/on-exit-leak-free/-/on-exit-leak-free-2.1.2.tgz", {}, ""],
+
+    "once": ["once@1.4.0", "http://npm.dev.casstime.com/once/-/once-1.4.0.tgz", { "dependencies": { "wrappy": "1" } }, ""],
+
+    "pino": ["pino@9.14.0", "http://npm.dev.casstime.com/pino/-/pino-9.14.0.tgz", { "dependencies": { "@pinojs/redact": "^0.4.0", "atomic-sleep": "^1.0.0", "on-exit-leak-free": "^2.1.0", "pino-abstract-transport": "^2.0.0", "pino-std-serializers": "^7.0.0", "process-warning": "^5.0.0", "quick-format-unescaped": "^4.0.3", "real-require": "^0.2.0", "safe-stable-stringify": "^2.3.1", "sonic-boom": "^4.0.1", "thread-stream": "^3.0.0" }, "bin": "bin.js" }, ""],
+
+    "pino-abstract-transport": ["pino-abstract-transport@2.0.0", "http://npm.dev.casstime.com/pino-abstract-transport/-/pino-abstract-transport-2.0.0.tgz", { "dependencies": { "split2": "^4.0.0" } }, ""],
+
+    "pino-std-serializers": ["pino-std-serializers@7.1.0", "http://npm.dev.casstime.com/pino-std-serializers/-/pino-std-serializers-7.1.0.tgz", {}, ""],
+
+    "prebuild-install": ["prebuild-install@7.1.3", "http://npm.dev.casstime.com/prebuild-install/-/prebuild-install-7.1.3.tgz", { "dependencies": { "detect-libc": "^2.0.0", "expand-template": "^2.0.3", "github-from-package": "0.0.0", "minimist": "^1.2.3", "mkdirp-classic": "^0.5.3", "napi-build-utils": "^2.0.0", "node-abi": "^3.3.0", "pump": "^3.0.0", "rc": "^1.2.7", "simple-get": "^4.0.0", "tar-fs": "^2.0.0", "tunnel-agent": "^0.6.0" }, "bin": "bin.js" }, ""],
+
+    "process-warning": ["process-warning@5.0.0", "http://npm.dev.casstime.com/process-warning/-/process-warning-5.0.0.tgz", {}, ""],
+
+    "pump": ["pump@3.0.4", "http://npm.dev.casstime.com/pump/-/pump-3.0.4.tgz", { "dependencies": { "end-of-stream": "^1.1.0", "once": "^1.3.1" } }, ""],
+
+    "quick-format-unescaped": ["quick-format-unescaped@4.0.4", "http://npm.dev.casstime.com/quick-format-unescaped/-/quick-format-unescaped-4.0.4.tgz", {}, ""],
+
+    "rc": ["rc@1.2.8", "http://npm.dev.casstime.com/rc/-/rc-1.2.8.tgz", { "dependencies": { "deep-extend": "^0.6.0", "ini": "~1.3.0", "minimist": "^1.2.0", "strip-json-comments": "~2.0.1" }, "bin": "cli.js" }, ""],
+
+    "readable-stream": ["readable-stream@3.6.2", "http://npm.dev.casstime.com/readable-stream/-/readable-stream-3.6.2.tgz", { "dependencies": { "inherits": "^2.0.3", "string_decoder": "^1.1.1", "util-deprecate": "^1.0.1" } }, ""],
+
+    "real-require": ["real-require@0.2.0", "http://npm.dev.casstime.com/real-require/-/real-require-0.2.0.tgz", {}, ""],
+
+    "safe-buffer": ["safe-buffer@5.2.1", "http://npm.dev.casstime.com/safe-buffer/-/safe-buffer-5.2.1.tgz", {}, ""],
+
+    "safe-stable-stringify": ["safe-stable-stringify@2.5.0", "http://npm.dev.casstime.com/safe-stable-stringify/-/safe-stable-stringify-2.5.0.tgz", {}, ""],
+
+    "semver": ["semver@7.7.4", "http://npm.dev.casstime.com/semver/-/semver-7.7.4.tgz", { "bin": "bin/semver.js" }, ""],
+
+    "simple-concat": ["simple-concat@1.0.1", "http://npm.dev.casstime.com/simple-concat/-/simple-concat-1.0.1.tgz", {}, ""],
+
+    "simple-get": ["simple-get@4.0.1", "http://npm.dev.casstime.com/simple-get/-/simple-get-4.0.1.tgz", { "dependencies": { "decompress-response": "^6.0.0", "once": "^1.3.1", "simple-concat": "^1.0.0" } }, ""],
+
+    "sonic-boom": ["sonic-boom@4.2.1", "http://npm.dev.casstime.com/sonic-boom/-/sonic-boom-4.2.1.tgz", { "dependencies": { "atomic-sleep": "^1.0.0" } }, ""],
+
+    "split2": ["split2@4.2.0", "http://npm.dev.casstime.com/split2/-/split2-4.2.0.tgz", {}, ""],
+
+    "string_decoder": ["string_decoder@1.3.0", "http://npm.dev.casstime.com/string_decoder/-/string_decoder-1.3.0.tgz", { "dependencies": { "safe-buffer": "~5.2.0" } }, ""],
+
+    "strip-json-comments": ["strip-json-comments@2.0.1", "http://npm.dev.casstime.com/strip-json-comments/-/strip-json-comments-2.0.1.tgz", {}, ""],
+
+    "tar-fs": ["tar-fs@2.1.4", "http://npm.dev.casstime.com/tar-fs/-/tar-fs-2.1.4.tgz", { "dependencies": { "chownr": "^1.1.1", "mkdirp-classic": "^0.5.2", "pump": "^3.0.0", "tar-stream": "^2.1.4" } }, ""],
+
+    "tar-stream": ["tar-stream@2.2.0", "http://npm.dev.casstime.com/tar-stream/-/tar-stream-2.2.0.tgz", { "dependencies": { "bl": "^4.0.3", "end-of-stream": "^1.4.1", "fs-constants": "^1.0.0", "inherits": "^2.0.3", "readable-stream": "^3.1.1" } }, ""],
+
+    "thread-stream": ["thread-stream@3.1.0", "http://npm.dev.casstime.com/thread-stream/-/thread-stream-3.1.0.tgz", { "dependencies": { "real-require": "^0.2.0" } }, ""],
+
+    "tr46": ["tr46@0.0.3", "http://npm.dev.casstime.com/tr46/-/tr46-0.0.3.tgz", {}, ""],
+
+    "tunnel-agent": ["tunnel-agent@0.6.0", "http://npm.dev.casstime.com/tunnel-agent/-/tunnel-agent-0.6.0.tgz", { "dependencies": { "safe-buffer": "^5.0.1" } }, ""],
+
+    "typescript": ["typescript@5.9.3", "http://npm.dev.casstime.com/typescript/-/typescript-5.9.3.tgz", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, ""],
+
+    "undici-types": ["undici-types@7.18.2", "http://npm.dev.casstime.com/undici-types/-/undici-types-7.18.2.tgz", {}, ""],
+
+    "util-deprecate": ["util-deprecate@1.0.2", "http://npm.dev.casstime.com/util-deprecate/-/util-deprecate-1.0.2.tgz", {}, ""],
+
+    "web-streams-polyfill": ["web-streams-polyfill@4.0.0-beta.3", "http://npm.dev.casstime.com/web-streams-polyfill/-/web-streams-polyfill-4.0.0-beta.3.tgz", {}, ""],
+
+    "webidl-conversions": ["webidl-conversions@3.0.1", "http://npm.dev.casstime.com/webidl-conversions/-/webidl-conversions-3.0.1.tgz", {}, ""],
+
+    "whatwg-url": ["whatwg-url@5.0.0", "http://npm.dev.casstime.com/whatwg-url/-/whatwg-url-5.0.0.tgz", { "dependencies": { "tr46": "~0.0.3", "webidl-conversions": "^3.0.0" } }, ""],
+
+    "wrappy": ["wrappy@1.0.2", "http://npm.dev.casstime.com/wrappy/-/wrappy-1.0.2.tgz", {}, ""],
+
+    "zod": ["zod@3.25.76", "http://npm.dev.casstime.com/zod/-/zod-3.25.76.tgz", {}, ""],
+
+    "@anthropic-ai/sdk/@types/node": ["@types/node@18.19.130", "http://npm.dev.casstime.com/@types/node/-/node-18.19.130.tgz", { "dependencies": { "undici-types": "~5.26.4" } }, ""],
+
+    "@anthropic-ai/sdk/@types/node/undici-types": ["undici-types@5.26.5", "http://npm.dev.casstime.com/undici-types/-/undici-types-5.26.5.tgz", {}, ""],
+  }
+}
