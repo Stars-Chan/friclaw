@@ -18,9 +18,11 @@ export class EpisodeMemory {
   }
 
   save(summary: string, tags: string[] = []): string {
-    const date = new Date().toISOString().slice(0, 10)
+    const now = new Date()
+    const date = now.toISOString().slice(0, 10)
+    const ts = process.hrtime.bigint().toString().padStart(20, '0')
     const shortId = crypto.randomUUID().replace(/-/g, '').slice(0, 6)
-    const id = `${date}-${shortId}`
+    const id = `${date}-${ts}-${shortId}`
     const content = `---\ntitle: ${id}\ndate: ${date}\ntags: [${tags.join(', ')}]\n---\n\n${summary}`
     writeFileSync(join(this.episodesDir, `${id}.md`), content, 'utf-8')
     upsertIndex(this.db, `episode/${id}`, 'episode', id, summary, tags)
