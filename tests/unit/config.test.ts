@@ -81,4 +81,74 @@ describe('loadConfig', () => {
     expect(config.gateways.wecom.enabled).toBe(false) // default preserved
     try { unlinkSync(tmpPath) } catch {}
   })
+
+  describe('env var overrides', () => {
+    afterEach(() => {
+      delete process.env.PORT
+      delete process.env.LOG_LEVEL
+      delete process.env.FEISHU_APP_ID
+      delete process.env.FEISHU_APP_SECRET
+      delete process.env.WECOM_BOT_ID
+      delete process.env.WECOM_SECRET
+      delete process.env.FRICLAW_VECTOR_ENABLED
+      delete process.env.FRICLAW_VECTOR_ENDPOINT
+      delete process.env.FRICLAW_CONFIG  // 清理内部测试设置的临时路径
+    })
+
+    it('PORT overrides dashboard.port', async () => {
+      process.env.PORT = '8080'
+      const config = await loadConfig()
+      expect(config.dashboard.port).toBe(8080)
+    })
+
+    it('LOG_LEVEL overrides logging.level', async () => {
+      process.env.LOG_LEVEL = 'debug'
+      const config = await loadConfig()
+      expect(config.logging.level).toBe('debug')
+    })
+
+    it('FEISHU_APP_ID overrides gateways.feishu.appId', async () => {
+      process.env.FEISHU_APP_ID = 'cli_abc123'
+      const config = await loadConfig()
+      expect(config.gateways.feishu.appId).toBe('cli_abc123')
+    })
+
+    it('FEISHU_APP_SECRET overrides gateways.feishu.appSecret', async () => {
+      process.env.FEISHU_APP_SECRET = 'secret_xyz'
+      const config = await loadConfig()
+      expect(config.gateways.feishu.appSecret).toBe('secret_xyz')
+    })
+
+    it('WECOM_BOT_ID overrides gateways.wecom.botId', async () => {
+      process.env.WECOM_BOT_ID = 'bot_001'
+      const config = await loadConfig()
+      expect(config.gateways.wecom.botId).toBe('bot_001')
+    })
+
+    it('FRICLAW_VECTOR_ENABLED=true sets memory.vectorEnabled', async () => {
+      process.env.FRICLAW_VECTOR_ENABLED = 'true'
+      const config = await loadConfig()
+      expect(config.memory.vectorEnabled).toBe(true)
+    })
+
+    it('FRICLAW_VECTOR_ENABLED=false overrides file config true', async () => {
+      const tmpPath = '/tmp/friclaw-test-vector.json'
+      await Bun.write(tmpPath, JSON.stringify({ memory: { vectorEnabled: true } }))
+      process.env.FRICLAW_CONFIG = tmpPath
+      process.env.FRICLAW_VECTOR_ENABLED = 'false'
+      const config = await loadConfig()
+      expect(config.memory.vectorEnabled).toBe(false)
+      try { unlinkSync(tmpPath) } catch {}
+    })
+
+    it('env vars override file config values', async () => {
+      const tmpPath = '/tmp/friclaw-test-env-override.json'
+      await Bun.write(tmpPath, JSON.stringify({ dashboard: { port: 4000 } }))
+      process.env.FRICLAW_CONFIG = tmpPath
+      process.env.PORT = '9000'
+      const config = await loadConfig()
+      expect(config.dashboard.port).toBe(9000)
+      try { unlinkSync(tmpPath) } catch {}
+    })
+  })
 })

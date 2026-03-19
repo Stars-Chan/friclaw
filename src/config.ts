@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { existsSync, readFileSync } from 'fs'
 import { homedir } from 'os'
 import { join } from 'path'
+import { deepMerge, removeUndefined } from './utils/deep-merge'
 
 const AgentSchema = z.object({
   model: z.string().default('claude-sonnet-4-6'),
@@ -60,20 +61,50 @@ export const ConfigSchema = z.object({
 
 export type FriClawConfig = z.infer<typeof ConfigSchema>
 
+function buildEnvOverrides(): Record<string, unknown> {
+  return removeUndefined({
+    dashboard: {
+      port: process.env.PORT ? Number(process.env.PORT) : undefined,
+    },
+    logging: {
+      level: process.env.LOG_LEVEL,
+    },
+    memory: {
+      vectorEnabled: process.env.FRICLAW_VECTOR_ENABLED !== undefined
+        ? process.env.FRICLAW_VECTOR_ENABLED === 'true'
+        : undefined,
+      vectorEndpoint: process.env.FRICLAW_VECTOR_ENDPOINT,
+    },
+    gateways: {
+      feishu: {
+        appId: process.env.FEISHU_APP_ID,
+        appSecret: process.env.FEISHU_APP_SECRET,
+        encryptKey: process.env.FEISHU_ENCRYPT_KEY,
+        verificationToken: process.env.FEISHU_VERIFICATION_TOKEN,
+      },
+      wecom: {
+        botId: process.env.WECOM_BOT_ID,
+        secret: process.env.WECOM_SECRET,
+      },
+    },
+  })
+}
+
 export async function loadConfig(): Promise<FriClawConfig> {
   const configPath = process.env.FRICLAW_CONFIG
     ?? join(homedir(), '.friclaw', 'config.json')
 
-  let raw: unknown = {}
+  let fileConfig: Record<string, unknown> = {}
   if (existsSync(configPath)) {
     try {
-      raw = JSON.parse(readFileSync(configPath, 'utf-8'))
+      fileConfig = JSON.parse(readFileSync(configPath, 'utf-8'))
     } catch (e) {
       throw new Error(`Failed to parse config at ${configPath}: ${(e as Error).message}`)
     }
   }
 
-  const result = ConfigSchema.safeParse(raw)
+  const merged = deepMerge(fileConfig, buildEnvOverrides())
+  const result = ConfigSchema.safeParse(merged)
   if (!result.success) {
     throw new Error(`Invalid config at ${configPath}: ${result.error.message}`)
   }
