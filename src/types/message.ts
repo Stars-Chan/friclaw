@@ -8,4 +8,6 @@ export interface Message {
   type: MessageType
   content: string
   messageId?: string
+  chatType?: 'private' | 'group'
+  attachments?: unknown[]
 }

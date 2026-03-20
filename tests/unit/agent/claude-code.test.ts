@@ -64,7 +64,10 @@ describe('ClaudeCodeAgent', () => {
     await agent.handle(makeSession(), makeMessage())
     expect(spawnCalls[0]).not.toContain('--resume')
     // simulate process exit
-    ;(agent as never)['processes'].get('feishu:ou_abc').exitCode = 0
+    const processState = (agent as unknown as { processes: Map<string, { proc: { exitCode?: number } }> }).processes.get('feishu:ou_abc')
+    if (processState?.proc) {
+      processState.proc.exitCode = 0
+    }
     await agent.handle(makeSession(), makeMessage())
     expect(spawnCalls[1]).toContain('--resume')
     expect(spawnCalls[1]).toContain('sess_resume')

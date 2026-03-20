@@ -1,5 +1,5 @@
 // src/agent/router.ts
-import type { Agent } from '../dispatcher'
+import type { Agent, StreamHandler } from '../dispatcher'
 import type { Session } from '../session/types'
 import type { Message } from '../types/message'
 
@@ -25,10 +25,15 @@ export class Router implements Agent {
     return this
   }
 
-  async handle(session: Session, message: Message): Promise<void> {
+  async handle(
+    session: Session,
+    message: Message,
+    reply?: (content: string) => Promise<string>,
+    streamHandler?: StreamHandler
+  ): Promise<void> {
     const dispatch = async () => {
       const agent = this.resolve(session, message)
-      await agent.handle(session, message)
+      await agent.handle(session, message, reply, streamHandler)
     }
 
     // build middleware chain

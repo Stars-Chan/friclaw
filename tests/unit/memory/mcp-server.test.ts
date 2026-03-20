@@ -44,7 +44,7 @@ describe('MemoryMcpServer tools', () => {
     expect(saveResult.isError).toBeFalsy()
 
     const readResult = await mcpServer.call('memory_read', { id: 'preferences' })
-    expect(readResult.content[0].text).toContain('user prefers dark mode')
+    expect((readResult.content[0] as { type: 'text'; text: string }).text).toContain('user prefers dark mode')
   })
 
   it('memory_search returns matching results', async () => {
@@ -54,15 +54,16 @@ describe('MemoryMcpServer tools', () => {
       category: 'knowledge',
     })
     const result = await mcpServer.call('memory_search', { query: 'friclaw' })
-    expect(result.content[0].text).toContain('friclaw')
+    expect((result.content[0] as { type: 'text'; text: string }).text).toContain('friclaw')
   })
 
   it('memory_list returns saved topics', async () => {
     await mcpServer.call('memory_save', { content: 'A', id: 'preferences', category: 'knowledge' })
     await mcpServer.call('memory_save', { content: 'B', id: 'projects', category: 'knowledge' })
     const result = await mcpServer.call('memory_list', { category: 'knowledge' })
-    expect(result.content[0].text).toContain('preferences')
-    expect(result.content[0].text).toContain('projects')
+    const textContent = result.content[0] as { type: 'text'; text: string }
+    expect(textContent.text).toContain('preferences')
+    expect(textContent.text).toContain('projects')
   })
 
   it('memory_read returns error for unknown id', async () => {

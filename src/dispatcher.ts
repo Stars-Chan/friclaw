@@ -5,8 +5,12 @@ import type { SessionManager } from './session/manager'
 import type { Session } from './session/types'
 import type { Message } from './types/message'
 
+export interface StreamHandler {
+  (stream: AsyncGenerator<{ type: string; [key: string]: unknown }>): Promise<void>
+}
+
 export interface Agent {
-  handle(session: Session, message: Message): Promise<void>
+  handle(session: Session, message: Message, reply?: (content: string) => Promise<string>, streamHandler?: StreamHandler): Promise<void>
 }
 
 export class Dispatcher {
@@ -19,11 +23,15 @@ export class Dispatcher {
     private onShutdown?: () => Promise<void>,
   ) {}
 
-  async dispatch(message: Message): Promise<void> {
+  async dispatch(
+    message: Message,
+    reply?: (content: string) => Promise<string>,
+    streamHandler?: StreamHandler
+  ): Promise<void> {
     if (!this.accepting) throw new Error('Dispatcher is not accepting new messages')
 
     if (message.type === 'command') {
-      await this.handleCommand(message)
+      await this.handleCommand(message, reply)
       return
     }
 
@@ -33,7 +41,9 @@ export class Dispatcher {
       message.userId,
     )
 
-    await this.laneQueue.enqueue(session.id, () => this.agent.handle(session, message))
+    await this.laneQueue.enqueue(session.id, () =>
+      this.agent.handle(session, message, reply, streamHandler)
+    )
   }
 
   stopAccepting(): void {
@@ -43,7 +53,7 @@ export class Dispatcher {
 
   async drainQueues(): Promise<void> {
     // Poll until all lanes are drained. LaneQueue deletes lane entries on completion,
-    // so activeLanes() reaching 0 is the correct termination condition.
+    // so activeLanes() reaching 0 is correct termination condition.
     while (this.laneQueue.activeLanes() > 0) {
       await new Promise(r => setTimeout(r, 10))
     }
@@ -61,22 +71,31 @@ export class Dispatcher {
     logger.info('Dispatcher shutdown complete')
   }
 
-  private async handleCommand(message: Message): Promise<void> {
+  private async handleCommand(
+    message: Message,
+    reply?: (content: string) => Promise<string>
+  ): Promise<void> {
     const sessionId = `${message.platform}:${message.chatId}`
     switch (message.content) {
       case '/clear':
         this.sessionManager.clearSession(sessionId)
         logger.info({ sessionId }, 'Session cleared via /clear')
+        await reply?.('会话已清除')
         break
       case '/new':
         this.sessionManager.newSession(message.platform, message.chatId, message.userId)
         logger.info({ sessionId }, 'New session created via /new')
+        await reply?.('新会话已创建')
         break
       case '/status':
-        logger.info({ stats: this.sessionManager.stats() }, '/status requested')
+        const stats = this.sessionManager.stats()
+        const statusText = `总会话数: ${stats.total}\n各平台: ${JSON.stringify(stats.byPlatform)}`
+        logger.info({ stats }, '/status requested')
+        await reply?.(statusText)
         break
       default:
         logger.warn({ content: message.content }, 'Unknown command, ignoring')
+        await reply?.(`未知命令: ${message.content}`)
     }
   }
 }

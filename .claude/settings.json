@@ -34,10 +34,16 @@
       "Bash(bun test:*)",
       "Bash(bun run:*)",
       "Bash(git push:*)",
-      "Read(//Users/chen/.claude/plugins/cache/claude-plugins-official/superpowers/5.0.4/skills/subagent-driven-development/**)"
+      "Read(//Users/chen/.claude/plugins/cache/claude-plugins-official/superpowers/5.0.4/skills/subagent-driven-development/**)",
+      "Bash(bun build:*)",
+      "Read(//Users/chen/.friclaw/**)",
+      "Bash(bun src/onboard.ts)",
+      "Bash(tail -n 50 ~/.friclaw/logs/*.log)",
+      "Bash(claude --version)"
     ],
     "additionalDirectories": [
-      "/Users/chen/workspace/ai/friclaw/docs/superpowers"
+      "/Users/chen/workspace/ai/friclaw/docs/superpowers",
+      "/Users/chen/workspace/ai/neoclaw/src/gateway/wework"
     ]
   }
 }

@@ -7,8 +7,29 @@ import { Dispatcher } from './dispatcher'
 import { startDashboard } from './dashboard/api'
 import { registerShutdownHandlers } from './daemon'
 import { logger } from './utils/logger'
+import { runOnboard } from './onboard'
+import { FeishuGateway } from './gateway/feishu'
+import { WecomGateway } from './gateway/wecom'
+import type { Gateway } from './gateway/types'
+
+const command = process.argv[2] ?? 'start'
 
 async function main(): Promise<void> {
+  switch (command) {
+    case 'onboard': {
+      await runOnboard()
+      break
+    }
+
+    case 'start':
+    default: {
+      await startDaemon()
+      break
+    }
+  }
+}
+
+async function startDaemon(): Promise<void> {
   logger.info('FriClaw starting...')
 
   const config = await loadConfig()
@@ -34,6 +55,23 @@ async function main(): Promise<void> {
   if (config.dashboard.enabled) {
     await startDashboard(config.dashboard.port, dispatcher)
   }
+
+  const gateways: Gateway[] = []
+
+  if (config.gateways.feishu.enabled) {
+    const { appId, appSecret, encryptKey, verificationToken } = config.gateways.feishu
+    if (!appId || !appSecret) throw new Error('飞书网关缺少 appId 或 appSecret')
+    gateways.push(new FeishuGateway({ appId, appSecret, encryptKey, verificationToken }))
+  }
+
+  if (config.gateways.wecom.enabled) {
+    const { botId, secret } = config.gateways.wecom
+    if (!botId || !secret) throw new Error('企业微信网关缺少 botId 或 secret')
+    gateways.push(new WecomGateway({ botId, secret }))
+  }
+
+  await Promise.all(gateways.map(g => g.start(dispatcher)))
+  logger.info({ gateways: gateways.map(g => g.kind) }, '网关已启动')
 
   registerShutdownHandlers(dispatcher)
 

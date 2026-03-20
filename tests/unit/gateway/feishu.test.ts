@@ -24,7 +24,20 @@ mock.module('@larksuiteoapi/node-sdk', () => {
     }
     start = mockWSClientStart
   }
-  class Client {}
+  const mockMessageCreate = mock(async () => ({ data: { message_id: 'msg_created' } }))
+  const mockMessageUpdate = mock(async () => {})
+  const mockMessageResourceGet = mock(async () => 'fake_image_buffer')
+  class Client {
+    im = {
+      message: {
+        create: mockMessageCreate,
+        update: mockMessageUpdate,
+      },
+      messageResource: {
+        get: mockMessageResourceGet,
+      },
+    }
+  }
   return { default: { Client, WSClient, EventDispatcher } }
 })
 
@@ -40,9 +53,14 @@ const makeConfig = () => ({
 
 const makeDispatcher = () => {
   const dispatched: Message[] = []
+  const replies: string[] = []
   return {
     dispatched,
-    dispatch: async (msg: Message) => { dispatched.push(msg) },
+    replies,
+    dispatch: async (msg: Message, reply?: (content: string) => Promise<string>, _streamHandler?: unknown) => {
+      dispatched.push(msg)
+      if (reply) replies.push('Reply called')
+    },
   }
 }
 
@@ -85,6 +103,7 @@ describe('FeishuGateway', () => {
     expect(msg.userId).toBe('user_001')
     expect(msg.type).toBe('text')
     expect(msg.content).toBe('hello')
+    expect(msg.chatType).toBe('private')
   })
 
   it('group message without @mention is ignored', async () => {
@@ -107,6 +126,8 @@ describe('FeishuGateway', () => {
       content: JSON.stringify({ text: '@bot hello', mentions: [{ key: '@_user_1' }] }),
     }))
     expect(dispatcher.dispatched).toHaveLength(1)
+    const msg = dispatcher.dispatched[0]
+    expect(msg.chatType).toBe('group')
   })
 
   it('thread message uses chatId:rootId as chatId', async () => {
@@ -132,5 +153,38 @@ describe('FeishuGateway', () => {
     await capturedEventHandler!(makeEvent({ content: JSON.stringify({ text: '/clear' }) }))
     expect(dispatcher.dispatched[0].type).toBe('command')
     expect(dispatcher.dispatched[0].content).toBe('/clear')
+  })
+
+  it('image message is dispatched with correct type', async () => {
+    const dispatcher = makeDispatcher()
+    const gw = new FeishuGateway(makeConfig())
+    await gw.start(dispatcher as never)
+    const event = {
+      message: {
+        message_id: 'msg_001',
+        message_type: 'image',
+        chat_id: 'oc_room1',
+        chat_type: 'p2p',
+        root_id: null,
+        content: JSON.stringify({ image_key: 'img_v2_abc' }),
+      },
+      sender: {
+        sender_id: { user_id: 'user_001' },
+      },
+    }
+    await capturedEventHandler!(event)
+    expect(dispatcher.dispatched).toHaveLength(1)
+    const msg = dispatcher.dispatched[0]
+    expect(msg.type).toBe('image')
+    expect(msg.content).toBe('')
+    expect(msg.messageId).toBe('msg_001')
+    expect(msg.platform).toBe('feishu')
+  })
+
+  it('send() creates message', async () => {
+    const gw = new FeishuGateway(makeConfig())
+    await gw.start(makeDispatcher() as never)
+    const messageId = await gw.send('oc_room1', 'Hello')
+    expect(messageId).toBe('msg_created')
   })
 })
