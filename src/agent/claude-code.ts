@@ -213,7 +213,12 @@ export class ClaudeCodeAgent implements Agent {
     const resumeId = this.sessionIds.get(conversationId)
     if (resumeId) args.push('--resume', resumeId)
     if (this.soulContent) args.push('--system-prompt', this.soulContent)
-    const proc = this.spawnFn(args, { cwd: workspaceDir, stdin: 'pipe', stdout: 'pipe', stderr: 'pipe' })
+
+    // 清除 CLAUDECODE 环境变量，避免嵌套会话检测
+    const env = { ...process.env }
+    delete env.CLAUDECODE
+
+    const proc = this.spawnFn(args, { cwd: workspaceDir, stdin: 'pipe', stdout: 'pipe', stderr: 'pipe', env })
     const processState: ProcessState = {
       proc,
       lastUsedAt: now,
