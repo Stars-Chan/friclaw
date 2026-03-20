@@ -45,6 +45,7 @@ async function startDaemon(): Promise<void> {
 
   const agent = new ClaudeCodeAgent({
     model: config.agent.model,
+    allowedTools: config.agent.allowedTools,
     soulContent: memory.identity.read(),
   })
 

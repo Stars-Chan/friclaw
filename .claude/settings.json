@@ -2,7 +2,7 @@
   "permissions": {
     "allow": [
       "WebSearch",
-      "Read(//Users/chen/workspace/ai/neoclaw/**)",
+      "Read(//Users/chen/workspace/**)",
       "Bash(/Users/chen/workspace/ai/friclaw/docs/modules/12-gateway-testing.md:*)",
       "Bash(mv 17-dispatcher.md 07-dispatcher.md)",
       "Bash(mv 07-claude-code-agent.md 08-claude-code-agent.md)",
@@ -42,7 +42,10 @@
       "Bash(claude --version)",
       "Bash(npx tsc:*)",
       "Bash(claude --input-format stream-json --output-format stream-json)",
-      "Bash(bun x:*)"
+      "Bash(bun x:*)",
+      "Bash(python3:*)",
+      "Bash(node:*)",
+      "Read(//Users/chen/.claude/skills/**)"
     ],
     "additionalDirectories": [
       "/Users/chen/workspace/ai/friclaw/docs/superpowers",

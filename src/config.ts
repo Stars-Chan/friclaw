@@ -10,6 +10,7 @@ const AgentSchema = z.object({
   summaryModel: z.string().default('claude-haiku-4-5'),
   maxConcurrent: z.number().default(5),
   timeout: z.number().default(300_000),
+  allowedTools: z.array(z.string()).optional(), // 工具白名单，为空则跳过权限检查
 }).default({})
 
 const MemorySchema = z.object({

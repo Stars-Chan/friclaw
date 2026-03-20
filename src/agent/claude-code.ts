@@ -13,6 +13,7 @@ interface ClaudeCodeAgentOptions {
   spawnFn?: SpawnFn
   soulContent?: string
   model?: string // 默认模型名称
+  allowedTools?: string[] // 允许的工具白名单（如果为空则跳过权限检查）
 }
 
 /**
@@ -41,12 +42,14 @@ export class ClaudeCodeAgent implements Agent {
   private spawnFn: SpawnFn
   private soulContent: string
   private defaultModel: string // 默认模型名称
+  private allowedTools?: string[] // 允许的工具白名单
   private readonly PROCESS_IDLE_TIMEOUT_MS = 5 * 60 * 1000 // 5 minutes
 
   constructor(options: ClaudeCodeAgentOptions = {}) {
     this.spawnFn = options.spawnFn ?? ((args, opts) => Bun.spawn(args, opts))
     this.soulContent = options.soulContent ?? ''
     this.defaultModel = options.model ?? 'claude-sonnet-4-6'
+    this.allowedTools = options.allowedTools
   }
 
   async handle(
@@ -188,7 +191,23 @@ export class ClaudeCodeAgent implements Agent {
     }
 
     // Create new process
-    const args = ['claude', '--input-format', 'stream-json', '--output-format', 'stream-json', '--verbose']
+    const args = [
+      'claude',
+      '--input-format', 'stream-json',
+      '--output-format', 'stream-json',
+      '--verbose',
+    ]
+
+    // 工具权限配置：优先使用白名单，否则跳过权限检查
+    if (this.allowedTools && this.allowedTools.length > 0) {
+      args.push('--allowedTools', this.allowedTools.join(','))
+    } else {
+      args.push('--dangerously-skip-permissions')  // 跳过权限检查，因为外层已实现权限控制
+    }
+
+    // 禁止危险工具（无论是否使用白名单）
+    args.push('--disallowedTools', 'CronCreate,CronDelete,CronList')
+
     const resumeId = this.sessionIds.get(conversationId)
     if (resumeId) args.push('--resume', resumeId)
     if (this.soulContent) args.push('--system-prompt', this.soulContent)
