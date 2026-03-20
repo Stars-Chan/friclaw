@@ -4,6 +4,8 @@ import type { Dispatcher, StreamHandler } from '../dispatcher'
 import type { Gateway } from './types'
 import type { Message } from '../types/message'
 import { WeworkWsClient, type MessageCallback } from './wecom-ws-client'
+import type { RunResponseStats } from '../agent/types'
+import { formatStats } from './format-stats'
 
 interface WecomConfig {
   botId: string
@@ -196,41 +198,83 @@ export class WecomGateway implements Gateway {
     }
 
     const streamHandler: StreamHandler = async (stream) => {
-      let accText = ''
+      let accumulatedThinking = '' // 累积的思考内容
+      let accumulatedText = '' // 累积的文本内容
       let currentStreamId = generateStreamId()
       let streamStartedAt = Date.now()
-      let dirty = false
+      let dirty = false // 是否有待发送的增量
       let flushTimer: ReturnType<typeof setTimeout> | null = null
 
+      /**
+       * 检查当前流是否已过期，如果过期则关闭旧流并创建新流
+       * 返回当前可用的 streamId
+       */
       const ensureActiveStream = (): string => {
         if (Date.now() - streamStartedAt >= STREAM_EXPIRY_MS) {
-          this._client.sendStream({ reqId: wsMsg.reqId, streamId: currentStreamId, content: accText || '...', finish: true })
+          // 关闭旧流
+          const content = accumulatedText || accumulatedThinking || '...'
+          this._client.sendStream({ reqId: wsMsg.reqId, streamId: currentStreamId, content, finish: true })
+          // 创建新流
+          const oldId = currentStreamId
           currentStreamId = generateStreamId()
           streamStartedAt = Date.now()
+          logger.info({ oldStreamId: oldId, newStreamId: currentStreamId }, '企业微信流已过期，已轮换到新流')
         }
         return currentStreamId
       }
 
+      /**
+       * 发送当前累积内容的流式更新
+       */
       const flushDelta = (): void => {
         flushTimer = null
         if (!dirty) return
         dirty = false
-        this._client.sendStream({ reqId: wsMsg.reqId, streamId: ensureActiveStream(), content: accText, finish: false })
+
+        const content = accumulatedText
+          ? accumulatedText
+          : `💭 思考过程：\n\n${accumulatedThinking}`
+
+        this._client.sendStream({ reqId: wsMsg.reqId, streamId: ensureActiveStream(), content, finish: false })
       }
 
+      /**
+       * 标记有新增量，并按节流间隔调度发送
+       */
       const scheduleDelta = (): void => {
         dirty = true
         if (!flushTimer) flushTimer = setTimeout(flushDelta, STREAM_THROTTLE_MS)
       }
 
       for await (const evt of stream) {
-        if (evt.type === 'text_delta') {
-          accText += (evt.text as string) ?? ''
+        if (evt.type === 'thinking_delta') {
+          accumulatedThinking += evt.text as string
+          scheduleDelta()
+        } else if (evt.type === 'text_delta') {
+          accumulatedText += evt.text as string
           scheduleDelta()
         } else if (evt.type === 'done') {
-          if (flushTimer) { clearTimeout(flushTimer); flushTimer = null }
-          logger.info({ content: accText, conversationId: msg.chatId }, '企业微信流式回复完成')
-          this._client.sendStream({ reqId: wsMsg.reqId, streamId: ensureActiveStream(), content: accText, finish: true })
+          // 清除待发送的节流定时器
+          if (flushTimer) {
+            clearTimeout(flushTimer)
+            flushTimer = null
+          }
+
+          const response = evt.response as RunResponseStats
+          const stats = formatStats(response)
+
+          // 构建最终消息内容（包含思考过程）
+          let finalMessage = ''
+          if (accumulatedThinking) {
+            finalMessage += `💭 思考过程：\n\n${accumulatedThinking}\n\n---\n\n`
+          }
+          finalMessage += accumulatedText
+          if (stats) {
+            finalMessage += `\n\n---\n\n*${stats}*`
+          }
+
+          logger.info({ content: finalMessage, conversationId: msg.chatId }, '企业微信流式回复完成')
+          this._client.sendStream({ reqId: wsMsg.reqId, streamId: ensureActiveStream(), content: finalMessage, finish: true })
           this.activeStreams.delete(streamKey)
         }
       }

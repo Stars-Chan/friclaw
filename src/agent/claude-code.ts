@@ -12,6 +12,20 @@ type SpawnFn = (args: string[], opts?: Parameters<typeof Bun.spawn>[1]) => Subpr
 interface ClaudeCodeAgentOptions {
   spawnFn?: SpawnFn
   soulContent?: string
+  model?: string // 默认模型名称
+}
+
+/**
+ * 计算成本（当 CLI 未返回成本时使用）
+ * 输入：1元/百万tokens，输出：2元/百万tokens
+ */
+const INPUT_COST_PER_MILLION_TOKENS_CNY = 1 // 输入价格：1元/百万tokens
+const OUTPUT_COST_PER_MILLION_TOKENS_CNY = 2 // 输出价格：2元/百万tokens
+
+function calculateCost(inputTokens: number, outputTokens: number): number {
+  const inputCostCny = (inputTokens / 1_000_000) * INPUT_COST_PER_MILLION_TOKENS_CNY
+  const outputCostCny = (outputTokens / 1_000_000) * OUTPUT_COST_PER_MILLION_TOKENS_CNY
+  return inputCostCny + outputCostCny // 直接返回人民币
 }
 
 interface ProcessState {
@@ -26,11 +40,13 @@ export class ClaudeCodeAgent implements Agent {
   private sessionIds = new Map<string, string>()
   private spawnFn: SpawnFn
   private soulContent: string
+  private defaultModel: string // 默认模型名称
   private readonly PROCESS_IDLE_TIMEOUT_MS = 5 * 60 * 1000 // 5 minutes
 
   constructor(options: ClaudeCodeAgentOptions = {}) {
     this.spawnFn = options.spawnFn ?? ((args, opts) => Bun.spawn(args, opts))
     this.soulContent = options.soulContent ?? ''
+    this.defaultModel = options.model ?? 'claude-sonnet-4-6'
   }
 
   async handle(
@@ -66,6 +82,7 @@ export class ClaudeCodeAgent implements Agent {
   }
 
   async *stream(request: RunRequest): AsyncGenerator<AgentStreamEvent> {
+    const startTime = Date.now()
     const processState = await this.getOrCreateProcess(request.conversationId, request.workspaceDir)
     const proc = processState.proc
     const payload = JSON.stringify({
@@ -105,7 +122,44 @@ export class ClaudeCodeAgent implements Agent {
           }
         }
         if (event.type === 'result') {
-          yield { type: 'done', response: { text: event.result as string, sessionId: event.session_id as string } }
+          const elapsedMs = Date.now() - startTime
+
+          // 从 result 事件中提取统计信息
+          const usage = event.usage as { input_tokens?: number; output_tokens?: number } | undefined
+          const resultEvt = event as { session_id?: string; cost_usd?: number; model?: string }
+
+          // 计算人民币成本
+          const inputTokens = usage?.input_tokens ?? 0
+          const outputTokens = usage?.output_tokens ?? 0
+          // 如果 CLI 返回了美元成本，转换为人民币；否则使用 calculateCost 计算
+          const costCny = resultEvt.cost_usd
+            ? resultEvt.cost_usd * 7.2 // 美元转人民币
+            : calculateCost(inputTokens, outputTokens)
+          // 如果 CLI 没有返回 model，则使用默认值
+          const model = resultEvt.model ?? this.defaultModel
+
+          // 使用 info 级别日志打印 result 事件的关键字段
+          logger.info({
+            conversationId: request.conversationId,
+            model,
+            costCny,
+            inputTokens,
+            outputTokens,
+            elapsedMs,
+          }, 'Claude Code result event stats')
+
+          yield {
+            type: 'done',
+            response: {
+              text: event.result as string,
+              sessionId: resultEvt.session_id ?? '',
+              model,
+              elapsedMs,
+              inputTokens,
+              outputTokens,
+              costCny,
+            }
+          }
           break
         }
       }

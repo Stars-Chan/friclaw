@@ -39,11 +39,15 @@
       "Read(//Users/chen/.friclaw/**)",
       "Bash(bun src/onboard.ts)",
       "Bash(tail -n 50 ~/.friclaw/logs/*.log)",
-      "Bash(claude --version)"
+      "Bash(claude --version)",
+      "Bash(npx tsc:*)",
+      "Bash(claude --input-format stream-json --output-format stream-json)",
+      "Bash(bun x:*)"
     ],
     "additionalDirectories": [
       "/Users/chen/workspace/ai/friclaw/docs/superpowers",
-      "/Users/chen/workspace/ai/neoclaw/src/gateway/wework"
+      "/Users/chen/workspace/ai/neoclaw/src/gateway/wework",
+      "/tmp"
     ]
   }
 }

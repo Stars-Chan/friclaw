@@ -5,6 +5,8 @@ import type { Dispatcher, StreamHandler } from '../dispatcher'
 import type { Gateway } from './types'
 import type { Message, MessageType } from '../types/message'
 import { unlinkSync } from 'node:fs'
+import type { RunResponseStats } from '../agent/types'
+import { formatStats } from './format-stats'
 
 interface FeishuConfig {
   appId: string
@@ -171,7 +173,8 @@ export class FeishuGateway implements Gateway {
 
   private buildStreamHandler(msg: Message): StreamHandler {
     let cardId: string | null = null
-    let buffer = ''
+    let accumulatedThinking = '' // 累积的思考内容
+    let accumulatedText = '' // 累积的文本内容
     let flushTimer: ReturnType<typeof setTimeout> | null = null
 
     const flush = async (text: string) => {
@@ -188,16 +191,34 @@ export class FeishuGateway implements Gateway {
 
     return async (stream) => {
       for await (const event of stream) {
-        if (event.type === 'text_delta') {
-          buffer += (event.text as string) ?? ''
-          flush(buffer)
+        if (event.type === 'thinking_delta') {
+          accumulatedThinking += event.text as string
+          const displayText = accumulatedText || `💭 思考过程：\n\n${accumulatedThinking}`
+          flush(displayText)
+        } else if (event.type === 'text_delta') {
+          accumulatedText += event.text as string
+          flush(accumulatedText)
         } else if (event.type === 'ask_questions') {
           if (flushTimer) { clearTimeout(flushTimer); flushTimer = null }
           await this.sendInteractiveForm(msg.chatId, event.questions as string[], msg.messageId)
         } else if (event.type === 'done') {
           if (flushTimer) { clearTimeout(flushTimer); flushTimer = null }
-          logger.info({ content: buffer, conversationId: msg.chatId }, '飞书流式回复完成')
-          if (cardId) await this.finalizeCard(cardId, buffer)
+
+          const response = event.response as RunResponseStats
+          const stats = formatStats(response)
+
+          // 构建最终消息内容（包含思考过程）
+          let finalMessage = ''
+          if (accumulatedThinking) {
+            finalMessage += `💭 思考过程：\n\n${accumulatedThinking}\n\n---\n\n`
+          }
+          finalMessage += accumulatedText
+          if (stats) {
+            finalMessage += `\n\n---\n\n*${stats}*`
+          }
+
+          logger.info({ content: finalMessage, conversationId: msg.chatId }, '飞书流式回复完成')
+          if (cardId) await this.finalizeCard(cardId, finalMessage)
         }
       }
     }
