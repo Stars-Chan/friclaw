@@ -202,6 +202,8 @@ export class ClaudeCodeAgent implements Agent {
     if (this.allowedTools && this.allowedTools.length > 0) {
       args.push('--allowedTools', this.allowedTools.join(','))
     } else {
+      // 必须先允许跳过权限检查，才能使用该参数
+      args.push('--allow-dangerously-skip-permissions')
       args.push('--dangerously-skip-permissions')  // 跳过权限检查，因为外层已实现权限控制
     }
 
