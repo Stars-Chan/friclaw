@@ -92,6 +92,8 @@ export class WeworkWsClient extends EventEmitter {
   private _reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private _reconnectDelay: number = 5000;
   private _maxReconnectDelay: number = 60000;
+  private _reconnectAttempts: number = 0;
+  private readonly MAX_RECONNECT_ATTEMPTS = 10;
   private _subscribed: boolean = false;
   private _manualClose: boolean = false;
 
@@ -127,9 +129,9 @@ export class WeworkWsClient extends EventEmitter {
       this._ws = new WebSocket(this._config.url);
       this._setupWebSocketHandlers();
     } catch (err) {
-      log.error('Failed to create WebSocket', {
+      log.error({
         error: err instanceof Error ? err.message : String(err),
-      });
+      }, 'Failed to create WebSocket');
       this._scheduleReconnect();
     }
   }
@@ -246,6 +248,7 @@ export class WeworkWsClient extends EventEmitter {
     this._ws.on('open', () => {
       log.info('WebSocket connection established');
       this._reconnectDelay = 5000; // Reset reconnect delay on successful connection
+      this._reconnectAttempts = 0; // Reset reconnect attempts on successful connection
       this.emit('open');
       this._subscribe();
       this._startPing();
@@ -257,21 +260,21 @@ export class WeworkWsClient extends EventEmitter {
         const message = JSON.parse(raw);
         this._handleMessage(message);
       } catch (err) {
-        log.error('Failed to parse WebSocket message', {
+        log.error({
           error: err instanceof Error ? err.message : String(err),
           data: raw.substring(0, 500),
-        });
+        }, 'Failed to parse WebSocket message');
       }
     });
 
     this._ws.on('error', (err: Error) => {
-      log.error('WebSocket error', { error: err.message });
+      log.error({ error: err.message }, 'WebSocket error');
       this.emit('error', err);
     });
 
     this._ws.on('close', (code: number, reason: Buffer) => {
       const reasonStr = reason.toString('utf-8');
-      log.info('WebSocket closed', { code, reason: reasonStr });
+      log.info({ code, reason: reasonStr }, 'WebSocket closed');
       this._stopPing();
       this._subscribed = false;
       this.emit('close', code, reasonStr);
@@ -310,7 +313,7 @@ export class WeworkWsClient extends EventEmitter {
       },
     };
 
-    log.debug('Sending aibot_subscribe...', { reqId });
+    log.debug({ reqId }, 'Sending aibot_subscribe...');
     this._send(subscribePayload);
   }
 
@@ -319,14 +322,14 @@ export class WeworkWsClient extends EventEmitter {
    */
   private _handleMessage(message: unknown): void {
     if (typeof message !== 'object' || message === null) {
-      log.warn('Received invalid message type', { type: typeof message });
+      log.warn({ type: typeof message }, 'Received invalid message type');
       return;
     }
 
     const msg = message as Record<string, unknown>;
     const cmd = msg.cmd as string;
 
-    log.debug('Received message', { cmd });
+    log.debug({ cmd }, 'Received message');
 
     switch (cmd) {
       case 'aibot_msg_callback':
@@ -349,7 +352,7 @@ export class WeworkWsClient extends EventEmitter {
         if ('errcode' in msg && 'errmsg' in msg) {
           this._handleCommonResponse(msg);
         } else {
-          log.debug('Unknown message type', { cmd });
+          log.debug({ cmd }, 'Unknown message type');
         }
     }
   }
@@ -365,7 +368,7 @@ export class WeworkWsClient extends EventEmitter {
     const reqId = headers?.req_id as string | undefined;
 
     if (errCode === 0) {
-      log.debug('Command executed successfully', { reqId });
+      log.debug({ reqId }, 'Command executed successfully');
 
       // 检查是否是订阅响应（通过当前未订阅状态判断）
       if (!this._subscribed && reqId) {
@@ -374,11 +377,11 @@ export class WeworkWsClient extends EventEmitter {
         this.emit('subscribed');
       }
     } else {
-      log.warn('Command execution failed', { errCode, errMsg, reqId });
+      log.warn({ errCode, errMsg, reqId }, 'Command execution failed');
 
       // 如果是订阅失败，触发错误事件并断开连接
       if (!this._subscribed) {
-        log.error('Subscription failed', { errCode, errMsg });
+        log.error({ errCode, errMsg }, 'Subscription failed');
         this.emit('error', new Error(`Subscription failed: ${errMsg} (${errCode})`));
         this.disconnect();
       }
@@ -395,7 +398,7 @@ export class WeworkWsClient extends EventEmitter {
 
     const reqId = headers?.req_id as string | undefined;
     if (!reqId) {
-      log.error('Message callback missing req_id', { body });
+      log.error({ body }, 'Message callback missing req_id');
       return;
     }
 
@@ -520,7 +523,7 @@ export class WeworkWsClient extends EventEmitter {
     const eventType = eventData?.eventtype || '';
     const reqId = (headers?.req_id as string) || '';
 
-    log.info('Received event callback', { eventType, reqId });
+    log.info({ eventType, reqId }, 'Received event callback');
 
     this.emit('message', {
       eventType,
@@ -543,9 +546,9 @@ export class WeworkWsClient extends EventEmitter {
       this._ws.send(data);
       return true;
     } catch (err) {
-      log.error('Failed to send message', {
+      log.error({
         error: err instanceof Error ? err.message : String(err),
-      });
+      }, 'Failed to send message');
       return false;
     }
   }
@@ -565,7 +568,7 @@ export class WeworkWsClient extends EventEmitter {
           },
         };
         this._send(pingPayload);
-        log.debug('Sent ping to server', { reqId });
+        log.debug({ reqId }, 'Sent ping to server');
       }
     }, this._config.pingIntervalMs);
   }
@@ -586,11 +589,22 @@ export class WeworkWsClient extends EventEmitter {
   private _scheduleReconnect(): void {
     if (this._manualClose) return;
 
+    // Check if we've exceeded max reconnect attempts
+    if (this._reconnectAttempts >= this.MAX_RECONNECT_ATTEMPTS) {
+      log.error(
+        { attempts: this._reconnectAttempts },
+        'Max reconnection attempts reached. Giving up.'
+      );
+      this.emit('error', new Error(`Max reconnection attempts (${this.MAX_RECONNECT_ATTEMPTS}) reached`));
+      return;
+    }
+
     this._clearReconnectTimer();
 
-    log.info(`Scheduling reconnect in ${this._reconnectDelay}ms`);
+    log.info(`Scheduling reconnect in ${this._reconnectDelay}ms (attempt ${this._reconnectAttempts + 1}/${this.MAX_RECONNECT_ATTEMPTS})`);
 
     this._reconnectTimer = setTimeout(() => {
+      this._reconnectAttempts++;
       log.info('Attempting to reconnect...');
       this._reconnectDelay = Math.min(this._reconnectDelay * 2, this._maxReconnectDelay);
       this.connect();

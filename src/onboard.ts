@@ -4,7 +4,7 @@
  * Run with: bun onboard
  */
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync, chmodSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { homedir } from 'node:os'
@@ -140,6 +140,7 @@ function initConfig(): void {
 
   const content = JSON.stringify(TEMPLATE, null, 2)
   writeFileSync(CONFIG_PATH, content)
+  chmodSync(CONFIG_PATH, 0o600) // Owner read/write only
   console.log(`Config template written to: ${CONFIG_PATH}`)
 }
 
