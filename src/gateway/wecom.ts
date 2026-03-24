@@ -101,7 +101,7 @@ export class WecomGateway implements Gateway {
   async send(chatId: string, text: string): Promise<string> {
     const streamEntry = this.activeStreams.get(chatId)
     const reqId = streamEntry?.streamId ?? ''
-    this._client.sendText({ reqId, text })
+    this._client.sendMarkdown({ reqId, content: text })
     return ''
   }
 
@@ -192,7 +192,8 @@ export class WecomGateway implements Gateway {
 
     const reply = (text: string) => {
       logger.info({ content: text, conversationId: msg.chatId }, '企业微信回复')
-      this._client.sendText({ reqId: wsMsg.reqId, text })
+      // 使用 sendMarkdown 代替 sendText，因为某些情况下企业微信不接受 text 类型
+      this._client.sendMarkdown({ reqId: wsMsg.reqId, content: text })
       this.activeStreams.delete(streamKey)
       return Promise.resolve('')
     }
@@ -282,7 +283,7 @@ export class WecomGateway implements Gateway {
 
     this._dispatcher.dispatch(msg, reply, streamHandler).catch((err) => {
       logger.error({ err }, '企业微信 dispatch 失败')
-      this._client.sendText({ reqId: wsMsg.reqId, text: '处理消息时出错，请稍后再试。' })
+      this._client.sendMarkdown({ reqId: wsMsg.reqId, content: '处理消息时出错，请稍后再试。' })
       this.activeStreams.delete(streamKey)
     })
   }

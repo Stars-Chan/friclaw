@@ -27,6 +27,18 @@ mock.module('@larksuiteoapi/node-sdk', () => {
   const mockMessageCreate = mock(async () => ({ data: { message_id: 'msg_created' } }))
   const mockMessageUpdate = mock(async () => {})
   const mockMessageResourceGet = mock(async () => 'fake_image_buffer')
+
+  // CardKit API mocks
+  const mockCardCreate = mock(async () => ({
+    code: 0,
+    data: { card_id: 'card_001' },
+  }))
+  const mockCardElementContent = mock(async () => ({ code: 0 }))
+  const mockCardElementPatch = mock(async () => ({ code: 0 }))
+  const mockCardElementCreate = mock(async () => ({ code: 0 }))
+  const mockCardElementDelete = mock(async () => ({ code: 0 }))
+  const mockCardSettings = mock(async () => ({ code: 0 }))
+
   class Client {
     im = {
       message: {
@@ -35,6 +47,20 @@ mock.module('@larksuiteoapi/node-sdk', () => {
       },
       messageResource: {
         get: mockMessageResourceGet,
+      },
+    }
+    cardkit = {
+      v1: {
+        card: {
+          create: mockCardCreate,
+          settings: mockCardSettings,
+        },
+        cardElement: {
+          content: mockCardElementContent,
+          patch: mockCardElementPatch,
+          create: mockCardElementCreate,
+          delete: mockCardElementDelete,
+        },
       },
     }
   }

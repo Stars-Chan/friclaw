@@ -8,6 +8,53 @@ import { unlinkSync } from 'node:fs'
 import type { RunResponseStats } from '../agent/types'
 import { formatStats } from './format-stats'
 
+// ── Card Element Types for JSON 2.0 ─────────────────────────────
+
+type MarkdownEl = { tag: 'markdown'; content: string; element_id?: string }
+type HrEl = { tag: 'hr'; element_id?: string }
+type PlainTextEl = {
+  tag: 'plain_text'
+  content: string
+  text_size?: string
+  text_color?: string
+}
+type StandardIconEl = {
+  tag: 'standard_icon'
+  token: string
+  color?: string
+}
+type DivEl = {
+  tag: 'div'
+  element_id?: string
+  icon?: StandardIconEl
+  text?: PlainTextEl
+}
+type CollapsiblePanel = {
+  tag: 'collapsible_panel'
+  element_id?: string
+  expanded: boolean
+  border?: { color?: string; corner_radius?: string }
+  vertical_spacing?: string
+  header: {
+    title: PlainTextEl
+    icon?: StandardIconEl
+    icon_position?: string
+    icon_expanded_angle?: number
+  }
+  elements: CardElement[]
+}
+type CardElement = MarkdownEl | HrEl | CollapsiblePanel | DivEl
+
+// ── Streaming Card Element IDs ─────────────────────────────────
+
+const STREAM_EL = {
+  stepsPanel: 'steps_panel',
+  mainMd: 'main_md',
+  loadingDiv: 'loading_div',
+  statsHr: 'stats_hr',
+  statsNote: 'stats_note',
+} as const
+
 interface FeishuConfig {
   appId: string
   appSecret: string
@@ -173,163 +220,592 @@ export class FeishuGateway implements Gateway {
 
   private buildStreamHandler(msg: Message): StreamHandler {
     let cardId: string | null = null
-    let accumulatedThinking = '' // 累积的思考内容
-    let accumulatedText = '' // 累积的文本内容
-    let flushTimer: ReturnType<typeof setTimeout> | null = null
+    let mainText = ''
+    let stepsPanelAdded = false
+    let stepCount = 0
+    let currentThinkingId: string | null = null
+    let currentThinkingText = ''
+    let thinkingSegmentCount = 0
+    let lastStepId = ''
+    let seq = 1
+    let lastThinkingFlush = 0
+    let lastMainFlush = 0
+    const FLUSH_INTERVAL_MS = 150
 
-    const flush = async (text: string) => {
-      if (flushTimer) clearTimeout(flushTimer)
-      flushTimer = setTimeout(async () => {
-        if (!cardId) {
-          cardId = await this.createStreamCard(msg.chatId, text, msg.messageId)
-        } else {
-          await this.updateStreamCard(cardId, text)
-        }
-        flushTimer = null
-      }, 300)
+    const ensureCard = async (): Promise<string> => {
+      if (cardId) return cardId
+      cardId = await this.createCardEntity()
+      await this.sendCardByRef(msg.chatId, cardId, msg.messageId)
+      logger.info(`Streaming card ${cardId} sent to ${msg.chatId}`)
+      return cardId
+    }
+
+    const addStep = async (
+      id: string,
+      stepDiv: Record<string, unknown>,
+      stepId: string
+    ): Promise<void> => {
+      if (!stepsPanelAdded) {
+        await this.insertStepsPanel(id, stepDiv, seq++)
+        stepsPanelAdded = true
+      } else {
+        await this.appendStepToPanel(id, stepDiv, lastStepId, seq++)
+      }
+      lastStepId = stepId
+    }
+
+    const refreshPanelHeader = async (id: string, label: string): Promise<void> => {
+      const countText = stepCount + ' ' + (stepCount === 1 ? 'step' : 'steps')
+      await this.updatePanelHeader(id, `${label} (${countText})`, seq++).catch((e) =>
+        logger.warn(`updatePanelHeader failed: ${e}`)
+      )
+    }
+
+    const finalizeThinking = async (id: string): Promise<void> => {
+      if (!currentThinkingId) return
+      await this.updateStepText(id, currentThinkingId, currentThinkingText, seq++).catch((e) =>
+        logger.warn(`final thinking segment flush failed: ${e}`)
+      )
+      currentThinkingId = null
+      currentThinkingText = ''
     }
 
     return async (stream) => {
-      for await (const event of stream) {
-        if (event.type === 'thinking_delta') {
-          accumulatedThinking += event.text as string
-          const displayText = accumulatedText || `💭 思考过程：\n\n${accumulatedThinking}`
-          flush(displayText)
-        } else if (event.type === 'text_delta') {
-          accumulatedText += event.text as string
-          flush(accumulatedText)
-        } else if (event.type === 'ask_questions') {
-          if (flushTimer) { clearTimeout(flushTimer); flushTimer = null }
-          await this.sendInteractiveForm(msg.chatId, event.questions as string[], msg.messageId)
-        } else if (event.type === 'done') {
-          if (flushTimer) { clearTimeout(flushTimer); flushTimer = null }
+      try {
+        for await (const event of stream) {
+          const now = Date.now()
 
-          const response = event.response as RunResponseStats
-          const stats = formatStats(response)
+          if (event.type === 'thinking_delta') {
+            currentThinkingText += event.text as string
+            const id = await ensureCard()
 
-          // 构建最终消息内容（包含思考过程）
-          let finalMessage = ''
-          if (accumulatedThinking) {
-            finalMessage += `💭 思考过程：\n\n${accumulatedThinking}\n\n---\n\n`
+            if (!currentThinkingId) {
+              thinkingSegmentCount++
+              stepCount++
+              currentThinkingId = `thinking_${thinkingSegmentCount}`
+              const thinkingDiv = this.buildStepDiv('', 'robot_outlined', currentThinkingId)
+              await addStep(id, thinkingDiv, currentThinkingId).catch((e) =>
+                logger.warn(`addStep (thinking) failed: ${e}`)
+              )
+              await refreshPanelHeader(id, 'Working on it')
+            }
+
+            if (now - lastThinkingFlush >= FLUSH_INTERVAL_MS) {
+              await this.updateStepText(id, currentThinkingId, currentThinkingText, seq++).catch(
+                (e) => logger.warn(`thinking update failed: ${e}`)
+              )
+              lastThinkingFlush = now
+            }
+          } else if (event.type === 'tool_use') {
+            const id = await ensureCard()
+            await finalizeThinking(id)
+
+            stepCount++
+            const { text, icon } = this.formatToolStep(event.name as string, event.input)
+            const stepElementId = `step_${stepCount}`
+            const stepDiv = this.buildStepDiv(text, icon, stepElementId)
+
+            await addStep(id, stepDiv, stepElementId).catch((e) =>
+              logger.warn(`addStep (tool) failed: ${e}`)
+            )
+            await refreshPanelHeader(id, 'Working on it')
+          } else if (event.type === 'text_delta') {
+            const id = await ensureCard()
+            await finalizeThinking(id)
+
+            mainText += event.text as string
+            if (now - lastMainFlush >= FLUSH_INTERVAL_MS) {
+              await this.updateCardText(id, STREAM_EL.mainMd, mainText, seq++).catch((e) =>
+                logger.warn(`main update failed: ${e}`)
+              )
+              lastMainFlush = now
+            }
+          } else if (event.type === 'ask_questions') {
+            const id = await ensureCard()
+            await this.sendInteractiveForm(id, event.questions as string[])
+            logger.info(`Question form appended to card ${id}`)
+          } else if (event.type === 'done') {
+            const response = event.response as RunResponseStats
+            const stats = formatStats(response)
+            const id = await ensureCard()
+
+            await finalizeThinking(id)
+
+            mainText = response.text || mainText
+            await this.updateCardText(id, STREAM_EL.mainMd, mainText, seq++).catch((e) =>
+              logger.warn(`final main update failed: ${e}`)
+            )
+
+            if (stepsPanelAdded && stepCount > 0) {
+              const countText = stepCount + ' ' + (stepCount === 1 ? 'step' : 'steps')
+              await this.updatePanelHeader(id, `Show ${countText}`, seq++).catch((e) =>
+                logger.warn(`final header update failed: ${e}`)
+              )
+            }
+
+            await this.deleteCardElement(id, STREAM_EL.loadingDiv, seq++).catch((e) =>
+              logger.warn(`delete loading div failed: ${e}`)
+            )
+
+            if (stats) {
+              await this.appendCardElements(
+                id,
+                [
+                  { tag: 'hr', element_id: STREAM_EL.statsHr },
+                  { tag: 'markdown', element_id: STREAM_EL.statsNote, content: `*${stats}*` },
+                ],
+                seq++
+              ).catch((e) => logger.warn(`append stats failed: ${e}`))
+            }
+
+            logger.info({ content: mainText, conversationId: msg.chatId }, '飞书流式回复完成')
           }
-          finalMessage += accumulatedText
-          if (stats) {
-            finalMessage += `\n\n---\n\n*${stats}*`
+        }
+      } finally {
+        if (cardId) {
+          await this.closeCardStreaming(cardId, seq++).catch((e) =>
+            logger.warn(`closeCardStreaming failed: ${e}`)
+          )
+          if (stepsPanelAdded && stepCount > 0) {
+            await this.patchCardElement(
+              cardId,
+              STREAM_EL.stepsPanel,
+              { expanded: false },
+              seq++
+            ).catch((e) => logger.warn(`collapse steps panel failed: ${e}`))
           }
-
-          logger.info({ content: finalMessage, conversationId: msg.chatId }, '飞书流式回复完成')
-          if (cardId) await this.finalizeCard(cardId, finalMessage)
         }
       }
     }
   }
 
-  private async createStreamCard(chatId: string, text: string, rootId?: string): Promise<string> {
+  // ── CardKit Helper Methods ─────────────────────────────────────
+
+  private async createCardEntity(): Promise<string> {
     if (!this.client) throw new Error('Client not initialized')
-
-    const card = this.buildCardJson(text, false)
-    const res = await this.client.im.message.create({
-      params: { receive_id_type: 'chat_id' },
-      data: {
-        receive_id: chatId,
-        msg_type: 'interactive',
-        content: JSON.stringify(card),
-        uuid: rootId ?? undefined,
-      },
+    const card = this.buildStreamingCardJson()
+    const res = await (this.client as unknown as {
+      cardkit: {
+        v1: {
+          card: {
+            create: (opts: {
+              data: { type: string; data: string }
+            }) => Promise<{ code: number; msg?: string; data?: { card_id: string } }>
+          }
+        }
+      }
+    }).cardkit.v1.card.create({
+      data: { type: 'card_json', data: JSON.stringify(card) },
     })
-
-    return (res.data as { message_id: string }).message_id
-  }
-
-  private async updateStreamCard(cardId: string, text: string): Promise<void> {
-    if (!this.client) throw new Error('Client not initialized')
-
-    const card = this.buildCardJson(text, false)
-    await this.client.im.message.update({
-      path: { message_id: cardId },
-      data: {
-        msg_type: 'interactive',
-        content: JSON.stringify(card),
-      },
-    })
-  }
-
-  private async finalizeCard(cardId: string, text: string): Promise<void> {
-    if (!this.client) throw new Error('Client not initialized')
-
-    const card = this.buildCardJson(text, true)
-    await this.client.im.message.update({
-      path: { message_id: cardId },
-      data: {
-        msg_type: 'interactive',
-        content: JSON.stringify(card),
-      },
-    })
-  }
-
-  private buildCardJson(text: string, isFinished: boolean): Record<string, unknown> {
-    return {
-      schema: '2.0',
-      body: {
-        elements: [
-          {
-            tag: 'markdown',
-            content: text,
-          },
-        ],
-      },
-      header: {
-        title: {
-          tag: 'plain_text',
-          content: isFinished ? 'FriClaw' : 'FriClaw ✍️',
-        },
-        template: 'blue',
-      },
+    if (res.code !== 0) {
+      throw new Error(`Failed to create card entity (code ${res.code}): ${res.msg ?? ''}`)
     }
+    const cardId = res.data?.card_id
+    if (!cardId) throw new Error('Card entity created but no card_id returned')
+    return cardId
   }
 
-  private async sendInteractiveForm(
-    chatId: string,
-    questions: string[],
-    rootId?: string
-  ): Promise<void> {
+  private async sendCardByRef(chatId: string, cardId: string, rootId?: string): Promise<void> {
     if (!this.client) throw new Error('Client not initialized')
-
-    const options = questions.map((q, i) => ({
-      text: { tag: 'plain_text', content: q },
-      value: `option_${i}`,
-    }))
-
-    const card = {
-      schema: '2.0',
-      body: {
-        elements: [
-          {
-            tag: 'action',
-            actions: [
-              {
-                tag: 'static_select',
-                placeholder: { tag: 'plain_text', content: '请选择' },
-                options,
-              },
-            ],
-          },
-        ],
-      },
-      header: {
-        title: { tag: 'plain_text', content: '请回答问题' },
-        template: 'blue',
-      },
-    }
-
+    const content = JSON.stringify({ type: 'card', data: { card_id: cardId } })
     await this.client.im.message.create({
       params: { receive_id_type: 'chat_id' },
       data: {
         receive_id: chatId,
         msg_type: 'interactive',
-        content: JSON.stringify(card),
+        content,
         uuid: rootId ?? undefined,
       },
     })
+  }
+
+  private async insertStepsPanel(
+    cardId: string,
+    firstElement: Record<string, unknown>,
+    sequence: number
+  ): Promise<void> {
+    if (!this.client) throw new Error('Client not initialized')
+    const res = await (this.client as unknown as {
+      cardkit: {
+        v1: {
+          cardElement: {
+            create: (opts: {
+              path: { card_id: string }
+              data: { type: string; target_element_id: string; elements: string; sequence: number }
+            }) => Promise<{ code: number; msg?: string }>
+          }
+        }
+      }
+    }).cardkit.v1.cardElement.create({
+      path: { card_id: cardId },
+      data: {
+        type: 'insert_before',
+        target_element_id: STREAM_EL.mainMd,
+        elements: JSON.stringify([
+          {
+            tag: 'collapsible_panel',
+            element_id: STREAM_EL.stepsPanel,
+            expanded: true,
+            border: { color: 'grey-300', corner_radius: '6px' },
+            vertical_spacing: '2px',
+            header: {
+              title: {
+                tag: 'plain_text',
+                text_color: 'grey',
+                text_size: 'notation',
+                content: 'Working on it',
+              },
+              icon: { tag: 'standard_icon', token: 'right_outlined', color: 'grey' },
+              icon_position: 'right',
+              icon_expanded_angle: 90,
+            },
+            elements: [firstElement],
+          },
+        ]),
+        sequence,
+      },
+    })
+    if (res.code !== 0) {
+      throw new Error(`insertStepsPanel failed (code ${res.code}): ${res.msg ?? ''}`)
+    }
+  }
+
+  private async appendStepToPanel(
+    cardId: string,
+    step: Record<string, unknown>,
+    afterElementId: string,
+    sequence: number
+  ): Promise<void> {
+    if (!this.client) throw new Error('Client not initialized')
+    const res = await (this.client as unknown as {
+      cardkit: {
+        v1: {
+          cardElement: {
+            create: (opts: {
+              path: { card_id: string }
+              data: { type: string; target_element_id: string; elements: string; sequence: number }
+            }) => Promise<{ code: number; msg?: string }>
+          }
+        }
+      }
+    }).cardkit.v1.cardElement.create({
+      path: { card_id: cardId },
+      data: {
+        type: 'insert_after',
+        target_element_id: afterElementId,
+        elements: JSON.stringify([step]),
+        sequence,
+      },
+    })
+    if (res.code !== 0) {
+      throw new Error(`appendStepToPanel failed (code ${res.code}): ${res.msg ?? ''}`)
+    }
+  }
+
+  private async updatePanelHeader(
+    cardId: string,
+    headerText: string,
+    sequence: number
+  ): Promise<void> {
+    await this.patchCardElement(
+      cardId,
+      STREAM_EL.stepsPanel,
+      {
+        header: {
+          title: {
+            tag: 'plain_text',
+            text_color: 'grey',
+            text_size: 'notation',
+            content: headerText,
+          },
+          icon: { tag: 'standard_icon', token: 'right_outlined', color: 'grey' },
+          icon_position: 'right',
+          icon_expanded_angle: 90,
+        },
+      },
+      sequence
+    )
+  }
+
+  private async updateStepText(
+    cardId: string,
+    elementId: string,
+    text: string,
+    sequence: number
+  ): Promise<void> {
+    await this.patchCardElement(
+      cardId,
+      elementId,
+      {
+        text: {
+          tag: 'plain_text',
+          text_color: 'grey',
+          text_size: 'notation',
+          content: text,
+        },
+      },
+      sequence
+    )
+  }
+
+  private async updateCardText(
+    cardId: string,
+    elementId: string,
+    content: string,
+    sequence: number
+  ): Promise<void> {
+    if (!this.client) throw new Error('Client not initialized')
+    const res = await (this.client as unknown as {
+      cardkit: {
+        v1: {
+          cardElement: {
+            content: (opts: {
+              path: { card_id: string; element_id: string }
+              data: { content: string; sequence: number }
+            }) => Promise<{ code: number; msg?: string }>
+          }
+        }
+      }
+    }).cardkit.v1.cardElement.content({
+      path: { card_id: cardId, element_id: elementId },
+      data: { content, sequence },
+    })
+    if (res.code !== 0) {
+      throw new Error(`updateCardText failed (code ${res.code}): ${res.msg ?? ''}`)
+    }
+  }
+
+  private async deleteCardElement(
+    cardId: string,
+    elementId: string,
+    sequence: number
+  ): Promise<void> {
+    if (!this.client) throw new Error('Client not initialized')
+    const res = await (this.client as unknown as {
+      cardkit: {
+        v1: {
+          cardElement: {
+            delete: (opts: {
+              path: { card_id: string; element_id: string }
+              data: { sequence: number }
+            }) => Promise<{ code: number; msg?: string }>
+          }
+        }
+      }
+    }).cardkit.v1.cardElement.delete({
+      path: { card_id: cardId, element_id: elementId },
+      data: { sequence },
+    })
+    if (res.code !== 0) {
+      throw new Error(`deleteCardElement failed (code ${res.code}): ${res.msg ?? ''}`)
+    }
+  }
+
+  private async appendCardElements(
+    cardId: string,
+    elements: Record<string, unknown>[],
+    sequence: number,
+    afterElementId?: string
+  ): Promise<void> {
+    if (!this.client) throw new Error('Client not initialized')
+    const res = await (this.client as unknown as {
+      cardkit: {
+        v1: {
+          cardElement: {
+            create: (opts: {
+              path: { card_id: string }
+              data: {
+                type: string
+                target_element_id?: string
+                elements: string
+                sequence: number
+              }
+            }) => Promise<{ code: number; msg?: string }>
+          }
+        }
+      }
+    }).cardkit.v1.cardElement.create({
+      path: { card_id: cardId },
+      data: {
+        type: afterElementId ? 'insert_after' : 'append',
+        target_element_id: afterElementId,
+        elements: JSON.stringify(elements),
+        sequence,
+      },
+    })
+    if (res.code !== 0) {
+      throw new Error(`appendCardElements failed (code ${res.code}): ${res.msg ?? ''}`)
+    }
+  }
+
+  private async closeCardStreaming(cardId: string, sequence: number): Promise<void> {
+    if (!this.client) throw new Error('Client not initialized')
+    const res = await (this.client as unknown as {
+      cardkit: {
+        v1: {
+          card: {
+            settings: (opts: {
+              path: { card_id: string }
+              data: { settings: string; sequence: number }
+            }) => Promise<{ code: number; msg?: string }>
+          }
+        }
+      }
+    }).cardkit.v1.card.settings({
+      path: { card_id: cardId },
+      data: {
+        settings: JSON.stringify({ config: { streaming_mode: false } }),
+        sequence,
+      },
+    })
+    if (res.code !== 0) {
+      throw new Error(`closeCardStreaming failed (code ${res.code}): ${res.msg ?? ''}`)
+    }
+  }
+
+  private async patchCardElement(
+    cardId: string,
+    elementId: string,
+    partial: Record<string, unknown>,
+    sequence: number
+  ): Promise<void> {
+    if (!this.client) throw new Error('Client not initialized')
+    const res = await (this.client as unknown as {
+      cardkit: {
+        v1: {
+          cardElement: {
+            patch: (opts: {
+              path: { card_id: string; element_id: string }
+              data: { partial_element: string; sequence: number }
+            }) => Promise<{ code: number; msg?: string }>
+          }
+        }
+      }
+    }).cardkit.v1.cardElement.patch({
+      path: { card_id: cardId, element_id: elementId },
+      data: { partial_element: JSON.stringify(partial), sequence },
+    })
+    if (res.code !== 0) {
+      throw new Error(`patchCardElement failed (code ${res.code}): ${res.msg ?? ''}`)
+    }
+  }
+
+  private buildStreamingCardJson(): Record<string, unknown> {
+    return {
+      schema: '2.0',
+      config: {
+        streaming_mode: true,
+        streaming_config: {
+          print_frequency_ms: { default: 50 },
+          print_step: { default: 5 },
+          print_strategy: 'delay',
+        },
+        enable_forward: true,
+        width_mode: 'fill',
+      },
+      body: {
+        elements: [
+          { tag: 'markdown', element_id: STREAM_EL.mainMd, content: '' },
+          this.buildStepDiv('', 'more_outlined', STREAM_EL.loadingDiv),
+        ],
+      },
+    }
+  }
+
+  private buildStepDiv(
+    text: string,
+    iconToken: string,
+    elementId?: string
+  ): Record<string, unknown> {
+    return {
+      tag: 'div',
+      ...(elementId ? { element_id: elementId } : {}),
+      icon: { tag: 'standard_icon', token: iconToken, color: 'grey' },
+      text: {
+        tag: 'plain_text',
+        text_color: 'grey',
+        text_size: 'notation',
+        content: text,
+      },
+    }
+  }
+
+  private formatToolStep(name: string, input: unknown): { text: string; icon: string } {
+    const inp = (input && typeof input === 'object' ? input : {}) as Record<string, unknown>
+    switch (name) {
+      case 'Agent':
+      case 'Task':
+        return { text: 'Run sub-agent', icon: 'robot_outlined' }
+      case 'Bash':
+        return {
+          text: (inp['description'] as string) ?? (inp['command'] as string) ?? 'Run command',
+          icon: 'computer_outlined',
+        }
+      case 'Edit':
+        return { text: `Edit "${inp['file_path'] ?? ''}"`, icon: 'edit_outlined' }
+      case 'Glob':
+        return {
+          text: `Search files by pattern "${inp['pattern'] ?? ''}"`,
+          icon: 'card-search_outlined',
+        }
+      case 'Grep':
+        return {
+          text: `Search text by pattern "${inp['pattern'] ?? ''}"${inp['glob'] ? ` in "${inp['glob']}"` : ''}`,
+          icon: 'doc-search_outlined',
+        }
+      case 'Read':
+        return { text: `Read file "${inp['file_path'] ?? ''}"`, icon: 'file-link-bitable_outlined' }
+      case 'Write':
+        return { text: `Write file "${inp['file_path'] ?? ''}"`, icon: 'edit_outlined' }
+      case 'Skill':
+        return { text: `Load skill "${inp['skill'] ?? ''}"`, icon: 'file-link-mindnote_outlined' }
+      case 'WebFetch':
+        return { text: `Fetch web page from "${inp['url'] ?? ''}"`, icon: 'language_outlined' }
+      case 'WebSearch':
+        return { text: `Search web for "${inp['query'] ?? ''}"`, icon: 'search_outlined' }
+      case 'NotebookEdit':
+        return { text: `Edit notebook "${inp['notebook'] ?? ''}"`, icon: 'edit_outlined' }
+      case 'TodoRead':
+      case 'TodoWrite':
+        return { text: name === 'TodoRead' ? 'Read todos' : 'Update todos', icon: 'list_outlined' }
+      default:
+        return { text: name, icon: 'setting-inter_outlined' }
+    }
+  }
+
+  private async sendInteractiveForm(cardId: string, questions: unknown[]): Promise<void> {
+    if (!this.client) throw new Error('Client not initialized')
+
+    const formEls: Record<string, unknown>[] = [{ tag: 'hr' }]
+
+    for (let i = 0; i < questions.length; i++) {
+      const q = questions[i] as Record<string, unknown>
+      formEls.push({ tag: 'markdown', content: `**${i + 1}. ${q.question as string}**` })
+      formEls.push({
+        tag: 'select_static',
+        name: `q${i}`,
+        required: true,
+        width: 'fill',
+        placeholder: { tag: 'plain_text', content: '请选择...' },
+        options: (q.options as Array<{ label: string; description?: string }>).map((opt) => ({
+          text: {
+            tag: 'plain_text',
+            content: opt.description ? `${opt.label}: ${opt.description}` : opt.label,
+          },
+          value: opt.label,
+        })),
+      })
+    }
+
+    formEls.push({
+      tag: 'button',
+      name: 'friclaw_submit',
+      type: 'primary_filled',
+      width: 'default',
+      text: { tag: 'plain_text', content: '提交' },
+      form_action_type: 'submit',
+    })
+
+    await this.appendCardElements(cardId, formEls, 1)
   }
 }

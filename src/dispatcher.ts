@@ -11,6 +11,7 @@ export interface StreamHandler {
 
 export interface Agent {
   handle(session: Session, message: Message, reply?: (content: string) => Promise<string>, streamHandler?: StreamHandler): Promise<void>
+  dispose(conversationId: string): Promise<void>
 }
 
 export class Dispatcher {

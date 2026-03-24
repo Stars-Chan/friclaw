@@ -45,7 +45,10 @@
       "Bash(bun x:*)",
       "Bash(python3:*)",
       "Bash(node:*)",
-      "Read(//Users/chen/.claude/skills/**)"
+      "Read(//Users/chen/.claude/skills/**)",
+      "Bash(claude --input-format stream-json --output-format stream-json --dangerously-skip-permissions)",
+      "Bash(tail -30 /tmp/friclaw*.log)",
+      "Bash(pkill -f \"bun run src/index.ts\")"
     ],
     "additionalDirectories": [
       "/Users/chen/workspace/ai/friclaw/docs/superpowers",
