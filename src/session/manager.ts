@@ -90,7 +90,7 @@ export class SessionManager {
     const dirName = `${id.replace(':', '_')}${suffix}`
     const workspaceDir = join(this.workspacesDir, dirName)
     mkdirSync(join(workspaceDir, '.claude'), { recursive: true })
-    mkdirSync(join(workspaceDir, '.neoclaw', '.history'), { recursive: true })
+    mkdirSync(join(workspaceDir, '.firclaw', '.history'), { recursive: true })
     const session: Session = {
       id,
       userId,

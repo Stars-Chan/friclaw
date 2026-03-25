@@ -55,7 +55,7 @@ async function startDaemon(): Promise<void> {
   })
 
   if (config.dashboard.enabled) {
-    await startDashboard(config.dashboard.port, dispatcher)
+    await startDashboard(config.dashboard.port, dispatcher, config.workspaces.dir)
   }
 
   const gateways: Gateway[] = []

@@ -103,7 +103,7 @@ workspaces/feishu_ou_xxx/
 ├── .mcp.json              # MCP 配置（自动注入）
 ├── .claude/               # Claude Code 配置
 │   └── settings.json
-├── .neoclaw/
+├── .firclaw/
 │   └── .history/          # 对话历史（用于摘要生成）
 └── [用户文件]              # Claude Code 操作的文件
 ```

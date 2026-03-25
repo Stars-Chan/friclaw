@@ -7,7 +7,8 @@
     "dev": "bun --watch src/index.ts",
     "onboard": "bun run src/index.ts onboard",
     "test": "bun test",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "postinstall": "cd src/web && npm install --registry=https://registry.npmmirror.com"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",

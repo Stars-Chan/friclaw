@@ -4,7 +4,7 @@
 
 **Goal:** 实现会话生命周期管理，包括创建、复用、超时清理、工作空间隔离，以及 `/clear` 和 `/new` 命令支持。
 
-**Architecture:** SessionManager 以 Map 维护内存中的会话状态，每个会话对应一个独立的工作空间目录（含 `.mcp.json`、`.claude/`、`.neoclaw/.history/` 子结构）。定时器每分钟扫描超时会话并释放内存（保留文件）。`/clear` 触发 `onSessionCleared` 回调（用于摘要生成），`/new` 创建带时间戳后缀的新工作空间目录。
+**Architecture:** SessionManager 以 Map 维护内存中的会话状态，每个会话对应一个独立的工作空间目录（含 `.mcp.json`、`.claude/`、`.firclaw/.history/` 子结构）。定时器每分钟扫描超时会话并释放内存（保留文件）。`/clear` 触发 `onSessionCleared` 回调（用于摘要生成），`/new` 创建带时间戳后缀的新工作空间目录。
 
 **Tech Stack:** Bun, TypeScript, bun:test, Node.js fs/path/os
 

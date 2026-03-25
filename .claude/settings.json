@@ -53,7 +53,13 @@
       "Bash(bun add:*)",
       "Bash(grep -r \"import.*ws\\\\|from.*ws\" src/ --include=*.ts --include=*.tsx)",
       "Bash(curl -I https://registry.npmjs.org/ws)",
-      "Bash(bunfig.toml:*)"
+      "Bash(bunfig.toml:*)",
+      "Read(//Users/chen/.claude/**)",
+      "Bash(git restore:*)",
+      "Bash(lsof -ti:3000)",
+      "Bash(curl -s http://localhost:3000/health)",
+      "Bash(curl -i -N -H \"Connection: Upgrade\" -H \"Upgrade: websocket\" -H \"Sec-WebSocket-Version: 13\" -H \"Sec-WebSocket-Key: SGVsbG8sIHdvcmxkIQ==\" http://localhost:3000/)",
+      "Bash(curl -i -N -H \"Connection: Upgrade\" -H \"Upgrade: websocket\" -H \"Sec-WebSocket-Version: 13\" -H \"Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\" http://localhost:3000/ws)"
     ],
     "additionalDirectories": [
       "/Users/chen/workspace/ai/friclaw/docs/superpowers",

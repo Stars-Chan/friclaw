@@ -31,7 +31,7 @@ describe('SessionManager', () => {
   it('workspace scaffold is created on session init', () => {
     const s = manager.getOrCreate('feishu', 'ou_abc', 'user1')
     expect(existsSync(join(s.workspaceDir, '.claude'))).toBe(true)
-    expect(existsSync(join(s.workspaceDir, '.neoclaw', '.history'))).toBe(true)
+    expect(existsSync(join(s.workspaceDir, '.firclaw', '.history'))).toBe(true)
   })
 
   it('getOrCreate reuses existing session', () => {
