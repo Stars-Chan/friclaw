@@ -6,6 +6,7 @@ import type { Message } from '../types/message'
 import { WeworkWsClient, type MessageCallback } from './wecom-ws-client'
 import type { RunResponseStats } from '../agent/types'
 import { formatStats } from './format-stats'
+import { buildStreamContent } from './format-content'
 
 interface WecomConfig {
   botId: string
@@ -232,9 +233,10 @@ export class WecomGateway implements Gateway {
         if (!dirty) return
         dirty = false
 
-        const content = accumulatedText
-          ? accumulatedText
-          : `💭 思考过程：\n\n${accumulatedThinking}`
+        const content = buildStreamContent({
+          thinking: accumulatedThinking,
+          text: accumulatedText
+        })
 
         this._client.sendStream({ reqId: wsMsg.reqId, streamId: ensureActiveStream(), content, finish: false })
       }
@@ -255,7 +257,7 @@ export class WecomGateway implements Gateway {
           accumulatedText += evt.text as string
           scheduleDelta()
         } else if (evt.type === 'done') {
-          // 清除待发送的节流定时器
+          // 清除待发送的节流定时器（但不发送，避免与最终消息冲突）
           if (flushTimer) {
             clearTimeout(flushTimer)
             flushTimer = null
@@ -264,18 +266,14 @@ export class WecomGateway implements Gateway {
           const response = evt.response as RunResponseStats
           const stats = formatStats(response)
 
-          // 构建最终消息内容（包含思考过程）
-          let finalMessage = ''
-          if (accumulatedThinking) {
-            finalMessage += `💭 思考过程：\n\n${accumulatedThinking}\n\n---\n\n`
-          }
-          finalMessage += accumulatedText
-          if (stats) {
-            finalMessage += `\n\n---\n\n*${stats}*`
-          }
+          const finalContent = buildStreamContent({
+            thinking: accumulatedThinking,
+            text: accumulatedText,
+            stats
+          })
 
-          logger.info({ content: finalMessage, conversationId: msg.chatId }, '企业微信流式回复完成')
-          this._client.sendStream({ reqId: wsMsg.reqId, streamId: ensureActiveStream(), content: finalMessage, finish: true })
+          logger.info({ conversationId: msg.chatId }, '企业微信流式回复完成')
+          this._client.sendStream({ reqId: wsMsg.reqId, streamId: ensureActiveStream(), content: finalContent, finish: true })
           this.activeStreams.delete(streamKey)
         }
       }

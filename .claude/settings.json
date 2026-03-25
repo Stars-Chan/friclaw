@@ -48,12 +48,18 @@
       "Read(//Users/chen/.claude/skills/**)",
       "Bash(claude --input-format stream-json --output-format stream-json --dangerously-skip-permissions)",
       "Bash(tail -30 /tmp/friclaw*.log)",
-      "Bash(pkill -f \"bun run src/index.ts\")"
+      "Bash(pkill -f \"bun run src/index.ts\")",
+      "Bash(bun remove:*)",
+      "Bash(bun add:*)",
+      "Bash(grep -r \"import.*ws\\\\|from.*ws\" src/ --include=*.ts --include=*.tsx)",
+      "Bash(curl -I https://registry.npmjs.org/ws)",
+      "Bash(bunfig.toml:*)"
     ],
     "additionalDirectories": [
       "/Users/chen/workspace/ai/friclaw/docs/superpowers",
       "/Users/chen/workspace/ai/neoclaw/src/gateway/wework",
-      "/tmp"
+      "/tmp",
+      "/Users/chen/workspace/ai/neoclaw/src/agents"
     ]
   }
 }
