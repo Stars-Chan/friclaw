@@ -11,7 +11,10 @@ function App() {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [activeView, setActiveView] = useState<'chat' | 'config'>('chat');
   const { sessions, currentSessionId, selectSession, updateSession } = useSessions();
-  const { messages, isConnected, sendMessage, connectionStatus, error } = useWebSocket(currentSessionId);
+  const { messages, isConnected, sendMessage, connectionStatus, error } = useWebSocket(
+    currentSessionId,
+    (newSessionId) => selectSession(newSessionId)
+  );
 
   const handleSelectSession = (sessionId: string) => {
     setIsMobileSidebarOpen(false);

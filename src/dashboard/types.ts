@@ -40,6 +40,7 @@ export type ServerMessage =
   | { type: 'error'; sessionId: string; data: { message: string } }
   | { type: 'sessions_update'; sessionId: string; data: { sessions: SessionInfo[] } }
   | { type: 'history'; sessionId: string; data: { messages: MessageData[] } }
+  | { type: 'switch_session'; sessionId: string; data: { newSessionId: string } }
 
 /**
  * Session information shared with the client

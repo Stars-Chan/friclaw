@@ -35,4 +35,5 @@ export type WSServerMessage =
   | { type: 'stream_stats'; data: MessageStats }
   | { type: 'error'; data: { message: string } }
   | { type: 'sessions_update'; data: { sessions: Session[] } }
-  | { type: 'history'; data: { messages: Message[] } };
+  | { type: 'history'; data: { messages: Message[] } }
+  | { type: 'switch_session'; data: { newSessionId: string } };

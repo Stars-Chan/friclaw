@@ -1,5 +1,5 @@
 // src/dashboard/message-history.ts
-import { appendFileSync, readFileSync, existsSync, mkdirSync } from 'fs'
+import { appendFileSync, readFileSync, existsSync, mkdirSync, writeFileSync } from 'fs'
 import { join } from 'path'
 
 export interface ChatMessage {
@@ -29,5 +29,9 @@ export class MessageHistory {
       .split('\n')
       .filter(line => line.trim())
       .map(line => JSON.parse(line))
+  }
+
+  clear(): void {
+    writeFileSync(this.historyFile, '', 'utf-8')
   }
 }

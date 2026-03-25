@@ -204,7 +204,57 @@ async function handleWebSocketMessage(
       clients.set(sessionId, ws)
       ws.data.sessionId = sessionId
 
-      // Update or create session
+      logger.info(`[Dashboard] Session ${sessionId}: ${content.slice(0, 50)}...`)
+
+      // Handle built-in commands
+      if (content === '/new') {
+        const newSessionId = `session_${Date.now()}`
+        sessionManager.createOrUpdate(newSessionId, 'New session')
+
+        // Broadcast sessions update FIRST so frontend knows about new session
+        broadcastSessionsUpdate(sessionManager, clients)
+
+        // Switch client to new session
+        clients.set(newSessionId, ws)
+        ws.data.sessionId = newSessionId
+
+        // Send switch session command
+        sendToClient(ws, {
+          type: 'switch_session',
+          sessionId,
+          data: { newSessionId },
+        })
+
+        // Send empty history for new session
+        sendToClient(ws, {
+          type: 'history',
+          sessionId: newSessionId,
+          data: { messages: [] },
+        })
+        return
+      }
+
+      if (content === '/clear') {
+        sessionManager.clearHistory(sessionId)
+
+        // Clear Claude conversation context
+        const conversationId = `dashboard:${sessionId}`
+        dispatcher['sessionManager'].clearSession(conversationId)
+
+        sendToClient(ws, {
+          type: 'response',
+          sessionId,
+          data: { text: '✓ Session history cleared.' },
+        })
+        sendToClient(ws, {
+          type: 'history',
+          sessionId,
+          data: { messages: [] },
+        })
+        return
+      }
+
+      // Update or create session for normal messages
       sessionManager.createOrUpdate(sessionId, content)
 
       // Save user message to history
@@ -216,8 +266,6 @@ async function handleWebSocketMessage(
 
       // Broadcast sessions update
       broadcastSessionsUpdate(sessionManager, clients)
-
-      logger.info(`[Dashboard] Session ${sessionId}: ${content.slice(0, 50)}...`)
 
       // Process message through dispatcher
       let assistantResponse = ''

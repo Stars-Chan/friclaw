@@ -4,7 +4,7 @@ import type { Message, ConnectionStatus, WSServerMessage } from '../types';
 const MAX_RECONNECT_ATTEMPTS = 5;
 const RECONNECT_DELAY = 2000;
 
-export function useWebSocket(sessionId: string) {
+export function useWebSocket(sessionId: string, onSessionSwitch?: (newSessionId: string) => void) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('connecting');
@@ -13,6 +13,12 @@ export function useWebSocket(sessionId: string) {
   const currentStreamRef = useRef<string>('');
   const reconnectAttemptsRef = useRef(0);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
+  const sessionIdRef = useRef(sessionId);
+
+  // Update ref when sessionId changes
+  useEffect(() => {
+    sessionIdRef.current = sessionId;
+  }, [sessionId]);
 
   const connect = useCallback(() => {
     try {
@@ -24,7 +30,7 @@ export function useWebSocket(sessionId: string) {
         setConnectionStatus('connected');
         setError(null);
         reconnectAttemptsRef.current = 0;
-        ws.send(JSON.stringify({ type: 'register', sessionId }));
+        ws.send(JSON.stringify({ type: 'register', sessionId: sessionIdRef.current }));
       };
 
       ws.onclose = () => {
@@ -89,6 +95,12 @@ export function useWebSocket(sessionId: string) {
             case 'error':
               setError(data.data.message);
               break;
+            case 'switch_session':
+              setMessages([]);
+              if (onSessionSwitch) {
+                onSessionSwitch(data.data.newSessionId);
+              }
+              break;
           }
         } catch (err) {
           console.error('Failed to parse WebSocket message:', err);
@@ -118,11 +130,11 @@ export function useWebSocket(sessionId: string) {
   const sendMessage = useCallback((text: string) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       setMessages((prev) => [...prev, { role: 'user', content: text, timestamp: Date.now() }]);
-      wsRef.current.send(JSON.stringify({ type: 'message', sessionId, content: text }));
+      wsRef.current.send(JSON.stringify({ type: 'message', sessionId: sessionIdRef.current, content: text }));
     } else {
       setError('连接未就绪，无法发送消息');
     }
-  }, [sessionId]);
+  }, []);
 
   return { messages, isConnected, sendMessage, connectionStatus, error };
 }

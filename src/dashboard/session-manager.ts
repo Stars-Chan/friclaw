@@ -59,6 +59,9 @@ export class DashboardSessionManager {
       const workspaceDir = join(this._workspacesDir, `dashboard_${sessionId}`)
       mkdirSync(workspaceDir, { recursive: true })
 
+      const history = new MessageHistory(workspaceDir)
+      history.clear() // Ensure empty history file exists
+
       session = {
         id: sessionId,
         title: this._generateTitle(firstMessage),
@@ -67,7 +70,7 @@ export class DashboardSessionManager {
         messageCount: 1,
       }
       this._sessions.set(sessionId, session)
-      this._histories.set(sessionId, new MessageHistory(workspaceDir))
+      this._histories.set(sessionId, history)
     } else {
       session.updatedAt = Date.now()
       session.messageCount++
@@ -121,6 +124,21 @@ export class DashboardSessionManager {
    */
   delete(sessionId: string): void {
     this._sessions.delete(sessionId)
+  }
+
+  /**
+   * Clear message history for a session
+   */
+  clearHistory(sessionId: string): void {
+    const history = this._histories.get(sessionId)
+    if (history) {
+      history.clear()
+    }
+    const session = this._sessions.get(sessionId)
+    if (session) {
+      session.messageCount = 0
+      session.updatedAt = Date.now()
+    }
   }
 
   /**
