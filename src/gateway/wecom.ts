@@ -192,7 +192,13 @@ export class WecomGateway implements Gateway {
     }
 
     const reply = (text: string) => {
-      logger.info({ content: text, conversationId: msg.chatId }, '企业微信回复')
+      logger.info({
+        content: text,
+        conversationId: msg.chatId,
+        originalMessage: msg.content,
+        messageType: msg.type,
+        textLength: text.length
+      }, '企业微信回复')
       // 使用 sendMarkdown 代替 sendText，因为某些情况下企业微信不接受 text 类型
       this._client.sendMarkdown({ reqId: wsMsg.reqId, content: text })
       this.activeStreams.delete(streamKey)

@@ -31,6 +31,17 @@ export class Dispatcher {
   ): Promise<void> {
     if (!this.accepting) throw new Error('Dispatcher is not accepting new messages')
 
+    logger.debug({
+      platform: message.platform,
+      chatId: message.chatId,
+      userId: message.userId,
+      messageType: message.type,
+      contentLength: message.content?.length ?? 0,
+      contentPreview: message.content?.substring(0, 100) ?? '',
+      hasStreamHandler: !!streamHandler,
+      hasReply: !!reply
+    }, 'Dispatcher received message')
+
     if (message.type === 'command') {
       await this.handleCommand(message, reply)
       return
@@ -41,6 +52,11 @@ export class Dispatcher {
       message.chatId,
       message.userId,
     )
+
+    logger.debug({
+      sessionId: session.id,
+      workspaceDir: session.workspaceDir
+    }, 'Dispatcher routing to agent')
 
     await this.laneQueue.enqueue(session.id, () =>
       this.agent.handle(session, message, reply, streamHandler)

@@ -64,6 +64,15 @@ export class ClaudeCodeAgent implements Agent {
       text: message.content,
     }
 
+    logger.debug({
+      conversationId: session.id,
+      workspaceDir: session.workspaceDir,
+      messageContent: message.content?.substring(0, 100),
+      messageType: message.type,
+      hasStreamHandler: !!streamHandler,
+      hasReply: !!reply
+    }, 'Agent handling message')
+
     try {
       if (streamHandler) {
         await streamHandler(this.stream(request))
@@ -86,12 +95,24 @@ export class ClaudeCodeAgent implements Agent {
 
   async *stream(request: RunRequest): AsyncGenerator<AgentStreamEvent> {
     const startTime = Date.now()
+    logger.info({
+      conversationId: request.conversationId,
+      messageText: request.text?.substring(0, 100),
+      textLength: request.text?.length
+    }, 'Claude Code stream starting')
+
     const processState = await this.getOrCreateProcess(request.conversationId, request.workspaceDir)
     const proc = processState.proc
     const payload = JSON.stringify({
       type: 'user',
       message: { role: 'user', content: buildContent(request) },
     }) + '\n'
+
+    logger.debug({
+      conversationId: request.conversationId,
+      payloadLength: payload.length
+    }, 'Sending payload to Claude Code process')
+
     const stdin = proc.stdin
     if (!stdin || typeof stdin === 'number') {
       processState.isHealthy = false
@@ -100,11 +121,22 @@ export class ClaudeCodeAgent implements Agent {
     stdin.write(payload)
     if ('flush' in stdin) (stdin as { flush(): void }).flush()
 
+    let lineCount = 0
+    let eventCount = 0
+    let hasResult = false
+
     try {
       for await (const line of readLines(proc.stdout as ReadableStream<Uint8Array>)) {
+        lineCount++
         if (!line.trim()) continue
         let event: Record<string, unknown>
-        try { event = JSON.parse(line) } catch { continue }
+        try {
+          event = JSON.parse(line)
+          eventCount++
+        } catch {
+          logger.debug({ conversationId: request.conversationId, line: line.substring(0, 200) }, 'Failed to parse line, skipping')
+          continue
+        }
 
         if (event.type === 'system' && event.subtype === 'init') {
           this.sessionIds.set(request.conversationId, event.session_id as string)
@@ -125,11 +157,13 @@ export class ClaudeCodeAgent implements Agent {
           }
         }
         if (event.type === 'result') {
+          hasResult = true
           const elapsedMs = Date.now() - startTime
 
           // 从 result 事件中提取统计信息
           const usage = event.usage as { input_tokens?: number; output_tokens?: number } | undefined
           const resultEvt = event as { session_id?: string; cost_usd?: number; model?: string }
+          const resultText = event.result as string
 
           // 计算人民币成本
           const inputTokens = usage?.input_tokens ?? 0
@@ -149,12 +183,26 @@ export class ClaudeCodeAgent implements Agent {
             inputTokens,
             outputTokens,
             elapsedMs,
+            resultTextLength: resultText?.length ?? 0,
+            resultTextPreview: resultText?.substring(0, 100) ?? '',
           }, 'Claude Code result event stats')
+
+          // 如果tokens为0，记录警告
+          if (inputTokens === 0 && outputTokens === 0) {
+            logger.warn({
+              conversationId: request.conversationId,
+              lineCount,
+              eventCount,
+              hasResult,
+              resultTextLength: resultText?.length ?? 0,
+              originalMessage: request.text?.substring(0, 100)
+            }, 'Claude Code returned zero tokens - possible issue')
+          }
 
           yield {
             type: 'done',
             response: {
-              text: event.result as string,
+              text: resultText,
               sessionId: resultEvt.session_id ?? '',
               model,
               elapsedMs,
@@ -165,6 +213,16 @@ export class ClaudeCodeAgent implements Agent {
           }
           break
         }
+      }
+
+      // 如果没有收到result事件就结束了，记录警告
+      if (!hasResult) {
+        logger.warn({
+          conversationId: request.conversationId,
+          lineCount,
+          eventCount,
+          originalMessage: request.text?.substring(0, 100)
+        }, 'Claude Code stream ended without result event')
       }
     } catch (error) {
       logger.error({ conversationId: request.conversationId, error }, 'Error reading from process stdout')
