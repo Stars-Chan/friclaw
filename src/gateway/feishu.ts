@@ -431,15 +431,18 @@ export class FeishuGateway implements Gateway {
   private async sendCardByRef(chatId: string, cardId: string, rootId?: string): Promise<void> {
     if (!this.client) throw new Error('Client not initialized')
     const content = JSON.stringify({ type: 'card', data: { card_id: cardId } })
-    await this.client.im.message.create({
-      params: { receive_id_type: 'chat_id' },
-      data: {
-        receive_id: chatId,
-        msg_type: 'interactive',
-        content,
-        uuid: rootId ?? undefined,
-      },
-    })
+
+    if (rootId) {
+      await (this.client as any).im.message.reply({
+        path: { message_id: rootId },
+        data: { msg_type: 'interactive', content },
+      })
+    } else {
+      await this.client.im.message.create({
+        params: { receive_id_type: 'chat_id' },
+        data: { receive_id: chatId, msg_type: 'interactive', content },
+      })
+    }
   }
 
   private async insertStepsPanel(
