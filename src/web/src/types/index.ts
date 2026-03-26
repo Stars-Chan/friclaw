@@ -11,6 +11,7 @@ export interface Message {
   content: string;
   timestamp: number;
   stats?: MessageStats;
+  thinkingContent?: string;
 }
 
 export interface Session {
@@ -30,7 +31,7 @@ export type WSMessage =
 export type WSServerMessage =
   | { type: 'response'; data: { text: string } }
   | { type: 'stream_start'; data: Record<string, never> }
-  | { type: 'stream_delta'; data: { text: string } }
+  | { type: 'stream_delta'; data: { text: string; isThinking?: boolean } }
   | { type: 'stream_end'; data: Record<string, never> }
   | { type: 'stream_stats'; data: MessageStats }
   | { type: 'error'; data: { message: string } }

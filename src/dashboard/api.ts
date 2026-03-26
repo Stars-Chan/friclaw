@@ -54,7 +54,7 @@ export async function startDashboard(
 
   Bun.serve({
     port,
-    fetch(req, server) {
+    async fetch(req, server) {
       const url = new URL(req.url)
 
       // Upgrade WebSocket connection
@@ -99,6 +99,53 @@ export async function startDashboard(
         return Response.json({
           messages: sessionManager.loadHistory(sessionId),
         }, { headers: corsHeaders })
+      }
+
+      // Config endpoint
+      if (url.pathname === '/api/config') {
+        const settingsPath = join(process.env.HOME || '', '.claude', 'settings.json')
+
+        if (req.method === 'POST') {
+          try {
+            const { env } = await req.json()
+            const file = Bun.file(settingsPath)
+            const settings = await file.json()
+            settings.env = env
+            await Bun.write(settingsPath, JSON.stringify(settings, null, 2))
+            return Response.json({ success: true }, { headers: corsHeaders })
+          } catch {
+            return Response.json({ success: false }, { status: 500, headers: corsHeaders })
+          }
+        }
+
+        try {
+          const file = Bun.file(settingsPath)
+          const settings = await file.json()
+          const savedConfigsPath = join(process.env.HOME || '', '.claude', 'saved-configs.json')
+          const savedFile = Bun.file(savedConfigsPath)
+          let saved = []
+          try {
+            saved = await savedFile.json()
+          } catch {}
+          return Response.json({ env: settings.env || {}, saved }, { headers: corsHeaders })
+        } catch {
+          return Response.json({ env: {}, saved: [] }, { headers: corsHeaders })
+        }
+      }
+
+      // Saved configs endpoint
+      if (url.pathname === '/api/config/saved') {
+        const savedConfigsPath = join(process.env.HOME || '', '.claude', 'saved-configs.json')
+
+        if (req.method === 'POST') {
+          try {
+            const { saved } = await req.json()
+            await Bun.write(savedConfigsPath, JSON.stringify(saved, null, 2))
+            return Response.json({ success: true }, { headers: corsHeaders })
+          } catch {
+            return Response.json({ success: false }, { status: 500, headers: corsHeaders })
+          }
+        }
       }
 
       // 404 for other endpoints (frontend dev server handles UI)
@@ -179,7 +226,7 @@ async function handleWebSocketMessage(
       })
 
       // Send history messages if session exists
-      const history = sessionManager.loadHistory(sessionId)
+      const history = await sessionManager.loadHistory(sessionId)
       if (history.length > 0) {
         sendToClient(ws, {
           type: 'history',
@@ -235,7 +282,7 @@ async function handleWebSocketMessage(
       }
 
       if (content === '/clear') {
-        sessionManager.clearHistory(sessionId)
+        await sessionManager.clearHistory(sessionId)
 
         // Clear Claude conversation context
         const conversationId = `dashboard:${sessionId}`
@@ -258,7 +305,7 @@ async function handleWebSocketMessage(
       sessionManager.createOrUpdate(sessionId, content)
 
       // Save user message to history
-      sessionManager.saveMessage(sessionId, {
+      await sessionManager.saveMessage(sessionId, {
         role: 'user',
         content,
         timestamp: Date.now(),
@@ -286,14 +333,25 @@ async function handleWebSocketMessage(
           data: {},
         })
 
+        let thinkingContent = ''
+        let textContent = ''
+
         for await (const event of stream) {
           if (event.type === 'text_delta' || event.type === 'thinking_delta') {
             const text = String(event.text || '')
-            assistantResponse += text
+            const isThinking = event.type === 'thinking_delta'
+
+            if (isThinking) {
+              thinkingContent += text
+            } else {
+              textContent += text
+              assistantResponse += text
+            }
+
             sendToClient(ws, {
               type: 'stream_delta',
               sessionId,
-              data: { text },
+              data: { text, isThinking },
             })
           } else if (event.type === 'done') {
             sendToClient(ws, {
@@ -310,12 +368,13 @@ async function handleWebSocketMessage(
           data: {},
         })
 
-        // Save assistant response to history
-        if (assistantResponse) {
-          sessionManager.saveMessage(sessionId, {
+        // Save assistant response to history (without thinking content)
+        if (textContent) {
+          await sessionManager.saveMessage(sessionId, {
             role: 'assistant',
-            content: assistantResponse,
+            content: textContent,
             timestamp: Date.now(),
+            thinkingContent: thinkingContent || undefined,
           })
         }
       }

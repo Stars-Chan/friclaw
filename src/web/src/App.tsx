@@ -2,7 +2,9 @@ import { useState } from 'react';
 import { Menu, AlertCircle } from 'lucide-react';
 import { Sidebar } from './components/Sidebar';
 import { ChatArea } from './components/ChatArea';
+import { ConfigPage } from './components/ConfigPage';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { ComponentErrorBoundary } from './components/ComponentErrorBoundary';
 import { useWebSocket } from './hooks/useWebSocket';
 import { useSessions } from './hooks/useSessions';
 import './styles/globals.css';
@@ -50,16 +52,18 @@ function App() {
         onClick={() => setIsMobileSidebarOpen(false)}
       />
 
-      <Sidebar
-        sessions={sessions}
-        currentSessionId={currentSessionId}
-        onSelectSession={handleSelectSession}
-        onSelectConfig={handleSelectConfig}
-        connectionStatus={connectionStatus}
-        className={`fixed md:static top-0 left-0 h-full z-50 transform transition-transform md:translate-x-0 ${
-          isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
-      />
+      <ComponentErrorBoundary componentName="Sidebar">
+        <Sidebar
+          sessions={sessions}
+          currentSessionId={currentSessionId}
+          onSelectSession={handleSelectSession}
+          onSelectConfig={handleSelectConfig}
+          connectionStatus={connectionStatus}
+          className={`fixed md:static top-0 left-0 h-full z-50 transform transition-transform md:translate-x-0 ${
+            isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+          }`}
+        />
+      </ComponentErrorBoundary>
 
       {activeView === 'config' ? (
         <div className="flex-1 flex flex-col bg-gray-900">
@@ -74,20 +78,21 @@ function App() {
             <h2 className="text-lg font-semibold text-gray-100">配置</h2>
           </header>
           <div className="flex-1 p-6">
-            <div className="max-w-2xl">
-              <h3 className="text-xl font-semibold mb-4">系统配置</h3>
-              <p className="text-gray-400">配置页面开发中...</p>
-            </div>
+            <ComponentErrorBoundary componentName="ConfigPage">
+              <ConfigPage />
+            </ComponentErrorBoundary>
           </div>
         </div>
       ) : (
-        <ChatArea
-          sessionId={currentSessionId}
-          messages={messages}
-          onSendMessage={handleSendMessage}
-          isConnected={isConnected}
-          onOpenMenu={() => setIsMobileSidebarOpen(true)}
-        />
+        <ComponentErrorBoundary componentName="ChatArea">
+          <ChatArea
+            sessionId={currentSessionId}
+            messages={messages}
+            onSendMessage={handleSendMessage}
+            isConnected={isConnected}
+            onOpenMenu={() => setIsMobileSidebarOpen(true)}
+          />
+        </ComponentErrorBoundary>
       )}
     </div>
     </ErrorBoundary>

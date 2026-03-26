@@ -68,9 +68,9 @@ export function Sidebar({ sessions, currentSessionId, onSelectSession, onSelectC
       <div className="p-4 border-b border-gray-200">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
-            <span className="text-white text-sm font-bold">F</span>
+            <span className="text-white text-sm font-bold">五</span>
           </div>
-          <h1 className="text-base font-bold text-gray-900">FriClaw</h1>
+          <h1 className="text-base font-bold text-gray-900">Friday</h1>
         </div>
         <div className="mt-2 flex items-center gap-2 text-sm">
           {connectionStatus === 'connected' ? (

@@ -32,7 +32,7 @@ export class DashboardSessionManager {
       if (!existsSync(historyFile)) continue
 
       const history = new MessageHistory(workspaceDir)
-      const messages = history.load()
+      const messages = history.loadSync() // 使用同步版本初始化
       if (messages.length === 0) continue
 
       const stats = statSync(historyFile)
@@ -60,7 +60,10 @@ export class DashboardSessionManager {
       mkdirSync(workspaceDir, { recursive: true })
 
       const history = new MessageHistory(workspaceDir)
-      history.clear() // Ensure empty history file exists
+      // 异步初始化，但不等待
+      history.clear().catch(err => {
+        console.error(`Failed to initialize history for session ${sessionId}:`, err)
+      })
 
       session = {
         id: sessionId,
@@ -80,19 +83,29 @@ export class DashboardSessionManager {
   }
 
   /**
-   * Save a message to history
+   * Save a message to history (async)
    */
-  saveMessage(sessionId: string, message: ChatMessage): void {
+  async saveMessage(sessionId: string, message: ChatMessage): Promise<void> {
     const history = this._histories.get(sessionId)
     if (history) {
-      history.append(message)
+      await history.append(message)
     }
   }
 
   /**
-   * Load message history for a session
+   * Save a message to history (sync fallback)
    */
-  loadHistory(sessionId: string): ChatMessage[] {
+  saveMessageSync(sessionId: string, message: ChatMessage): void {
+    const history = this._histories.get(sessionId)
+    if (history) {
+      history.appendSync(message)
+    }
+  }
+
+  /**
+   * Load message history for a session (async)
+   */
+  async loadHistory(sessionId: string): Promise<ChatMessage[]> {
     let history = this._histories.get(sessionId)
 
     // If history not loaded yet, try to load from disk
@@ -102,7 +115,23 @@ export class DashboardSessionManager {
       this._histories.set(sessionId, history)
     }
 
-    return history.load()
+    return await history.load()
+  }
+
+  /**
+   * Load message history for a session (sync fallback)
+   */
+  loadHistorySync(sessionId: string): ChatMessage[] {
+    let history = this._histories.get(sessionId)
+
+    // If history not loaded yet, try to load from disk
+    if (!history) {
+      const workspaceDir = join(this._workspacesDir, `dashboard_${sessionId}`)
+      history = new MessageHistory(workspaceDir)
+      this._histories.set(sessionId, history)
+    }
+
+    return history.loadSync()
   }
 
   /**
@@ -127,12 +156,12 @@ export class DashboardSessionManager {
   }
 
   /**
-   * Clear message history for a session
+   * Clear message history for a session (async)
    */
-  clearHistory(sessionId: string): void {
+  async clearHistory(sessionId: string): Promise<void> {
     const history = this._histories.get(sessionId)
     if (history) {
-      history.clear()
+      await history.clear()
     }
     const session = this._sessions.get(sessionId)
     if (session) {
