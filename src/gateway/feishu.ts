@@ -7,6 +7,7 @@ import type { Message, MessageType } from '../types/message'
 import { unlinkSync } from 'node:fs'
 import type { RunResponseStats } from '../agent/types'
 import { formatStats } from './format-stats'
+import { sanitizeForFeishuCard } from './format-content'
 
 // ── Card Element Types for JSON 2.0 ─────────────────────────────
 
@@ -67,6 +68,8 @@ export class FeishuGateway implements Gateway {
   private client: lark.Client | null = null
   private wsClient: lark.WSClient | null = null
   private dispatcher: Dispatcher | null = null
+  private processedMessageIds = new Set<string>()
+  private readonly MAX_PROCESSED_IDS = 10000 // 最多缓存10000个message_id
 
   constructor(private config: FeishuConfig) {}
 
@@ -84,6 +87,24 @@ export class FeishuGateway implements Gateway {
       'im.message.receive_v1': async (event: unknown) => {
         const msg = await this.parseMessage(event as Record<string, unknown>)
         if (!msg) return
+
+        // 消息去重：检查是否已处理过该message_id
+        if (this.processedMessageIds.has(msg.messageId)) {
+          logger.debug({ messageId: msg.messageId, conversationId: msg.chatId }, '跳过重复消息')
+          return
+        }
+
+        // 记录已处理的message_id
+        this.processedMessageIds.add(msg.messageId)
+
+        // 防止内存泄漏：当缓存过大时清理最老的条目
+        if (this.processedMessageIds.size > this.MAX_PROCESSED_IDS) {
+          const firstToDelete = Array.from(this.processedMessageIds).at(0)
+          if (firstToDelete) {
+            this.processedMessageIds.delete(firstToDelete)
+            logger.debug({ size: this.processedMessageIds.size }, '消息去重缓存已清理')
+          }
+        }
 
         const reply = (content: string) => {
           logger.info({ content, conversationId: msg.chatId }, '飞书回复')
@@ -230,7 +251,7 @@ export class FeishuGateway implements Gateway {
     let seq = 1
     let lastThinkingFlush = 0
     let lastMainFlush = 0
-    const FLUSH_INTERVAL_MS = 150
+    const FLUSH_INTERVAL_MS = 300 // 增加到300ms，减少API调用频率，提升性能
 
     const ensureCard = async (): Promise<string> => {
       if (cardId) return cardId
@@ -257,14 +278,14 @@ export class FeishuGateway implements Gateway {
     const refreshPanelHeader = async (id: string, label: string): Promise<void> => {
       const countText = stepCount + ' ' + (stepCount === 1 ? 'step' : 'steps')
       await this.updatePanelHeader(id, `${label} (${countText})`, seq++).catch((e) =>
-        logger.warn(`updatePanelHeader failed: ${e}`)
+        logger.debug(`updatePanelHeader failed: ${e}`)
       )
     }
 
     const finalizeThinking = async (id: string): Promise<void> => {
       if (!currentThinkingId) return
       await this.updateStepText(id, currentThinkingId, currentThinkingText, seq++).catch((e) =>
-        logger.warn(`final thinking segment flush failed: ${e}`)
+        logger.debug(`final thinking segment flush failed: ${e}`)
       )
       currentThinkingId = null
       currentThinkingText = ''
@@ -285,14 +306,14 @@ export class FeishuGateway implements Gateway {
               currentThinkingId = `thinking_${thinkingSegmentCount}`
               const thinkingDiv = this.buildStepDiv('', 'robot_outlined', currentThinkingId)
               await addStep(id, thinkingDiv, currentThinkingId).catch((e) =>
-                logger.warn(`addStep (thinking) failed: ${e}`)
+                logger.debug(`addStep (thinking) failed: ${e}`)
               )
               await refreshPanelHeader(id, 'Working on it')
             }
 
             if (now - lastThinkingFlush >= FLUSH_INTERVAL_MS) {
               await this.updateStepText(id, currentThinkingId, currentThinkingText, seq++).catch(
-                (e) => logger.warn(`thinking update failed: ${e}`)
+                (e) => logger.debug(`thinking update failed: ${e}`)
               )
               lastThinkingFlush = now
             }
@@ -306,7 +327,7 @@ export class FeishuGateway implements Gateway {
             const stepDiv = this.buildStepDiv(text, icon, stepElementId)
 
             await addStep(id, stepDiv, stepElementId).catch((e) =>
-              logger.warn(`addStep (tool) failed: ${e}`)
+              logger.debug(`addStep (tool) failed: ${e}`)
             )
             await refreshPanelHeader(id, 'Working on it')
           } else if (event.type === 'text_delta') {
@@ -316,7 +337,7 @@ export class FeishuGateway implements Gateway {
             mainText += event.text as string
             if (now - lastMainFlush >= FLUSH_INTERVAL_MS) {
               await this.updateCardText(id, STREAM_EL.mainMd, mainText, seq++).catch((e) =>
-                logger.warn(`main update failed: ${e}`)
+                logger.debug(`main update failed: ${e}`)
               )
               lastMainFlush = now
             }
@@ -333,18 +354,18 @@ export class FeishuGateway implements Gateway {
 
             mainText = response.text || mainText
             await this.updateCardText(id, STREAM_EL.mainMd, mainText, seq++).catch((e) =>
-              logger.warn(`final main update failed: ${e}`)
+              logger.debug(`final main update failed: ${e}`)
             )
 
             if (stepsPanelAdded && stepCount > 0) {
               const countText = stepCount + ' ' + (stepCount === 1 ? 'step' : 'steps')
               await this.updatePanelHeader(id, `Show ${countText}`, seq++).catch((e) =>
-                logger.warn(`final header update failed: ${e}`)
+                logger.debug(`final header update failed: ${e}`)
               )
             }
 
             await this.deleteCardElement(id, STREAM_EL.loadingDiv, seq++).catch((e) =>
-              logger.warn(`delete loading div failed: ${e}`)
+              logger.debug(`delete loading div failed: ${e}`)
             )
 
             if (stats) {
@@ -355,16 +376,18 @@ export class FeishuGateway implements Gateway {
                   { tag: 'markdown', element_id: STREAM_EL.statsNote, content: `*${stats}*` },
                 ],
                 seq++
-              ).catch((e) => logger.warn(`append stats failed: ${e}`))
+              ).catch((e) => logger.debug(`append stats failed: ${e}`))
             }
 
-            logger.info({ content: mainText, conversationId: msg.chatId }, '飞书流式回复完成')
+            // 过滤外部图片URL后再记录和发送
+            const sanitizedMainText = sanitizeForFeishuCard(mainText)
+            logger.info({ content: sanitizedMainText, conversationId: msg.chatId }, '飞书流式回复完成')
           }
         }
       } finally {
         if (cardId) {
           await this.closeCardStreaming(cardId, seq++).catch((e) =>
-            logger.warn(`closeCardStreaming failed: ${e}`)
+            logger.debug(`closeCardStreaming failed: ${e}`)
           )
           if (stepsPanelAdded && stepCount > 0) {
             await this.patchCardElement(
@@ -372,7 +395,7 @@ export class FeishuGateway implements Gateway {
               STREAM_EL.stepsPanel,
               { expanded: false },
               seq++
-            ).catch((e) => logger.warn(`collapse steps panel failed: ${e}`))
+            ).catch((e) => logger.debug(`collapse steps panel failed: ${e}`))
           }
         }
       }
@@ -555,6 +578,8 @@ export class FeishuGateway implements Gateway {
     sequence: number
   ): Promise<void> {
     if (!this.client) throw new Error('Client not initialized')
+    // 过滤外部图片URL，飞书不支持直接使用外部图片
+    const sanitizedContent = sanitizeForFeishuCard(content)
     const res = await (this.client as unknown as {
       cardkit: {
         v1: {
@@ -568,7 +593,7 @@ export class FeishuGateway implements Gateway {
       }
     }).cardkit.v1.cardElement.content({
       path: { card_id: cardId, element_id: elementId },
-      data: { content, sequence },
+      data: { content: sanitizedContent, sequence },
     })
     if (res.code !== 0) {
       throw new Error(`updateCardText failed (code ${res.code}): ${res.msg ?? ''}`)

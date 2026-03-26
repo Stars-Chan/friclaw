@@ -213,4 +213,22 @@ describe('FeishuGateway', () => {
     const messageId = await gw.send('oc_room1', 'Hello')
     expect(messageId).toBe('msg_created')
   })
+
+  it('duplicate message_id is deduplicated', async () => {
+    const dispatcher = makeDispatcher()
+    const gw = new FeishuGateway(makeConfig())
+    await gw.start(dispatcher as never)
+
+    // 发送第一条消息
+    await capturedEventHandler!(makeEvent({ message_id: 'msg_001' }))
+    expect(dispatcher.dispatched).toHaveLength(1)
+
+    // 发送相同message_id的消息，应该被去重
+    await capturedEventHandler!(makeEvent({ message_id: 'msg_001' }))
+    expect(dispatcher.dispatched).toHaveLength(1) // 长度仍为1，说明第二条被去重
+
+    // 发送不同message_id的消息，应该正常处理
+    await capturedEventHandler!(makeEvent({ message_id: 'msg_002' }))
+    expect(dispatcher.dispatched).toHaveLength(2) // 长度为2，说明新消息被处理
+  })
 })
