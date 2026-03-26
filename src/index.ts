@@ -55,7 +55,10 @@ async function startDaemon(): Promise<void> {
   })
 
   if (config.dashboard.enabled) {
-    await startDashboard(config.dashboard.port, dispatcher, config.workspaces.dir)
+    // Start dashboard in background, don't block gateway startup
+    startDashboard(config.dashboard.port, dispatcher, config.workspaces.dir).catch((err) => {
+      logger.error({ err }, 'Dashboard startup failed')
+    })
   }
 
   const gateways: Gateway[] = []
