@@ -6,6 +6,7 @@
     "start": "bun run src/index.ts",
     "dev": "bun --watch src/index.ts",
     "onboard": "bun run src/index.ts onboard",
+    "weixin-login": "bun run src/index.ts weixin-login",
     "test": "bun test",
     "typecheck": "tsc --noEmit",
     "postinstall": "cd src/web && npm install --registry=https://registry.npmmirror.com"

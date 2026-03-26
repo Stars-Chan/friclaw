@@ -3,7 +3,7 @@ export interface Session {
   id: string              // `${platform}:${chatId}`
   userId: string
   chatId: string
-  platform: 'feishu' | 'wecom' | 'dashboard'
+  platform: 'feishu' | 'wecom' | 'weixin' | 'dashboard'
   chatType: 'private' | 'group'
   workspaceDir: string
   createdAt: number

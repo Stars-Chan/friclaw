@@ -49,6 +49,12 @@ const GatewaysSchema = z.object({
     botId: z.string().optional(),
     secret: z.string().optional(),
   }).default({}),
+  weixin: z.object({
+    enabled: z.boolean().default(false),
+    baseUrl: z.string().default('https://ilinkai.weixin.qq.com'),
+    cdnBaseUrl: z.string().default('https://cdn.weixin.qq.com'),
+    token: z.string().optional(),
+  }).default({}),
 }).default({})
 
 export const ConfigSchema = z.object({
@@ -86,6 +92,11 @@ function buildEnvOverrides(): Record<string, unknown> {
       wecom: {
         botId: process.env.WECOM_BOT_ID,
         secret: process.env.WECOM_SECRET,
+      },
+      weixin: {
+        baseUrl: process.env.WEIXIN_BASE_URL,
+        cdnBaseUrl: process.env.WEIXIN_CDN_BASE_URL,
+        token: process.env.WEIXIN_TOKEN,
       },
     },
   })

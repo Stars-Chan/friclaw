@@ -12,7 +12,7 @@ export interface CronJob {
   schedule: string
   message: string
   chatId: string
-  platform: 'feishu' | 'wecom' | 'dashboard'
+  platform: 'feishu' | 'wecom' | 'weixin' | 'dashboard'
   userId: string
   enabled: boolean
   createdAt: string

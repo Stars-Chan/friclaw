@@ -2,7 +2,7 @@
 export type MessageType = 'text' | 'command' | 'file' | 'image'
 
 export interface Message {
-  platform: 'feishu' | 'wecom' | 'dashboard'
+  platform: 'feishu' | 'wecom' | 'weixin' | 'dashboard'
   chatId: string
   userId: string
   type: MessageType

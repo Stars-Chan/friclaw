@@ -65,6 +65,12 @@ const TEMPLATE = {
       botId: 'YOUR_WECOM_BOT_ID',
       secret: 'YOUR_WECOM_SECRET',
     },
+    weixin: {
+      enabled: false,
+      baseUrl: 'https://ilinkai.weixin.qq.com',
+      cdnBaseUrl: 'https://cdn.weixin.qq.com',
+      token: '',
+    },
   },
 }
 
@@ -100,6 +106,10 @@ export async function runOnboard(): Promise<void> {
   console.log('     wecom.botId          — from Wework Bot Settings')
   console.log('     wecom.secret         — from Wework Bot Settings')
   console.log()
+  console.log('  Weixin (微信):')
+  console.log('     weixin.enabled       — set to true')
+  console.log('     weixin.token         — run "bun weixin-login" to get token')
+  console.log()
   console.log('  2. Start the daemon:')
   console.log('     bun start')
   console.log()
@@ -125,7 +135,10 @@ function initConfig(): void {
         typeof cfg?.gateways?.wecom?.botId === 'string' &&
         cfg.gateways.wecom.botId !== '' &&
         !cfg.gateways.wecom.botId.startsWith('YOUR_')
-      hasRealCredentials = feishuOk || wecomOk
+      const weixinOk =
+        typeof cfg?.gateways?.weixin?.token === 'string' &&
+        cfg.gateways.weixin.token !== ''
+      hasRealCredentials = feishuOk || wecomOk || weixinOk
     } catch {
       /* parse error — overwrite */
     }
