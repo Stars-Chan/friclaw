@@ -43,8 +43,12 @@ export class Dispatcher {
     }, 'Dispatcher received message')
 
     if (message.type === 'command') {
-      await this.handleCommand(message, reply)
-      return
+      const isBuiltinCommand = ['/clear', '/new', '/status'].includes(message.content)
+      if (isBuiltinCommand) {
+        await this.handleCommand(message, reply)
+        return
+      }
+      // 其他 / 开头的命令作为普通消息传给 agent 处理（支持 Claude skills）
     }
 
     const session = this.sessionManager.getOrCreate(
