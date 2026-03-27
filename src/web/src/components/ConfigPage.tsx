@@ -15,6 +15,9 @@ const CONFIG_FIELDS = [
   { key: 'ANTHROPIC_AUTH_TOKEN', label: 'Auth Token', type: 'password' },
   { key: 'ANTHROPIC_BASE_URL', label: 'Base URL' },
   { key: 'API_TIMEOUT_MS', label: 'Timeout (ms)' },
+  { key: 'ANTHROPIC_DEFAULT_HAIKU_MODEL', label: 'Haiku Model' },
+  { key: 'ANTHROPIC_DEFAULT_SONNET_MODEL', label: 'Sonnet Model' },
+  { key: 'ANTHROPIC_DEFAULT_OPUS_MODEL', label: 'Opus Model' },
 ];
 
 export function ConfigPage() {

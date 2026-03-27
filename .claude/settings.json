@@ -59,7 +59,10 @@
       "Bash(lsof -ti:3000)",
       "Bash(curl -s http://localhost:3000/health)",
       "Bash(curl -i -N -H \"Connection: Upgrade\" -H \"Upgrade: websocket\" -H \"Sec-WebSocket-Version: 13\" -H \"Sec-WebSocket-Key: SGVsbG8sIHdvcmxkIQ==\" http://localhost:3000/)",
-      "Bash(curl -i -N -H \"Connection: Upgrade\" -H \"Upgrade: websocket\" -H \"Sec-WebSocket-Version: 13\" -H \"Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\" http://localhost:3000/ws)"
+      "Bash(curl -i -N -H \"Connection: Upgrade\" -H \"Upgrade: websocket\" -H \"Sec-WebSocket-Version: 13\" -H \"Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\" http://localhost:3000/ws)",
+      "Bash(bunpm info:*)",
+      "Bash(npm view:*)",
+      "Bash(npm config:*)"
     ],
     "additionalDirectories": [
       "/Users/chen/workspace/ai/friclaw/docs/superpowers",
