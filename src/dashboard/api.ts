@@ -157,12 +157,12 @@ export async function startDashboard(
         const wsClientId = Math.random().toString(36).slice(2)
         const serverWs = ws as unknown as ServerWebSocket
         serverWs.data = { clientId: wsClientId }
-        logger.info(`WebSocket client connected: ${wsClientId}`)
+        logger.debug(`WebSocket client connected: ${wsClientId}`)
       },
       close: (ws) => {
         const serverWs = ws as unknown as ServerWebSocket
         const clientId = serverWs.data?.clientId
-        logger.info(`WebSocket client disconnected: ${clientId}`)
+        logger.debug(`WebSocket client disconnected: ${clientId}`)
 
         // Find and remove all sessions associated with this connection
         for (const [sessionId, clientWs] of clients.entries()) {

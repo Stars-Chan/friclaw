@@ -119,11 +119,12 @@ describe('Dispatcher', () => {
     expect(agent.calls).toHaveLength(0)
   })
 
-  it('unknown command does not call agent and does not throw', async () => {
+  it('unknown command passes to agent for Claude skills support', async () => {
     const agent = makeAgent()
     const dispatcher = new Dispatcher(sessionManager, agent)
-    await expect(dispatcher.dispatch(msg({ type: 'command', content: '/unknown' }))).resolves.toBeUndefined()
-    expect(agent.calls).toHaveLength(0)
+    await dispatcher.dispatch(msg({ type: 'command', content: '/unknown' }))
+    expect(agent.calls).toHaveLength(1)
+    expect(agent.calls[0].content).toBe('/unknown')
   })
 
   it('stopAccepting rejects new dispatches', async () => {

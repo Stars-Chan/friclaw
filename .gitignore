@@ -28,3 +28,16 @@ Thumbs.db
 .env.local
 
 friclaw-course.html
+
+# SuperSpec临时文件
+.superspec/cache/
+.superspec/tmp/
+.superspec/node_modules/
+
+# 个人工作状态
+.specs/.workspace/
+.context/.local/
+
+# 其他
+*.log
+*.tmp

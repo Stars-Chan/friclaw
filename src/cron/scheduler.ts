@@ -1,182 +1,183 @@
-// src/cron/scheduler.ts
-import { readFileSync, writeFileSync, existsSync } from 'fs'
-import { join } from 'path'
-import { randomUUID } from 'crypto'
-import type { Dispatcher } from '../dispatcher'
-import type { Message } from '../types/message'
+import { EventEmitter } from 'events'
+import { Cron } from 'croner'
+import { CronStorage, type CronJob } from './storage'
 
-export interface CronJob {
-  id: string
-  name: string
-  /** ISO datetime string (one-shot) or cron expression (recurring) */
-  schedule: string
-  message: string
-  chatId: string
-  platform: 'feishu' | 'wecom' | 'weixin' | 'dashboard'
-  userId: string
-  enabled: boolean
-  createdAt: string
+export interface JobExecuteEvent {
+  jobId: string
+  job: CronJob
+  scheduledTime: Date
 }
 
-type CreateJobInput = Omit<CronJob, 'id' | 'createdAt'>
+export class CronScheduler extends EventEmitter {
+  private storage: CronStorage
+  private schedulers: Map<string, Cron> = new Map()
+  private inFlight: Set<string> = new Set()
 
-export class CronScheduler {
-  private jobs: Map<string, CronJob> = new Map()
-  private timers: Map<string, ReturnType<typeof setTimeout | typeof setInterval>> = new Map()
-  private dbPath: string
-
-  constructor(
-    private dataDir: string,
-    private dispatcher: Dispatcher,
-  ) {
-    this.dbPath = join(dataDir, 'cron-jobs.json')
-    this.load()
+  constructor(dbPath: string) {
+    super()
+    this.storage = new CronStorage(dbPath)
   }
 
   async start(): Promise<void> {
-    for (const job of this.jobs.values()) {
+    const jobs = this.storage.listJobs()
+    for (const job of jobs) {
       if (job.enabled) this.schedule(job)
     }
   }
 
-  async stop(): Promise<void> {
-    for (const [id, timer] of this.timers) {
-      clearTimeout(timer as ReturnType<typeof setTimeout>)
-      clearInterval(timer as ReturnType<typeof setInterval>)
-      this.timers.delete(id)
+  async reload(): Promise<void> {
+    console.log('[CronScheduler] Reloading jobs from database')
+    // 停止所有现有任务
+    for (const [id, scheduler] of this.schedulers) {
+      if (typeof scheduler === 'number') {
+        clearTimeout(scheduler)
+      } else if (scheduler && typeof scheduler.stop === 'function') {
+        scheduler.stop()
+      }
     }
+    this.schedulers.clear()
+
+    // 重新加载并调度
+    const jobs = this.storage.listJobs()
+    for (const job of jobs) {
+      if (job.enabled) this.schedule(job)
+    }
+    console.log(`[CronScheduler] Reloaded ${jobs.length} jobs`)
   }
 
-  create(input: CreateJobInput): CronJob {
-    const job: CronJob = {
-      ...input,
-      id: randomUUID(),
-      createdAt: new Date().toISOString(),
+  async stop(): Promise<void> {
+    for (const [id, scheduler] of this.schedulers) {
+      if (typeof scheduler === 'number') {
+        clearTimeout(scheduler)
+      } else if (scheduler && typeof scheduler.stop === 'function') {
+        scheduler.stop()
+      }
     }
-    this.jobs.set(job.id, job)
-    this.save()
+    this.schedulers.clear()
+    this.storage.close()
+  }
+
+  create(input: Omit<CronJob, 'id' | 'createdAt' | 'updatedAt'>): CronJob {
+    const job = this.storage.createJob(input)
     if (job.enabled) this.schedule(job)
     return job
   }
 
   list(): CronJob[] {
-    return Array.from(this.jobs.values())
+    return this.storage.listJobs()
   }
 
-  delete(id: string): void {
-    this.cancel(id)
-    this.jobs.delete(id)
-    this.save()
+  get(id: string): CronJob | undefined {
+    return this.storage.getJob(id)
   }
 
-  update(id: string, patch: Partial<Omit<CronJob, 'id' | 'createdAt'>>): CronJob | undefined {
-    const job = this.jobs.get(id)
-    if (!job) return undefined
-    const updated = { ...job, ...patch }
-    this.jobs.set(id, updated)
-    this.save()
+  update(id: string, patch: Partial<Omit<CronJob, 'id' | 'createdAt' | 'updatedAt'>>): CronJob | undefined {
+    const updated = this.storage.updateJob(id, patch)
+    if (!updated) return undefined
     this.cancel(id)
     if (updated.enabled) this.schedule(updated)
     return updated
   }
 
-  isCronExpression(schedule: string): boolean {
-    // cron expressions have 5 space-separated fields
-    return /^(\S+\s+){4}\S+$/.test(schedule.trim())
+  delete(id: string): void {
+    this.cancel(id)
+    this.storage.deleteJob(id)
+  }
+
+  getExecutionHistory(jobId: string, limit = 50) {
+    return this.storage.getExecutionHistory(jobId, limit)
   }
 
   private schedule(job: CronJob): void {
-    if (this.isCronExpression(job.schedule)) {
-      this.scheduleCron(job)
-    } else {
+    // 检查是否为 ISO 时间字符串（一次性任务）
+    if (this.isISODateTime(job.cronExpression)) {
       this.scheduleOneShot(job)
+      return
     }
+
+    // croner 使用 6 字段格式（秒 分 时 日 月 周），标准 cron 是 5 字段（分 时 日 月 周）
+    // 如果是 5 字段，在前面添加 "0" 作为秒字段
+    let expression = job.cronExpression
+    const fields = expression.trim().split(/\s+/)
+    if (fields.length === 5) {
+      expression = `0 ${expression}`
+    }
+
+    const timezone = job.timezone || 'Asia/Shanghai'
+    console.log(`[CronScheduler] Scheduling job ${job.id}: ${expression} (${timezone})`)
+
+    const cron = new Cron(expression, { timezone }, () => {
+      console.log(`[CronScheduler] Job ${job.id} triggered at ${new Date().toISOString()}`)
+      this.fire(job.id)
+    })
+    this.schedulers.set(job.id, cron)
+  }
+
+  private isISODateTime(str: string): boolean {
+    return /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(str)
   }
 
   private scheduleOneShot(job: CronJob): void {
-    const runAt = new Date(job.schedule).getTime()
+    const runAt = new Date(job.cronExpression).getTime()
     const delay = runAt - Date.now()
-    if (delay < 0) return // already past
+
+    if (delay < 0) {
+      // 已过期，立即禁用
+      this.storage.updateJob(job.id, { enabled: false })
+      return
+    }
 
     const timer = setTimeout(async () => {
-      this.timers.delete(job.id)
-      await this.fire(job)
-      // disable after execution
-      const current = this.jobs.get(job.id)
-      if (current) {
-        const disabled = { ...current, enabled: false }
-        this.jobs.set(job.id, disabled)
-        this.save()
-      }
+      this.schedulers.delete(job.id)
+      await this.fire(job.id)
+      // 禁用一次性任务
+      this.storage.updateJob(job.id, { enabled: false })
     }, delay)
 
-    this.timers.set(job.id, timer)
-  }
-
-  private scheduleCron(job: CronJob): void {
-    // Simple polling: check every minute if the cron expression matches now
-    const timer = setInterval(async () => {
-      if (this.matchesCron(job.schedule, new Date())) {
-        await this.fire(job)
-      }
-    }, 60_000)
-
-    this.timers.set(job.id, timer)
-  }
-
-  private async fire(job: CronJob): Promise<void> {
-    const message: Message = {
-      platform: job.platform,
-      chatId: job.chatId,
-      userId: job.userId,
-      type: 'text',
-      content: job.message,
-    }
-    await this.dispatcher.dispatch(message)
+    this.schedulers.set(job.id, timer as any)
   }
 
   private cancel(id: string): void {
-    const timer = this.timers.get(id)
-    if (timer !== undefined) {
-      clearTimeout(timer as ReturnType<typeof setTimeout>)
-      clearInterval(timer as ReturnType<typeof setInterval>)
-      this.timers.delete(id)
-    }
-  }
-
-  private load(): void {
-    if (!existsSync(this.dbPath)) return
-    try {
-      const raw = readFileSync(this.dbPath, 'utf-8')
-      const jobs: CronJob[] = JSON.parse(raw)
-      for (const job of jobs) this.jobs.set(job.id, job)
-    } catch {
-      // corrupt file — start fresh
-    }
-  }
-
-  private save(): void {
-    writeFileSync(this.dbPath, JSON.stringify(Array.from(this.jobs.values()), null, 2))
-  }
-
-  /** Minimal cron matcher: checks minute and hour fields against current time */
-  private matchesCron(expr: string, now: Date): boolean {
-    const [min, hour, dom, month, dow] = expr.trim().split(/\s+/)
-    const match = (field: string, value: number): boolean => {
-      if (field === '*') return true
-      if (field.includes('-')) {
-        const [lo, hi] = field.split('-').map(Number)
-        return value >= lo && value <= hi
+    const scheduler = this.schedulers.get(id)
+    if (scheduler) {
+      if (typeof scheduler === 'number') {
+        clearTimeout(scheduler)
+      } else if (scheduler && typeof scheduler.stop === 'function') {
+        scheduler.stop()
       }
-      if (field.includes(',')) return field.split(',').map(Number).includes(value)
-      return Number(field) === value
+      this.schedulers.delete(id)
     }
-    return (
-      match(min, now.getMinutes()) &&
-      match(hour, now.getHours()) &&
-      match(dom, now.getDate()) &&
-      match(month, now.getMonth() + 1) &&
-      match(dow, now.getDay())
-    )
+  }
+
+  private async fire(jobId: string): Promise<void> {
+    console.log(`[CronScheduler] fire() called for job ${jobId}`)
+
+    if (this.inFlight.has(jobId)) {
+      console.log(`[CronScheduler] Job ${jobId} already in flight, skipping`)
+      return
+    }
+    this.inFlight.add(jobId)
+
+    const job = this.storage.getJob(jobId)
+    if (!job) {
+      console.log(`[CronScheduler] Job ${jobId} not found in storage`)
+      this.inFlight.delete(jobId)
+      return
+    }
+
+    const scheduledTime = new Date()
+    console.log(`[CronScheduler] Emitting job:execute event for ${jobId}`)
+
+    try {
+      this.emit('job:execute', { jobId, job, scheduledTime } as JobExecuteEvent)
+      this.storage.recordExecution(jobId, scheduledTime.toISOString(), 'success')
+      console.log(`[CronScheduler] Job ${jobId} executed successfully`)
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      console.error(`[CronScheduler] Job ${jobId} execution error:`, errorMessage)
+      this.storage.recordExecution(jobId, scheduledTime.toISOString(), 'error', errorMessage)
+    } finally {
+      this.inFlight.delete(jobId)
+    }
   }
 }
