@@ -12,6 +12,7 @@ export interface CronJob {
   platform: string
   chatId: string
   userId: string
+  chatType?: 'private' | 'group'
   enabled: boolean
   createdAt: string
   updatedAt: string
@@ -46,6 +47,7 @@ export class CronStorage {
         platform TEXT NOT NULL,
         chat_id TEXT NOT NULL,
         user_id TEXT NOT NULL,
+        chat_type TEXT DEFAULT 'private',
         enabled INTEGER NOT NULL DEFAULT 1,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
@@ -76,9 +78,9 @@ export class CronStorage {
       updatedAt: now,
     }
     this.db.prepare(`
-      INSERT INTO cron_jobs (id, name, cron_expression, prompt, timezone, platform, chat_id, user_id, enabled, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(job.id, job.name, job.cronExpression, job.prompt, job.timezone, job.platform, job.chatId, job.userId, job.enabled ? 1 : 0, job.createdAt, job.updatedAt)
+      INSERT INTO cron_jobs (id, name, cron_expression, prompt, timezone, platform, chat_id, user_id, chat_type, enabled, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(job.id, job.name, job.cronExpression, job.prompt, job.timezone, job.platform, job.chatId, job.userId, job.chatType, job.enabled ? 1 : 0, job.createdAt, job.updatedAt)
     return job
   }
 
@@ -97,9 +99,9 @@ export class CronStorage {
     if (!job) return undefined
     const updated = { ...job, ...patch, updatedAt: new Date().toISOString() }
     this.db.prepare(`
-      UPDATE cron_jobs SET name = ?, cron_expression = ?, prompt = ?, timezone = ?, platform = ?, chat_id = ?, user_id = ?, enabled = ?, updated_at = ?
+      UPDATE cron_jobs SET name = ?, cron_expression = ?, prompt = ?, timezone = ?, platform = ?, chat_id = ?, user_id = ?, chat_type = ?, enabled = ?, updated_at = ?
       WHERE id = ?
-    `).run(updated.name, updated.cronExpression, updated.prompt, updated.timezone, updated.platform, updated.chatId, updated.userId, updated.enabled ? 1 : 0, updated.updatedAt, id)
+    `).run(updated.name, updated.cronExpression, updated.prompt, updated.timezone, updated.platform, updated.chatId, updated.userId, updated.chatType, updated.enabled ? 1 : 0, updated.updatedAt, id)
     return updated
   }
 
@@ -139,6 +141,7 @@ export class CronStorage {
       platform: row.platform,
       chatId: row.chat_id,
       userId: row.user_id,
+      chatType: row.chat_type,
       enabled: row.enabled === 1,
       createdAt: row.created_at,
       updatedAt: row.updated_at,

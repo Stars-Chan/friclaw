@@ -2,6 +2,7 @@ import { BaseMcpServer, type Tool, type CallToolResult } from '../mcp/server'
 import type { CronStorage } from './storage'
 import { writeFileSync } from 'fs'
 import { join } from 'path'
+import { DateTime } from 'luxon'
 
 export class CronMcpServer extends BaseMcpServer {
   constructor(private storage: CronStorage) {
@@ -26,10 +27,16 @@ export class CronMcpServer extends BaseMcpServer {
   }
 
   protected getTools(): Tool[] {
+    const now = DateTime.now().setZone('Asia/Shanghai')
+    const exampleTime = now.plus({ minutes: 2 }).toISO({ includeOffset: false, suppressMilliseconds: true })
     return [
       {
         name: 'cron_create',
-        description: '创建定时任务。cronExpression 可以是标准 Cron 表达式（如 "0 9 * * *" 表示每天9点）或 ISO 时间字符串（如 "2026-03-28T00:04:00" 表示一次性任务）。支持时区参数。',
+        description: `创建定时任务。cronExpression 可以是标准 Cron 表达式（如 "0 9 * * *" 表示每天9点）或 ISO 时间字符串（如 "2026-03-28T14:30:00" 表示一次性任务）。
+
+**当前 Asia/Shanghai 时间：${now.toFormat('yyyy-MM-dd HH:mm:ss')}**
+
+生成 ISO 时间字符串时，必须基于上述 Asia/Shanghai 时间计算，而不是 UTC 时间。例如：如果要设置"2分钟后"，应该是 "${exampleTime}"`,
         inputSchema: {
           type: 'object',
           properties: {
@@ -98,6 +105,7 @@ export class CronMcpServer extends BaseMcpServer {
           const platform = process.env.FRICLAW_PLATFORM || 'dashboard'
           const chatId = process.env.FRICLAW_CHAT_ID || 'system'
           const userId = process.env.FRICLAW_USER_ID || 'system'
+          const chatType = (process.env.FRICLAW_CHAT_TYPE as 'private' | 'group') || 'private'
 
           const job = this.storage.createJob({
             name: jobName,
@@ -107,6 +115,7 @@ export class CronMcpServer extends BaseMcpServer {
             platform,
             chatId,
             userId,
+            chatType,
             enabled: true,
           })
           this.notifyMainProcess()

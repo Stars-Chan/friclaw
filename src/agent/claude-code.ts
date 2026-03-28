@@ -33,7 +33,7 @@ interface ProcessState {
   proc: Subprocess
   lastUsedAt: number
   isHealthy: boolean
-  sessionContext?: { chatId?: string; platform?: string; userId?: string }
+  sessionContext?: { chatId?: string; platform?: string; userId?: string; chatType?: 'private' | 'group' }
 }
 
 export class ClaudeCodeAgent implements Agent {
@@ -66,6 +66,7 @@ export class ClaudeCodeAgent implements Agent {
       chatId: message.chatId,
       platform: message.platform,
       userId: message.userId,
+      chatType: message.chatType,
     }
 
     logger.debug({
@@ -236,12 +237,12 @@ export class ClaudeCodeAgent implements Agent {
   }
 
   private async getOrCreateProcess(request: RunRequest): Promise<ProcessState> {
-    const { conversationId, workspaceDir, chatId, platform, userId } = request
+    const { conversationId, workspaceDir, chatId, platform, userId, chatType } = request
     const existing = this.processes.get(conversationId)
     const now = Date.now()
 
     // Check if session context has changed
-    const newContext = { chatId, platform, userId }
+    const newContext = { chatId, platform, userId, chatType }
     const contextChanged = existing?.sessionContext &&
       (existing.sessionContext.chatId !== chatId ||
        existing.sessionContext.platform !== platform ||
@@ -265,6 +266,7 @@ export class ClaudeCodeAgent implements Agent {
       logger.info({ conversationId, idleTime }, 'Process idle timeout, killing and recreating')
       existingAfterCheck.proc.kill()
       this.processes.delete(conversationId)
+      await existingAfterCheck.proc.exited
     }
 
     // Create new process
@@ -299,17 +301,20 @@ export class ClaudeCodeAgent implements Agent {
     if (chatId) env.FRICLAW_CHAT_ID = chatId
     if (platform) env.FRICLAW_PLATFORM = platform
     if (userId) env.FRICLAW_USER_ID = userId
+    if (chatType) env.FRICLAW_CHAT_TYPE = chatType
     env.FRICLAW_WORKDIR = process.cwd() // 传递主进程工作目录
 
     logger.debug({ conversationId, chatId, platform, userId }, 'Injecting session context to env')
 
     const proc = this.spawnFn(args, { cwd: workspaceDir, stdin: 'pipe', stdout: 'pipe', stderr: 'pipe', env })
+
     const processState: ProcessState = {
       proc,
       lastUsedAt: now,
       isHealthy: true,
       sessionContext: newContext,
     }
+
     this.processes.set(conversationId, processState)
 
     // 异步读取 stderr，避免缓冲区阻塞

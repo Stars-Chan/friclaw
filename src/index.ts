@@ -131,7 +131,7 @@ async function startDaemon(): Promise<void> {
 
     // 创建 reply 函数，使用 gateway.send 发送消息
     const reply = async (content: string) => {
-      await gateway.send(event.job.chatId, content)
+      await gateway.send(event.job.chatId, content, event.job.chatType)
       return content
     }
 

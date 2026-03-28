@@ -99,9 +99,17 @@ export class WecomGateway implements Gateway {
     }, CLEANUP_INTERVAL_MS)
   }
 
-  async send(chatId: string, text: string): Promise<string> {
+  async send(chatId: string, text: string, chatType?: 'private' | 'group'): Promise<string> {
     const streamEntry = this.activeStreams.get(chatId)
     const reqId = streamEntry?.streamId ?? ''
+
+    if (!reqId) {
+      // 定时任务等主动推送场景，使用主动发送方法
+      logger.info({ chatId, chatType, isGroup: chatType === 'group' }, '企业微信主动推送消息')
+      this._client.sendProactiveMessage({ chatId, content: text, isGroup: chatType === 'group' })
+      return ''
+    }
+
     this._client.sendMarkdown({ reqId, content: text })
     return ''
   }
@@ -174,14 +182,17 @@ export class WecomGateway implements Gateway {
       ? (wsMsg.content ?? '')
       : ''
 
+    // 移除 @ 提及前缀以检测斜杠命令
+    const contentWithoutMention = content.replace(/^@\S+\s+/, '').trim()
+
     const msg: Message = {
       platform: 'wecom',
       chatId,
       userId: wsMsg.fromUser,
       type: wsMsg.msgType === 'image' ? 'image'
-        : content.startsWith('/') ? 'command'
+        : contentWithoutMention.startsWith('/') ? 'command'
         : 'text',
-      content,
+      content: contentWithoutMention,
       messageId: wsMsg.msgId,
       chatType: wsMsg.chatType === 'group' ? 'group' : 'private',
       attachments: wsMsg.msgType === 'image' && wsMsg.imageUrl

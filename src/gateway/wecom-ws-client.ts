@@ -240,6 +240,41 @@ export class WeworkWsClient extends EventEmitter {
   }
 
   /**
+   * 主动发送消息（用于定时任务等场景）
+   * 使用 aibot_send_msg 命令进行主动推送
+   */
+  sendProactiveMessage(message: {
+    chatId: string;
+    content: string;
+    isGroup?: boolean;
+  }): boolean {
+    if (!this._ws || this._ws.readyState !== WebSocket.OPEN || !this._subscribed) {
+      log.warn('Cannot send proactive message: WebSocket not ready or not subscribed');
+      return false;
+    }
+
+    // 企业微信 aibot_send_msg 仅支持群聊主动推送
+    if (!message.isGroup) {
+      log.warn({ chatId: message.chatId }, 'Proactive message to private chat is not supported by WeCom API');
+      return false;
+    }
+
+    const payload = {
+      cmd: 'aibot_send_msg',
+      body: {
+        chatid: message.chatId,
+        msgtype: 'markdown',
+        markdown: {
+          content: message.content,
+        },
+      },
+    };
+
+    log.info({ payload }, 'Sending proactive message to group');
+    return this._send(payload);
+  }
+
+  /**
    * 设置 WebSocket 事件处理器
    */
   private _setupWebSocketHandlers(): void {

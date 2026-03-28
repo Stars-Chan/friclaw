@@ -1,6 +1,7 @@
 import { EventEmitter } from 'events'
 import { Cron } from 'croner'
 import { CronStorage, type CronJob } from './storage'
+import { DateTime } from 'luxon'
 
 export interface JobExecuteEvent {
   jobId: string
@@ -118,7 +119,14 @@ export class CronScheduler extends EventEmitter {
   }
 
   private scheduleOneShot(job: CronJob): void {
-    const runAt = new Date(job.cronExpression).getTime()
+    // 使用 luxon 正确处理时区
+    // 如果时间字符串没有时区后缀，将其视为指定时区的本地时间
+    const hasTimezone = /[+-]\d{2}:\d{2}|Z$/.test(job.cronExpression)
+    const dt = hasTimezone
+      ? DateTime.fromISO(job.cronExpression)
+      : DateTime.fromISO(job.cronExpression, { zone: job.timezone || 'Asia/Shanghai' })
+
+    const runAt = dt.toMillis()
     const delay = runAt - Date.now()
 
     if (delay < 0) {

@@ -8,6 +8,7 @@ export interface RunRequest {
   chatId?: string
   platform?: string
   userId?: string
+  chatType?: 'private' | 'group'
 }
 
 export type ContentBlock =
