@@ -6,6 +6,7 @@ import { MemoryManager } from './memory/manager'
 import { SessionManager } from './session/manager'
 import { ClaudeCodeAgent } from './agent/claude-code'
 import { Dispatcher } from './dispatcher'
+import { CronScheduler } from './cron/scheduler'
 import { startDashboard } from './dashboard/api'
 import { registerShutdownHandlers } from './daemon'
 import { logger } from './utils/logger'
@@ -84,13 +85,6 @@ async function startDaemon(): Promise<void> {
     await memory.shutdown()
   })
 
-  if (config.dashboard.enabled) {
-    // Start dashboard in background, don't block gateway startup
-    startDashboard(config.dashboard.port, dispatcher, config.workspaces.dir).catch((err) => {
-      logger.error({ err }, 'Dashboard startup failed')
-    })
-  }
-
   const gateways: Gateway[] = []
 
   if (config.gateways.feishu.enabled) {
@@ -109,6 +103,72 @@ async function startDaemon(): Promise<void> {
     const { baseUrl, cdnBaseUrl, token } = config.gateways.weixin
     if (!token) throw new Error('微信网关缺少 token')
     gateways.push(new WeixinGateway({ baseUrl, cdnBaseUrl, token }))
+  }
+
+  // 启动定时任务调度器
+  const dbPath = join(config.workspaces.dir, 'cron.db')
+  const cronScheduler = new CronScheduler(dbPath)
+
+  // 监听任务执行事件（必须在 start() 之前注册）
+  cronScheduler.on('job:execute', (event) => {
+    logger.info({ jobId: event.jobId, platform: event.job.platform, chatId: event.job.chatId }, 'Cron job executing')
+
+    // 找到对应的 gateway
+    const gateway = gateways.find(g => g.kind === event.job.platform)
+    if (!gateway) {
+      logger.error({ platform: event.job.platform }, 'Gateway not found for cron job')
+      return
+    }
+
+    // 异步处理，避免阻塞后续任务
+    const message = {
+      platform: event.job.platform as any,
+      chatId: event.job.chatId,
+      userId: event.job.userId,
+      type: 'text' as const,
+      content: event.job.prompt,
+    }
+
+    // 创建 reply 函数，使用 gateway.send 发送消息
+    const reply = async (content: string) => {
+      await gateway.send(event.job.chatId, content)
+      return content
+    }
+
+    dispatcher.dispatch(message, reply)
+      .then(() => {
+        logger.info({ jobId: event.jobId }, 'Cron job message dispatched')
+      })
+      .catch((error) => {
+        logger.error({ err: error, jobId: event.jobId }, 'Cron job dispatch failed')
+      })
+  })
+
+  await cronScheduler.start()
+  logger.info('Cron scheduler started')
+
+  // 监听信号文件变化，自动重新加载任务
+  const signalFile = join(process.cwd(), '.cron-reload')
+  const { writeFileSync, existsSync, watch } = await import('fs')
+
+  // 确保信号文件存在
+  if (!existsSync(signalFile)) {
+    writeFileSync(signalFile, '')
+  }
+
+  let reloadTimer: Timer | null = null
+  watch(signalFile, { persistent: false }, async (eventType) => {
+    if (eventType === 'change') {
+      if (reloadTimer) clearTimeout(reloadTimer)
+      reloadTimer = setTimeout(() => cronScheduler.reload(), 200)
+    }
+  })
+
+  if (config.dashboard.enabled) {
+    // Start dashboard in background, don't block gateway startup
+    startDashboard(config.dashboard.port, dispatcher, config.workspaces.dir).catch((err) => {
+      logger.error({ err }, 'Dashboard startup failed')
+    })
   }
 
   await Promise.all(gateways.map(g => g.start(dispatcher)))

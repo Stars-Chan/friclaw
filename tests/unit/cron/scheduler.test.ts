@@ -1,39 +1,31 @@
-// tests/unit/cron/scheduler.test.ts
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test'
 import { mkdtempSync, rmSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { CronScheduler } from '../../../src/cron/scheduler'
-import type { Message } from '../../../src/types/message'
 
 let tmpDir: string
+let dbPath: string
 
 beforeEach(() => {
   tmpDir = mkdtempSync(join(tmpdir(), 'friclaw-cron-'))
+  dbPath = join(tmpDir, 'test.db')
 })
 
 afterEach(() => {
   rmSync(tmpDir, { recursive: true, force: true })
 })
 
-const makeDispatcher = () => {
-  const dispatched: Message[] = []
-  return {
-    dispatched,
-    dispatch: async (msg: Message) => { dispatched.push(msg) },
-  }
-}
-
 describe('CronScheduler', () => {
   it('create() persists job and returns it', async () => {
-    const scheduler = new CronScheduler(tmpDir, makeDispatcher() as never)
+    const scheduler = new CronScheduler(dbPath)
     const job = scheduler.create({
       name: 'test job',
-      schedule: new Date(Date.now() + 60_000).toISOString(),
-      message: 'hello',
-      chatId: 'chat_001',
+      cronExpression: '0 9 * * *',
+      prompt: 'hello',
       platform: 'feishu',
-      userId: 'user_001',
+      chatId: 'chat1',
+      userId: 'user1',
       enabled: true,
     })
     expect(job.id).toBeTruthy()
@@ -43,61 +35,78 @@ describe('CronScheduler', () => {
   })
 
   it('list() returns all jobs', async () => {
-    const scheduler = new CronScheduler(tmpDir, makeDispatcher() as never)
-    scheduler.create({ name: 'job1', schedule: '0 9 * * *', message: 'a', chatId: 'c1', platform: 'feishu', userId: 'u1', enabled: true })
-    scheduler.create({ name: 'job2', schedule: '0 10 * * *', message: 'b', chatId: 'c2', platform: 'feishu', userId: 'u2', enabled: true })
+    const scheduler = new CronScheduler(dbPath)
+    scheduler.create({ name: 'job1', cronExpression: '0 9 * * *', prompt: 'a', platform: 'feishu', chatId: 'c1', userId: 'u1', enabled: true })
+    scheduler.create({ name: 'job2', cronExpression: '0 10 * * *', prompt: 'b', platform: 'feishu', chatId: 'c2', userId: 'u2', enabled: true })
     const jobs = scheduler.list()
     expect(jobs).toHaveLength(2)
     await scheduler.stop()
   })
 
   it('delete() removes job', async () => {
-    const scheduler = new CronScheduler(tmpDir, makeDispatcher() as never)
-    const job = scheduler.create({ name: 'to delete', schedule: '0 9 * * *', message: 'x', chatId: 'c', platform: 'feishu', userId: 'u', enabled: true })
+    const scheduler = new CronScheduler(dbPath)
+    const job = scheduler.create({ name: 'to delete', cronExpression: '0 9 * * *', prompt: 'x', platform: 'feishu', chatId: 'c', userId: 'u', enabled: true })
     scheduler.delete(job.id)
     expect(scheduler.list()).toHaveLength(0)
     await scheduler.stop()
   })
 
-  it('one-shot job triggers dispatch when time arrives', async () => {
-    const dispatcher = makeDispatcher()
-    const scheduler = new CronScheduler(tmpDir, dispatcher as never)
-    const runAt = new Date(Date.now() + 50).toISOString()
-    scheduler.create({ name: 'soon', schedule: runAt, message: 'ping', chatId: 'chat_x', platform: 'feishu', userId: 'user_x', enabled: true })
-    await new Promise(r => setTimeout(r, 150))
-    expect(dispatcher.dispatched).toHaveLength(1)
-    expect(dispatcher.dispatched[0].content).toBe('ping')
-    expect(dispatcher.dispatched[0].platform).toBe('feishu')
-    await scheduler.stop()
-  })
-
-  it('one-shot job is disabled after execution', async () => {
-    const dispatcher = makeDispatcher()
-    const scheduler = new CronScheduler(tmpDir, dispatcher as never)
-    const runAt = new Date(Date.now() + 50).toISOString()
-    const job = scheduler.create({ name: 'once', schedule: runAt, message: 'once', chatId: 'c', platform: 'feishu', userId: 'u', enabled: true })
-    await new Promise(r => setTimeout(r, 150))
-    const updated = scheduler.list().find(j => j.id === job.id)
+  it('update() modifies job', async () => {
+    const scheduler = new CronScheduler(dbPath)
+    const job = scheduler.create({ name: 'test', cronExpression: '0 9 * * *', prompt: 'x', platform: 'feishu', chatId: 'c', userId: 'u', enabled: true })
+    const updated = scheduler.update(job.id, { enabled: false })
     expect(updated?.enabled).toBe(false)
     await scheduler.stop()
   })
 
-  it('isCronExpression() correctly identifies cron vs ISO', async () => {
-    const scheduler = new CronScheduler(tmpDir, makeDispatcher() as never)
-    // access via public method for testability
-    expect(scheduler.isCronExpression('0 9 * * *')).toBe(true)
-    expect(scheduler.isCronExpression('0 9 * * 1-5')).toBe(true)
-    expect(scheduler.isCronExpression('2026-03-19T09:00:00.000Z')).toBe(false)
+  it('event emitter fires job:execute on schedule', async () => {
+    const scheduler = new CronScheduler(dbPath)
+    const events: any[] = []
+    scheduler.on('job:execute', (event) => events.push(event))
+
+    const job = scheduler.create({ name: 'test', cronExpression: '* * * * * *', prompt: 'test', platform: 'feishu', chatId: 'c', userId: 'u', enabled: true })
+    await new Promise(r => setTimeout(r, 1500))
+
+    expect(events.length).toBeGreaterThan(0)
+    expect(events[0].jobId).toBe(job.id)
+    await scheduler.stop()
+  })
+
+  it('execution history is recorded', async () => {
+    const scheduler = new CronScheduler(dbPath)
+    scheduler.on('job:execute', () => {})
+
+    const job = scheduler.create({ name: 'test', cronExpression: '* * * * * *', prompt: 'test', platform: 'feishu', chatId: 'c', userId: 'u', enabled: true })
+    await new Promise(r => setTimeout(r, 1500))
+
+    const history = scheduler.getExecutionHistory(job.id)
+    expect(history.length).toBeGreaterThan(0)
+    expect(history[0].status).toBe('success')
+    await scheduler.stop()
+  })
+
+  it('timezone support works', async () => {
+    const scheduler = new CronScheduler(dbPath)
+    const job = scheduler.create({
+      name: 'tz test',
+      cronExpression: '0 9 * * *',
+      prompt: 'test',
+      timezone: 'Asia/Shanghai',
+      platform: 'feishu',
+      chatId: 'c',
+      userId: 'u',
+      enabled: true
+    })
+    expect(job.timezone).toBe('Asia/Shanghai')
     await scheduler.stop()
   })
 
   it('jobs persist across restart', async () => {
-    const dispatcher = makeDispatcher()
-    const s1 = new CronScheduler(tmpDir, dispatcher as never)
-    s1.create({ name: 'persistent', schedule: '0 9 * * *', message: 'hi', chatId: 'c', platform: 'feishu', userId: 'u', enabled: true })
+    const s1 = new CronScheduler(dbPath)
+    s1.create({ name: 'persistent', cronExpression: '0 9 * * *', prompt: 'hi', platform: 'feishu', chatId: 'c', userId: 'u', enabled: true })
     await s1.stop()
 
-    const s2 = new CronScheduler(tmpDir, dispatcher as never)
+    const s2 = new CronScheduler(dbPath)
     await s2.start()
     expect(s2.list()).toHaveLength(1)
     expect(s2.list()[0].name).toBe('persistent')

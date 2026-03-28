@@ -1,6 +1,7 @@
 // src/session/manager.ts
 import { mkdirSync } from 'fs'
 import { join } from 'path'
+import { writeMcpConfig } from '../mcp/config-writer'
 import type { Session, SessionStats } from './types'
 
 interface SessionManagerOptions {
@@ -91,6 +92,21 @@ export class SessionManager {
     const workspaceDir = join(this.workspacesDir, dirName)
     mkdirSync(join(workspaceDir, '.claude'), { recursive: true })
     mkdirSync(join(workspaceDir, '.firclaw', '.history'), { recursive: true })
+
+    // 注入 MCP 配置
+    writeMcpConfig(workspaceDir, {
+      'friclaw-memory': {
+        type: 'stdio',
+        command: 'bun',
+        args: ['run', join(process.cwd(), 'src/mcp/memory-entry.ts')],
+      },
+      'friclaw-cron': {
+        type: 'stdio',
+        command: 'bun',
+        args: ['run', join(process.cwd(), 'src/mcp/cron-entry.ts')],
+      },
+    })
+
     const session: Session = {
       id,
       userId,

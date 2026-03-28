@@ -4,6 +4,10 @@ export interface RunRequest {
   workspaceDir: string
   text: string
   attachments?: Array<{ type: 'image'; buffer: Buffer }>
+  // 会话上下文，用于注入到 MCP 环境变量
+  chatId?: string
+  platform?: string
+  userId?: string
 }
 
 export type ContentBlock =

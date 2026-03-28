@@ -7,6 +7,7 @@
     "dev": "bun --watch src/index.ts",
     "onboard": "bun run src/index.ts onboard",
     "weixin-login": "bun run src/index.ts weixin-login",
+    "mcp:cron": "bun run src/mcp/cron-entry.ts",
     "test": "bun test",
     "typecheck": "tsc --noEmit",
     "postinstall": "cd src/web && npm install --registry=https://registry.npmmirror.com"

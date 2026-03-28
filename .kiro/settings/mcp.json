@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "friclaw-cron": {
+      "command": "bun",
+      "args": ["run", "src/mcp/cron-entry.ts"],
+      "disabled": false,
+      "autoApprove": ["cron_create", "cron_list", "cron_delete", "cron_update"]
+    }
+  }
+}

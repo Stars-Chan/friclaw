@@ -33,6 +33,7 @@ interface ProcessState {
   proc: Subprocess
   lastUsedAt: number
   isHealthy: boolean
+  sessionContext?: { chatId?: string; platform?: string; userId?: string }
 }
 
 export class ClaudeCodeAgent implements Agent {
@@ -62,6 +63,9 @@ export class ClaudeCodeAgent implements Agent {
       conversationId: session.id,
       workspaceDir: session.workspaceDir,
       text: message.content,
+      chatId: message.chatId,
+      platform: message.platform,
+      userId: message.userId,
     }
 
     logger.debug({
@@ -101,7 +105,7 @@ export class ClaudeCodeAgent implements Agent {
       textLength: request.text?.length
     }, 'Claude Code stream starting')
 
-    const processState = await this.getOrCreateProcess(request.conversationId, request.workspaceDir)
+    const processState = await this.getOrCreateProcess(request)
     const proc = processState.proc
     const payload = JSON.stringify({
       type: 'user',
@@ -231,20 +235,35 @@ export class ClaudeCodeAgent implements Agent {
     }
   }
 
-  private async getOrCreateProcess(conversationId: string, workspaceDir: string): Promise<ProcessState> {
+  private async getOrCreateProcess(request: RunRequest): Promise<ProcessState> {
+    const { conversationId, workspaceDir, chatId, platform, userId } = request
     const existing = this.processes.get(conversationId)
     const now = Date.now()
 
+    // Check if session context has changed
+    const newContext = { chatId, platform, userId }
+    const contextChanged = existing?.sessionContext &&
+      (existing.sessionContext.chatId !== chatId ||
+       existing.sessionContext.platform !== platform ||
+       existing.sessionContext.userId !== userId)
+
+    if (existing && contextChanged) {
+      logger.info({ conversationId }, 'Session context changed, will recreate process')
+      this.processes.delete(conversationId)
+      existing.proc.kill(9)
+    }
+
     // Check if existing process is healthy and not idle for too long
-    if (existing && existing.proc.exitCode === null && existing.isHealthy) {
-      const idleTime = now - existing.lastUsedAt
+    const existingAfterCheck = this.processes.get(conversationId)
+    if (existingAfterCheck && existingAfterCheck.proc.exitCode === null && existingAfterCheck.isHealthy) {
+      const idleTime = now - existingAfterCheck.lastUsedAt
       if (idleTime < this.PROCESS_IDLE_TIMEOUT_MS) {
-        existing.lastUsedAt = now
-        return existing
+        existingAfterCheck.lastUsedAt = now
+        return existingAfterCheck
       }
       // Process is idle for too long, kill it and create a new one
       logger.info({ conversationId, idleTime }, 'Process idle timeout, killing and recreating')
-      existing.proc.kill()
+      existingAfterCheck.proc.kill()
       this.processes.delete(conversationId)
     }
 
@@ -265,7 +284,7 @@ export class ClaudeCodeAgent implements Agent {
       args.push('--dangerously-skip-permissions')  // 跳过权限检查，因为外层已实现权限控制
     }
 
-    // 禁止危险工具（无论是否使用白名单）
+    // 禁用内置 cron 工具，使用 MCP 服务器提供的持久化版本
     args.push('--disallowedTools', 'CronCreate,CronDelete,CronList')
 
     const resumeId = this.sessionIds.get(conversationId)
@@ -276,11 +295,20 @@ export class ClaudeCodeAgent implements Agent {
     const env = { ...process.env }
     delete env.CLAUDECODE
 
+    // 注入会话上下文到环境变量，供 MCP 工具使用
+    if (chatId) env.FRICLAW_CHAT_ID = chatId
+    if (platform) env.FRICLAW_PLATFORM = platform
+    if (userId) env.FRICLAW_USER_ID = userId
+    env.FRICLAW_WORKDIR = process.cwd() // 传递主进程工作目录
+
+    logger.debug({ conversationId, chatId, platform, userId }, 'Injecting session context to env')
+
     const proc = this.spawnFn(args, { cwd: workspaceDir, stdin: 'pipe', stdout: 'pipe', stderr: 'pipe', env })
     const processState: ProcessState = {
       proc,
       lastUsedAt: now,
       isHealthy: true,
+      sessionContext: newContext,
     }
     this.processes.set(conversationId, processState)
 
