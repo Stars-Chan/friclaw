@@ -89,8 +89,11 @@ export class CronStorage {
     return row ? this.mapJob(row) : undefined
   }
 
-  listJobs(): CronJob[] {
-    const rows = this.db.prepare('SELECT * FROM cron_jobs ORDER BY created_at DESC').all() as any[]
+  listJobs(platform?: string): CronJob[] {
+    const query = platform
+      ? this.db.prepare('SELECT * FROM cron_jobs WHERE platform = ? ORDER BY created_at DESC')
+      : this.db.prepare('SELECT * FROM cron_jobs ORDER BY created_at DESC')
+    const rows = (platform ? query.all(platform) : query.all()) as any[]
     return rows.map(r => this.mapJob(r))
   }
 

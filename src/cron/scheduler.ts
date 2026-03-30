@@ -143,8 +143,6 @@ export class CronScheduler extends EventEmitter {
   }
 
   private scheduleOneShot(job: CronJob): void {
-    // 使用 luxon 正确处理时区
-    // 如果时间字符串没有时区后缀，将其视为指定时区的本地时间
     const hasTimezone = /[+-]\d{2}:\d{2}|Z$/.test(job.cronExpression)
     const dt = hasTimezone
       ? DateTime.fromISO(job.cronExpression)
@@ -154,7 +152,6 @@ export class CronScheduler extends EventEmitter {
     const delay = runAt - Date.now()
 
     if (delay < 0) {
-      // 已过期，立即禁用
       this.storage.updateJob(job.id, { enabled: false })
       return
     }
@@ -162,7 +159,6 @@ export class CronScheduler extends EventEmitter {
     const timer = setTimeout(async () => {
       this.schedulers.delete(job.id)
       await this.fire(job.id)
-      // 禁用一次性任务
       this.storage.updateJob(job.id, { enabled: false })
     }, delay)
 

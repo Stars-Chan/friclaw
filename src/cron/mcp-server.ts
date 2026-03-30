@@ -3,12 +3,22 @@ import type { CronStorage } from './storage'
 import { DateTime } from 'luxon'
 
 export class CronMcpServer extends BaseMcpServer {
+  private readonly platform: string
+
   constructor(private storage: CronStorage) {
     super('friclaw-cron', '1.0.0')
+    this.platform = process.env.FRICLAW_PLATFORM || 'dashboard'
   }
 
   private notifyMainProcess(): void {
     // 主进程会通过轮询检测数据库变更，无需额外通知
+  }
+
+  private checkJobPermission(id: string): CronJob {
+    const job = this.storage.getJob(id)
+    if (!job) throw new Error(`任务不存在: ${id}`)
+    if (job.platform !== this.platform) throw new Error(`无权限操作其他平台的任务`)
+    return job
   }
 
   tools(): Tool[] {
@@ -94,8 +104,6 @@ export class CronMcpServer extends BaseMcpServer {
             timezone?: string
           }
 
-          // 从环境变量获取会话上下文
-          const platform = process.env.FRICLAW_PLATFORM || 'dashboard'
           const chatId = process.env.FRICLAW_CHAT_ID || 'system'
           const userId = process.env.FRICLAW_USER_ID || 'system'
           const chatType = (process.env.FRICLAW_CHAT_TYPE as 'private' | 'group') || 'private'
@@ -105,7 +113,7 @@ export class CronMcpServer extends BaseMcpServer {
             cronExpression,
             prompt,
             timezone,
-            platform,
+            platform: this.platform,
             chatId,
             userId,
             chatType,
@@ -116,7 +124,7 @@ export class CronMcpServer extends BaseMcpServer {
         }
 
         case 'cron_list': {
-          const jobs = this.storage.listJobs()
+          const jobs = this.storage.listJobs(this.platform)
           if (jobs.length === 0) return this.ok('暂无定时任务')
           const text = jobs
             .map(j => `[${j.enabled ? '✓' : '✗'}] ${j.name}\n  ID: ${j.id}\n  Cron: ${j.cronExpression}${j.timezone ? `\n  时区: ${j.timezone}` : ''}\n  提示词: ${j.prompt}`)
@@ -126,6 +134,7 @@ export class CronMcpServer extends BaseMcpServer {
 
         case 'cron_delete': {
           const { id } = args as { id: string }
+          this.checkJobPermission(id)
           this.storage.deleteJob(id)
           this.notifyMainProcess()
           return this.ok(`任务已删除: ${id}`)
@@ -133,14 +142,15 @@ export class CronMcpServer extends BaseMcpServer {
 
         case 'cron_update': {
           const { id, enabled, timezone } = args as { id: string; enabled?: boolean; timezone?: string }
-          const updated = this.storage.updateJob(id, { enabled, timezone })
-          if (!updated) return this.err(`任务不存在: ${id}`)
+          this.checkJobPermission(id)
+          this.storage.updateJob(id, { enabled, timezone })
           this.notifyMainProcess()
           return this.ok(`任务已更新: ${id}`)
         }
 
         case 'cron_history': {
           const { id, limit } = args as { id: string; limit?: number }
+          this.checkJobPermission(id)
           const history = this.storage.getExecutionHistory(id, limit)
           if (history.length === 0) return this.ok('暂无执行历史')
           const text = history
