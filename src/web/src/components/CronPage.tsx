@@ -20,6 +20,7 @@ export function CronPage() {
   const [jobs, setJobs] = useState<CronJob[]>([]);
   const [editingJob, setEditingJob] = useState<CronJob | null>(null);
   const [error, setError] = useState<string>('');
+  const [platformFilter, setPlatformFilter] = useState<string>('all');
 
   useEffect(() => {
     loadJobs();
@@ -69,10 +70,63 @@ export function CronPage() {
     }
   };
 
+  const getPlatformBadge = (platform: string) => {
+    const badges = {
+      dashboard: { bg: 'bg-blue-900', text: 'text-blue-300', label: 'Dashboard' },
+      feishu: { bg: 'bg-indigo-900', text: 'text-indigo-300', label: '飞书' },
+      weixin: { bg: 'bg-emerald-900', text: 'text-emerald-300', label: '微信' },
+      wecom: { bg: 'bg-purple-900', text: 'text-purple-300', label: '企业微信' },
+    };
+    return badges[platform as keyof typeof badges] || badges.dashboard;
+  };
+
+  const parseSchedule = (cronExpression: string) => {
+    if (cronExpression.includes('T')) {
+      const date = new Date(cronExpression);
+      return {
+        time: date.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }),
+        frequency: '单次'
+      };
+    }
+
+    const parts = cronExpression.split(' ');
+    if (parts.length === 5) {
+      const [minute, hour] = parts;
+      const displayMinute = minute === '*' ? '00' : (minute.startsWith('*/') ? `每${minute.slice(2)}分钟` : minute);
+      const displayHour = hour === '*' ? '每小时' : hour;
+
+      if (hour === '*') {
+        return { time: displayMinute, frequency: '每小时' };
+      }
+
+      return {
+        time: typeof displayMinute === 'string' && !displayMinute.includes('每')
+          ? `${displayHour}:${displayMinute.padStart(2, '0')}`
+          : `${displayHour}:${displayMinute}`,
+        frequency: '每天'
+      };
+    }
+
+    return { time: cronExpression, frequency: '定时' };
+  };
+
+  const filteredJobs = platformFilter === 'all' ? jobs : jobs.filter(job => job.platform === platformFilter);
+
   return (
     <div className="h-full flex flex-col bg-gray-900">
       <div className="flex items-center justify-between px-6 py-4 border-b border-gray-800">
         <h2 className="text-lg font-semibold text-gray-100">定时任务</h2>
+        <select
+          value={platformFilter}
+          onChange={(e) => setPlatformFilter(e.target.value)}
+          className="px-3 py-1.5 bg-gray-800 text-gray-100 rounded border border-gray-700 text-sm focus:border-blue-500 focus:outline-none"
+        >
+          <option value="all">全部平台</option>
+          <option value="dashboard">Dashboard</option>
+          <option value="feishu">飞书</option>
+          <option value="weixin">微信</option>
+          <option value="wecom">企业微信</option>
+        </select>
       </div>
 
       {error && (
@@ -82,11 +136,14 @@ export function CronPage() {
       )}
 
       <div className="flex-1 overflow-y-auto p-6">
-        {jobs.length === 0 ? (
+        {filteredJobs.length === 0 ? (
           <div className="text-center text-gray-500 py-12">暂无定时任务</div>
         ) : (
           <div className="space-y-3">
-            {jobs.map((job) => (
+            {filteredJobs.map((job) => {
+              const platformBadge = getPlatformBadge(job.platform);
+              const schedule = parseSchedule(job.cronExpression);
+              return (
               <div
                 key={job.id}
                 className="bg-gray-800 rounded-lg p-4 hover:bg-gray-750 transition-colors"
@@ -99,9 +156,12 @@ export function CronPage() {
                       <span className={`px-2 py-1 text-xs rounded ${job.enabled ? 'bg-green-900 text-green-300' : 'bg-gray-700 text-gray-400'}`}>
                         {job.enabled ? '启用' : '禁用'}
                       </span>
+                      <span className={`px-2 py-1 text-xs rounded ${platformBadge.bg} ${platformBadge.text}`}>
+                        {platformBadge.label}
+                      </span>
                     </div>
                     <div className="mt-2 text-sm text-gray-400">
-                      <div>表达式: {job.cronExpression}</div>
+                      <div>执行时间: {schedule.time} | 频率: {schedule.frequency}</div>
                       <div className="mt-1">提示词: {job.prompt.slice(0, 60)}{job.prompt.length > 60 ? '...' : ''}</div>
                     </div>
                   </div>
@@ -121,7 +181,8 @@ export function CronPage() {
                   </div>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

@@ -12,7 +12,10 @@ import './styles/globals.css';
 
 function App() {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
-  const [activeView, setActiveView] = useState<'chat' | 'config' | 'cron'>('chat');
+  const [activeView, setActiveView] = useState<'chat' | 'config' | 'cron'>(() => {
+    const saved = localStorage.getItem('activeView');
+    return (saved === 'config' || saved === 'cron') ? saved as 'config' | 'cron' : 'chat';
+  });
   const { sessions, currentSessionId, selectSession, updateSession } = useSessions();
   const { messages, isConnected, sendMessage, connectionStatus, error } = useWebSocket(
     currentSessionId,
@@ -22,17 +25,20 @@ function App() {
   const handleSelectSession = (sessionId: string) => {
     setIsMobileSidebarOpen(false);
     setActiveView('chat');
+    localStorage.setItem('activeView', 'chat');
     selectSession(sessionId);
   };
 
   const handleSelectConfig = () => {
     setIsMobileSidebarOpen(false);
     setActiveView('config');
+    localStorage.setItem('activeView', 'config');
   };
 
   const handleSelectCron = () => {
     setIsMobileSidebarOpen(false);
     setActiveView('cron');
+    localStorage.setItem('activeView', 'cron');
   };
 
   const handleSendMessage = (text: string) => {
@@ -66,6 +72,7 @@ function App() {
           onSelectConfig={handleSelectConfig}
           onSelectCron={handleSelectCron}
           connectionStatus={connectionStatus}
+          activeView={activeView}
           className={`fixed md:static top-0 left-0 h-full z-50 transform transition-transform md:translate-x-0 ${
             isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'
           }`}

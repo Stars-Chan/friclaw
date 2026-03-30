@@ -19,6 +19,7 @@ interface SidebarProps {
   onSelectConfig: () => void;
   onSelectCron: () => void;
   connectionStatus: ConnectionStatus;
+  activeView: 'chat' | 'config' | 'cron';
   className?: string;
 }
 
@@ -57,7 +58,7 @@ const MODULES: Module[] = [
   },
 ];
 
-export function Sidebar({ sessions, currentSessionId, onSelectSession, onSelectConfig, onSelectCron, connectionStatus, className }: SidebarProps) {
+export function Sidebar({ sessions, currentSessionId, onSelectSession, onSelectConfig, onSelectCron, connectionStatus, activeView, className }: SidebarProps) {
   const [expandedModules, setExpandedModules] = useState<Set<ModuleKey>>(new Set(['chat']));
 
   const toggleModule = (moduleKey: ModuleKey) => {
@@ -106,7 +107,7 @@ export function Sidebar({ sessions, currentSessionId, onSelectSession, onSelectC
               <div
                 key={module.key}
                 className={`flex items-center gap-2 px-4 py-3 cursor-pointer transition-colors border-b border-gray-100 ${
-                  'bg-blue-50 text-blue-600'
+                  activeView === 'chat' ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-50 text-gray-700'
                 }`}
                 onClick={() => onSelectSession(currentSessionId)}
               >
@@ -137,16 +138,19 @@ export function Sidebar({ sessions, currentSessionId, onSelectSession, onSelectC
                 <div className="bg-gray-50">
                   {module.items.map((item) => {
                     const ItemIcon = item.icon;
+                    const isActive = activeView === item.key;
                     return (
                       <div
                         key={item.key}
-                        className="flex items-center gap-2 px-6 py-2 cursor-pointer hover:bg-gray-100 text-gray-700"
+                        className={`flex items-center gap-2 px-6 py-2 cursor-pointer ${
+                          isActive ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-100 text-gray-700'
+                        }`}
                         onClick={() => {
                           if (item.key === 'config') onSelectConfig();
                           if (item.key === 'cron') onSelectCron();
                         }}
                       >
-                        <ItemIcon className="w-4 h-4 text-gray-500" />
+                        <ItemIcon className={`w-4 h-4 ${isActive ? 'text-blue-600' : 'text-gray-500'}`} />
                         <span className="text-sm">{item.label}</span>
                       </div>
                     );
