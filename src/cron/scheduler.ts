@@ -13,16 +13,36 @@ export class CronScheduler extends EventEmitter {
   private storage: CronStorage
   private schedulers: Map<string, Cron> = new Map()
   private inFlight: Set<string> = new Set()
+  private checkInterval?: Timer
+  private lastDataVersion = 0
+  private checkIntervalMs: number
 
-  constructor(dbPath: string) {
+  constructor(dbPath: string, checkIntervalMs = 5000) {
     super()
     this.storage = new CronStorage(dbPath)
+    this.checkIntervalMs = checkIntervalMs
   }
 
   async start(): Promise<void> {
     const jobs = this.storage.listJobs()
     for (const job of jobs) {
       if (job.enabled) this.schedule(job)
+    }
+    this.lastDataVersion = this.storage.getDataVersion()
+
+    this.checkInterval = setInterval(() => this.checkForChanges(), this.checkIntervalMs)
+  }
+
+  private checkForChanges(): void {
+    try {
+      const currentVersion = this.storage.getDataVersion()
+      if (currentVersion !== this.lastDataVersion) {
+        console.log('[CronScheduler] Database changed, reloading')
+        this.lastDataVersion = currentVersion
+        this.reload()
+      }
+    } catch (error) {
+      console.error('[CronScheduler] Error checking for changes:', error)
     }
   }
 
@@ -43,10 +63,14 @@ export class CronScheduler extends EventEmitter {
     for (const job of jobs) {
       if (job.enabled) this.schedule(job)
     }
+    this.lastDataVersion = this.storage.getDataVersion()
     console.log(`[CronScheduler] Reloaded ${jobs.length} jobs`)
   }
 
   async stop(): Promise<void> {
+    if (this.checkInterval) {
+      clearInterval(this.checkInterval)
+    }
     for (const [id, scheduler] of this.schedulers) {
       if (typeof scheduler === 'number') {
         clearTimeout(scheduler)

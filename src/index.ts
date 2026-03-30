@@ -86,6 +86,7 @@ async function startDaemon(): Promise<void> {
   })
 
   const gateways: Gateway[] = []
+  let dashboardPush: ((sessionId: string, content: string) => Promise<void>) | null = null
 
   if (config.gateways.feishu.enabled) {
     const { appId, appSecret, encryptKey, verificationToken } = config.gateways.feishu
@@ -113,14 +114,6 @@ async function startDaemon(): Promise<void> {
   cronScheduler.on('job:execute', (event) => {
     logger.info({ jobId: event.jobId, platform: event.job.platform, chatId: event.job.chatId }, 'Cron job executing')
 
-    // 找到对应的 gateway
-    const gateway = gateways.find(g => g.kind === event.job.platform)
-    if (!gateway) {
-      logger.error({ platform: event.job.platform }, 'Gateway not found for cron job')
-      return
-    }
-
-    // 异步处理，避免阻塞后续任务
     const message = {
       platform: event.job.platform as any,
       chatId: event.job.chatId,
@@ -129,46 +122,44 @@ async function startDaemon(): Promise<void> {
       content: event.job.prompt,
     }
 
-    // 创建 reply 函数，使用 gateway.send 发送消息
-    const reply = async (content: string) => {
-      await gateway.send(event.job.chatId, content, event.job.chatType)
-      return content
+    const logResult = (jobId: string) => ({
+      onSuccess: () => logger.info({ jobId }, 'Cron job dispatched'),
+      onError: (error: any) => logger.error({ err: error, jobId }, 'Cron job failed'),
+    })
+
+    // Dashboard 平台使用推送函数
+    if (event.job.platform === 'dashboard') {
+      if (!dashboardPush) {
+        logger.error('Dashboard push function not available')
+        return
+      }
+      const push = dashboardPush
+      const { onSuccess, onError } = logResult(event.jobId)
+      dispatcher.dispatch(message, async (content: string) => {
+        await push(event.job.chatId, content)
+        return content
+      }).then(onSuccess).catch(onError)
+      return
     }
 
-    dispatcher.dispatch(message, reply)
-      .then(() => {
-        logger.info({ jobId: event.jobId }, 'Cron job message dispatched')
-      })
-      .catch((error) => {
-        logger.error({ err: error, jobId: event.jobId }, 'Cron job dispatch failed')
-      })
+    const gateway = gateways.find(g => g.kind === event.job.platform)
+    if (!gateway) {
+      logger.error({ platform: event.job.platform }, 'Gateway not found for cron job')
+      return
+    }
+
+    const { onSuccess, onError } = logResult(event.jobId)
+    dispatcher.dispatch(message, async (content: string) => {
+      await gateway.send(event.job.chatId, content, event.job.chatType)
+      return content
+    }).then(onSuccess).catch(onError)
   })
 
   await cronScheduler.start()
   logger.info('Cron scheduler started')
 
-  // 监听信号文件变化，自动重新加载任务
-  const signalFile = join(process.cwd(), '.cron-reload')
-  const { writeFileSync, existsSync, watch } = await import('fs')
-
-  // 确保信号文件存在
-  if (!existsSync(signalFile)) {
-    writeFileSync(signalFile, '')
-  }
-
-  let reloadTimer: Timer | null = null
-  watch(signalFile, { persistent: false }, async (eventType) => {
-    if (eventType === 'change') {
-      if (reloadTimer) clearTimeout(reloadTimer)
-      reloadTimer = setTimeout(() => cronScheduler.reload(), 200)
-    }
-  })
-
   if (config.dashboard.enabled) {
-    // Start dashboard in background, don't block gateway startup
-    startDashboard(config.dashboard.port, dispatcher, config.workspaces.dir).catch((err) => {
-      logger.error({ err }, 'Dashboard startup failed')
-    })
+    dashboardPush = await startDashboard(config.dashboard.port, dispatcher, config.workspaces.dir)
   }
 
   await Promise.all(gateways.map(g => g.start(dispatcher)))

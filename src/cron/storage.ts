@@ -159,6 +159,11 @@ export class CronStorage {
     }
   }
 
+  getDataVersion(): number {
+    const result = this.db.prepare('PRAGMA data_version').get() as any
+    return result.data_version
+  }
+
   close(): void {
     this.db.close()
   }

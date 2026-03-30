@@ -1,7 +1,5 @@
 import { BaseMcpServer, type Tool, type CallToolResult } from '../mcp/server'
 import type { CronStorage } from './storage'
-import { writeFileSync } from 'fs'
-import { join } from 'path'
 import { DateTime } from 'luxon'
 
 export class CronMcpServer extends BaseMcpServer {
@@ -10,12 +8,7 @@ export class CronMcpServer extends BaseMcpServer {
   }
 
   private notifyMainProcess(): void {
-    // 通过写入信号文件通知主进程重新加载任务
-    // 使用环境变量传递的工作目录，确保路径一致
-    const workDir = process.env.FRICLAW_WORKDIR || process.cwd()
-    const signalFile = join(workDir, '.cron-reload')
-    writeFileSync(signalFile, Date.now().toString())
-    console.log(`[CronMCP] Signal file written: ${signalFile}`)
+    // 主进程会通过轮询检测数据库变更，无需额外通知
   }
 
   tools(): Tool[] {

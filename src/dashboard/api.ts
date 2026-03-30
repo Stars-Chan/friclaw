@@ -22,13 +22,17 @@ interface ServerWebSocket {
 const startTime = Date.now()
 const WEB_DIR = join(process.cwd(), 'src/web')
 
+export interface DashboardPushFn {
+  (sessionId: string, content: string): Promise<void>
+}
+
 export async function startDashboard(
   port: number,
   dispatcher: Dispatcher,
   workspacesDir: string,
-): Promise<void> {
+): Promise<DashboardPushFn> {
   const sessionManager = new DashboardSessionManager(workspacesDir)
-  const clients = new Map<string, any>() // sessionId -> WebSocket
+  const clients = new Map<string, ServerWebSocket>() // sessionId -> WebSocket
 
   // Start frontend dev server if web directory exists
   let frontendProcess: ReturnType<typeof spawn> | null = null
@@ -162,14 +166,13 @@ export async function startDashboard(
       close: (ws) => {
         const serverWs = ws as unknown as ServerWebSocket
         const clientId = serverWs.data?.clientId
+        const sessionId = serverWs.data?.sessionId
         logger.debug(`WebSocket client disconnected: ${clientId}`)
 
-        // Find and remove all sessions associated with this connection
-        for (const [sessionId, clientWs] of clients.entries()) {
-          if (clientWs === ws) {
-            sessionManager.disconnect(sessionId)
-            clients.delete(sessionId)
-          }
+        // Remove client from map
+        if (sessionId) {
+          clients.delete(sessionId)
+          sessionManager.disconnect(sessionId)
         }
       },
     },
@@ -194,8 +197,22 @@ export async function startDashboard(
     process.exit(0)
   })
 
-  // Keep the server running
-  return new Promise(() => {})
+  // Return push function for cron jobs
+  return async (sessionId: string, content: string) => {
+    const ws = clients.get(sessionId)
+    if (ws) {
+      sendToClient(ws, {
+        type: 'response',
+        sessionId,
+        data: { text: content },
+      })
+      await sessionManager.saveMessage(sessionId, {
+        role: 'assistant',
+        content,
+        timestamp: Date.now(),
+      })
+    }
+  }
 }
 
 async function handleWebSocketMessage(
