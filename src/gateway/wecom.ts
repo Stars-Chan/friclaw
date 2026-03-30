@@ -8,6 +8,8 @@ import type { RunResponseStats } from '../agent/types'
 import { formatStats } from './format-stats'
 import { buildStreamContent } from './format-content'
 
+const log = logger('wecom')
+
 interface WecomConfig {
   botId: string
   secret: string
@@ -56,17 +58,17 @@ export class WecomGateway implements Gateway {
   async start(dispatcher: Dispatcher): Promise<void> {
     this._dispatcher = dispatcher
 
-    this._client.on('open', () => logger.info('企业微信网关已连接'))
-    this._client.on('subscribed', () => logger.info('企业微信订阅成功'))
+    this._client.on('open', () => log.info('企业微信网关已连接'))
+    this._client.on('subscribed', () => log.info('企业微信订阅成功'))
     this._client.on('close', (code: number, reason: string) =>
-      logger.warn({ code, reason }, '企业微信连接断开'))
+      log.warn({ code, reason }, '企业微信连接断开'))
     this._client.on('error', (err: Error) =>
-      logger.error({ err }, '企业微信连接错误'))
+      log.error({ err }, '企业微信连接错误'))
     this._client.on('message', (msg: unknown) => {
       const m = msg as MessageCallback
       if ('eventType' in (msg as object)) return
       this._handleInboundMessage(m).catch((err) =>
-        logger.error({ err }, '企业微信消息处理失败'))
+        log.error({ err }, '企业微信消息处理失败'))
     })
 
     this._client.connect()
@@ -85,7 +87,7 @@ export class WecomGateway implements Gateway {
     this.seenMsgIds.clear()
     this.activeStreams.clear()
     this._client.disconnect()
-    logger.info('企业微信网关已停止')
+    log.info('企业微信网关已停止')
   }
 
   private _startCleanupTimer(): void {
@@ -105,7 +107,7 @@ export class WecomGateway implements Gateway {
 
     if (!reqId) {
       // 定时任务等主动推送场景，使用主动发送方法
-      logger.info({ chatId, chatType, isGroup: chatType === 'group' }, '企业微信主动推送消息')
+      log.info({ chatId, chatType, isGroup: chatType === 'group' }, '企业微信主动推送消息')
       this._client.sendProactiveMessage({ chatId, content: text, isGroup: chatType === 'group' })
       return ''
     }
@@ -203,7 +205,7 @@ export class WecomGateway implements Gateway {
     }
 
     const reply = (text: string) => {
-      logger.info({
+      log.info({
         content: text,
         conversationId: msg.chatId,
         originalMessage: msg.content,
@@ -237,7 +239,7 @@ export class WecomGateway implements Gateway {
           const oldId = currentStreamId
           currentStreamId = generateStreamId()
           streamStartedAt = Date.now()
-          logger.info({ oldStreamId: oldId, newStreamId: currentStreamId }, '企业微信流已过期，已轮换到新流')
+          log.info({ oldStreamId: oldId, newStreamId: currentStreamId }, '企业微信流已过期，已轮换到新流')
         }
         return currentStreamId
       }
@@ -289,7 +291,7 @@ export class WecomGateway implements Gateway {
             stats
           })
 
-          logger.info({ conversationId: msg.chatId }, '企业微信流式回复完成')
+          log.info({ conversationId: msg.chatId }, '企业微信流式回复完成')
           this._client.sendStream({ reqId: wsMsg.reqId, streamId: ensureActiveStream(), content: finalContent, finish: true })
           this.activeStreams.delete(streamKey)
         }
@@ -297,7 +299,7 @@ export class WecomGateway implements Gateway {
     }
 
     this._dispatcher.dispatch(msg, reply, streamHandler).catch((err) => {
-      logger.error({ err }, '企业微信 dispatch 失败')
+      log.error({ err }, '企业微信 dispatch 失败')
       this._client.sendMarkdown({ reqId: wsMsg.reqId, content: '处理消息时出错，请稍后再试。' })
       this.activeStreams.delete(streamKey)
     })

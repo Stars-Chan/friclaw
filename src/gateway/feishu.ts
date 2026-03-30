@@ -1,5 +1,5 @@
 // src/gateway/feishu.ts
-import lark from '@larksuiteoapi/node-sdk'
+import * as lark from '@larksuiteoapi/node-sdk'
 import { logger } from '../utils/logger'
 import type { Dispatcher, StreamHandler } from '../dispatcher'
 import type { Gateway } from './types'
@@ -8,6 +8,8 @@ import { unlinkSync } from 'node:fs'
 import type { RunResponseStats } from '../agent/types'
 import { formatStats } from './format-stats'
 import { sanitizeForFeishuCard } from './format-content'
+
+const log = logger('feishu')
 
 // ── Card Element Types for JSON 2.0 ─────────────────────────────
 
@@ -90,7 +92,7 @@ export class FeishuGateway implements Gateway {
 
         // 消息去重：检查是否已处理过该message_id
         if (this.processedMessageIds.has(msg.messageId)) {
-          logger.debug({ messageId: msg.messageId, conversationId: msg.chatId }, '跳过重复消息')
+          log.debug('跳过重复消息', { messageId: msg.messageId, conversationId: msg.chatId })
           return
         }
 
@@ -102,12 +104,12 @@ export class FeishuGateway implements Gateway {
           const firstToDelete = Array.from(this.processedMessageIds).at(0)
           if (firstToDelete) {
             this.processedMessageIds.delete(firstToDelete)
-            logger.debug({ size: this.processedMessageIds.size }, '消息去重缓存已清理')
+            log.debug('消息去重缓存已清理', { size: this.processedMessageIds.size })
           }
         }
 
         const reply = (content: string) => {
-          logger.info({ content, conversationId: msg.chatId }, '飞书回复')
+          log.info('飞书回复', { content, conversationId: msg.chatId })
           return this.send(msg.chatId, content)
         }
         const streamHandler = this.buildStreamHandler(msg)
@@ -123,14 +125,14 @@ export class FeishuGateway implements Gateway {
     } as never)
 
     await this.wsClient.start({ eventDispatcher })
-    logger.info('飞书网关已连接')
+    log.info('飞书网关已连接')
   }
 
   async stop(): Promise<void> {
     this.wsClient = null
     this.client = null
     this.dispatcher = null
-    logger.info('飞书网关已停止')
+    log.info('飞书网关已停止')
   }
 
   async send(chatId: string, content: string): Promise<string> {
@@ -230,11 +232,11 @@ export class FeishuGateway implements Gateway {
         unlinkSync(tmpPath) // Clean up temp file
         return [{ type: 'image', buffer: Buffer.from(buffer) }]
       } else {
-        logger.warn({ res }, 'Unexpected messageResource response type')
+        log.warn('Unexpected messageResource response type', { res })
         return []
       }
     } catch (err) {
-      logger.error({ err }, 'Failed to download Feishu image')
+      log.error('Failed to download Feishu image', { err })
       return []
     }
   }
@@ -257,7 +259,7 @@ export class FeishuGateway implements Gateway {
       if (cardId) return cardId
       cardId = await this.createCardEntity()
       await this.sendCardByRef(msg.chatId, cardId, msg.messageId)
-      logger.info(`Streaming card ${cardId} sent to ${msg.chatId}`)
+      log.info(`Streaming card ${cardId} sent to ${msg.chatId}`)
       return cardId
     }
 
@@ -278,14 +280,14 @@ export class FeishuGateway implements Gateway {
     const refreshPanelHeader = async (id: string, label: string): Promise<void> => {
       const countText = stepCount + ' ' + (stepCount === 1 ? 'step' : 'steps')
       await this.updatePanelHeader(id, `${label} (${countText})`, seq++).catch((e) =>
-        logger.debug(`updatePanelHeader failed: ${e}`)
+        log.debug(`updatePanelHeader failed: ${e}`)
       )
     }
 
     const finalizeThinking = async (id: string): Promise<void> => {
       if (!currentThinkingId) return
       await this.updateStepText(id, currentThinkingId, currentThinkingText, seq++).catch((e) =>
-        logger.debug(`final thinking segment flush failed: ${e}`)
+        log.debug(`final thinking segment flush failed: ${e}`)
       )
       currentThinkingId = null
       currentThinkingText = ''
@@ -306,14 +308,14 @@ export class FeishuGateway implements Gateway {
               currentThinkingId = `thinking_${thinkingSegmentCount}`
               const thinkingDiv = this.buildStepDiv('', 'robot_outlined', currentThinkingId)
               await addStep(id, thinkingDiv, currentThinkingId).catch((e) =>
-                logger.debug(`addStep (thinking) failed: ${e}`)
+                log.debug(`addStep (thinking) failed: ${e}`)
               )
               await refreshPanelHeader(id, 'Working on it')
             }
 
             if (now - lastThinkingFlush >= FLUSH_INTERVAL_MS) {
               await this.updateStepText(id, currentThinkingId, currentThinkingText, seq++).catch(
-                (e) => logger.debug(`thinking update failed: ${e}`)
+                (e) => log.debug(`thinking update failed: ${e}`)
               )
               lastThinkingFlush = now
             }
@@ -327,7 +329,7 @@ export class FeishuGateway implements Gateway {
             const stepDiv = this.buildStepDiv(text, icon, stepElementId)
 
             await addStep(id, stepDiv, stepElementId).catch((e) =>
-              logger.debug(`addStep (tool) failed: ${e}`)
+              log.debug(`addStep (tool) failed: ${e}`)
             )
             await refreshPanelHeader(id, 'Working on it')
           } else if (event.type === 'text_delta') {
@@ -337,14 +339,14 @@ export class FeishuGateway implements Gateway {
             mainText += event.text as string
             if (now - lastMainFlush >= FLUSH_INTERVAL_MS) {
               await this.updateCardText(id, STREAM_EL.mainMd, mainText, seq++).catch((e) =>
-                logger.debug(`main update failed: ${e}`)
+                log.debug(`main update failed: ${e}`)
               )
               lastMainFlush = now
             }
           } else if (event.type === 'ask_questions') {
             const id = await ensureCard()
             await this.sendInteractiveForm(id, event.questions as string[])
-            logger.info(`Question form appended to card ${id}`)
+            log.info(`Question form appended to card ${id}`)
           } else if (event.type === 'done') {
             const response = event.response as RunResponseStats
             const stats = formatStats(response)
@@ -354,18 +356,18 @@ export class FeishuGateway implements Gateway {
 
             mainText = response.text || mainText
             await this.updateCardText(id, STREAM_EL.mainMd, mainText, seq++).catch((e) =>
-              logger.debug(`final main update failed: ${e}`)
+              log.debug(`final main update failed: ${e}`)
             )
 
             if (stepsPanelAdded && stepCount > 0) {
               const countText = stepCount + ' ' + (stepCount === 1 ? 'step' : 'steps')
               await this.updatePanelHeader(id, `Show ${countText}`, seq++).catch((e) =>
-                logger.debug(`final header update failed: ${e}`)
+                log.debug(`final header update failed: ${e}`)
               )
             }
 
             await this.deleteCardElement(id, STREAM_EL.loadingDiv, seq++).catch((e) =>
-              logger.debug(`delete loading div failed: ${e}`)
+              log.debug(`delete loading div failed: ${e}`)
             )
 
             if (stats) {
@@ -376,18 +378,18 @@ export class FeishuGateway implements Gateway {
                   { tag: 'markdown', element_id: STREAM_EL.statsNote, content: `*${stats}*` },
                 ],
                 seq++
-              ).catch((e) => logger.debug(`append stats failed: ${e}`))
+              ).catch((e) => log.debug(`append stats failed: ${e}`))
             }
 
             // 过滤外部图片URL后再记录和发送
             const sanitizedMainText = sanitizeForFeishuCard(mainText)
-            logger.info({ content: sanitizedMainText, conversationId: msg.chatId }, '飞书流式回复完成')
+            log.info('飞书流式回复完成', { content: sanitizedMainText, conversationId: msg.chatId })
           }
         }
       } finally {
         if (cardId) {
           await this.closeCardStreaming(cardId, seq++).catch((e) =>
-            logger.debug(`closeCardStreaming failed: ${e}`)
+            log.debug(`closeCardStreaming failed: ${e}`)
           )
           if (stepsPanelAdded && stepCount > 0) {
             await this.patchCardElement(
@@ -395,7 +397,7 @@ export class FeishuGateway implements Gateway {
               STREAM_EL.stepsPanel,
               { expanded: false },
               seq++
-            ).catch((e) => logger.debug(`collapse steps panel failed: ${e}`))
+            ).catch((e) => log.debug(`collapse steps panel failed: ${e}`))
           }
         }
       }

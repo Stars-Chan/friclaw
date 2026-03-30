@@ -9,7 +9,7 @@ import { Dispatcher } from './dispatcher'
 import { CronScheduler } from './cron/scheduler'
 import { startDashboard } from './dashboard/api'
 import { registerShutdownHandlers } from './daemon'
-import { logger } from './utils/logger'
+import { logger, initFileLogs } from './utils/logger'
 import { runOnboard } from './onboard'
 import { FeishuGateway } from './gateway/feishu'
 import { WecomGateway } from './gateway/wecom'
@@ -61,10 +61,14 @@ async function main(): Promise<void> {
 }
 
 async function startDaemon(): Promise<void> {
-  logger.info('FriClaw starting...')
+  const logsDir = join(homedir(), '.friclaw', 'logs')
+  initFileLogs(logsDir)
+
+  const log = logger('main')
+  log.info('FriClaw starting...')
 
   const config = await loadConfig()
-  logger.info({ model: config.agent.model }, 'Config loaded')
+  log.info('Config loaded', { model: config.agent.model })
 
   const memory = new MemoryManager(config.memory)
   await memory.init()
@@ -112,7 +116,7 @@ async function startDaemon(): Promise<void> {
 
   // 监听任务执行事件（必须在 start() 之前注册）
   cronScheduler.on('job:execute', (event) => {
-    logger.info({ jobId: event.jobId, platform: event.job.platform, chatId: event.job.chatId }, 'Cron job executing')
+    log.info('Cron job executing', { jobId: event.jobId, platform: event.job.platform, chatId: event.job.chatId })
 
     const message: Message = {
       platform: event.job.platform as 'dashboard' | 'feishu' | 'wecom' | 'weixin',
@@ -125,14 +129,14 @@ async function startDaemon(): Promise<void> {
     }
 
     const logResult = (jobId: string) => ({
-      onSuccess: () => logger.info({ jobId }, 'Cron job dispatched'),
-      onError: (error: any) => logger.error({ err: error, jobId }, 'Cron job failed'),
+      onSuccess: () => log.info('Cron job dispatched', { jobId }),
+      onError: (error: any) => log.error('Cron job failed', { err: error, jobId }),
     })
 
     // Dashboard 平台使用推送函数
     if (event.job.platform === 'dashboard') {
       if (!dashboardPush) {
-        logger.error('Dashboard push function not available')
+        log.error('Dashboard push function not available')
         return
       }
       const push = dashboardPush
@@ -146,7 +150,7 @@ async function startDaemon(): Promise<void> {
 
     const gateway = gateways.find(g => g.kind === event.job.platform)
     if (!gateway) {
-      logger.error({ platform: event.job.platform }, 'Gateway not found for cron job')
+      log.error('Gateway not found for cron job', { platform: event.job.platform })
       return
     }
 
@@ -158,21 +162,27 @@ async function startDaemon(): Promise<void> {
   })
 
   await cronScheduler.start()
-  logger.info('Cron scheduler started')
+  log.info('Cron scheduler started')
 
   if (config.dashboard.enabled) {
     dashboardPush = await startDashboard(config.dashboard.port, dispatcher, config.workspaces.dir, cronScheduler)
   }
 
   await Promise.all(gateways.map(g => g.start(dispatcher)))
-  logger.info({ gateways: gateways.map(g => g.kind) }, '网关已启动')
+  log.info('网关已启动', { gateways: gateways.map(g => g.kind) })
 
   registerShutdownHandlers(dispatcher)
 
-  logger.info('FriClaw ready')
+  log.info('FriClaw ready')
 }
 
 main().catch((err) => {
-  logger.error({ err }, 'Fatal startup error')
+  const log = logger('main')
+  log.error('Fatal startup error', {
+    message: err?.message || String(err),
+    stack: err?.stack,
+    err
+  })
+  console.error('Fatal error:', err)
   process.exit(1)
 })

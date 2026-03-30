@@ -9,6 +9,8 @@ import { spawn } from 'child_process'
 import { existsSync } from 'fs'
 import { join } from 'path'
 
+const log = logger('dashboard')
+
 interface WebSocketData {
   clientId: string
   sessionId?: string
@@ -39,7 +41,7 @@ export async function startDashboard(
   // Start frontend dev server if web directory exists
   let frontendProcess: ReturnType<typeof spawn> | null = null
   if (existsSync(WEB_DIR)) {
-    logger.info('Starting frontend dev server...')
+    log.info('Starting frontend dev server...')
     frontendProcess = spawn('bun', ['run', 'dev'], {
       cwd: WEB_DIR,
       stdio: 'pipe',
@@ -49,12 +51,12 @@ export async function startDashboard(
     frontendProcess.stdout?.on('data', (data) => {
       const output = data.toString()
       if (output.includes('Local:') || output.includes('ready')) {
-        logger.info(`Frontend: ${output.trim()}`)
+        log.info(`Frontend: ${output.trim()}`)
       }
     })
 
     frontendProcess.stderr?.on('data', (data) => {
-      logger.error(`Frontend error: ${data.toString()}`)
+      log.error(`Frontend error: ${data.toString()}`)
     })
   }
 
@@ -221,13 +223,13 @@ export async function startDashboard(
         const wsClientId = Math.random().toString(36).slice(2)
         const serverWs = ws as unknown as ServerWebSocket
         serverWs.data = { clientId: wsClientId }
-        logger.debug(`WebSocket client connected: ${wsClientId}`)
+        log.debug(`WebSocket client connected: ${wsClientId}`)
       },
       close: (ws) => {
         const serverWs = ws as unknown as ServerWebSocket
         const clientId = serverWs.data?.clientId
         const sessionId = serverWs.data?.sessionId
-        logger.debug(`WebSocket client disconnected: ${clientId}`)
+        log.debug(`WebSocket client disconnected: ${clientId}`)
 
         // Remove client from map
         if (sessionId) {
@@ -239,15 +241,15 @@ export async function startDashboard(
   })
 
   // Log access URLs
-  logger.info(``)
-  logger.info(`🚀 FriClaw Dashboard is ready!`)
-  logger.info(``)
-  logger.info(`   Dashboard:  http://localhost:5173`)
-  logger.info(`   WebSocket:  ws://localhost:${port}/ws`)
-  logger.info(`   API:        http://localhost:${port}`)
-  logger.info(``)
-  logger.info(`   Press Ctrl+C to stop`)
-  logger.info(``)
+  log.info(``)
+  log.info(`🚀 FriClaw Dashboard is ready!`)
+  log.info(``)
+  log.info(`   Dashboard:  http://localhost:5173`)
+  log.info(`   WebSocket:  ws://localhost:${port}/ws`)
+  log.info(`   API:        http://localhost:${port}`)
+  log.info(``)
+  log.info(`   Press Ctrl+C to stop`)
+  log.info(``)
 
   // Cleanup on exit
   process.on('SIGINT', () => {
@@ -289,7 +291,7 @@ async function handleWebSocketMessage(
     if (data.type === 'register') {
       // Session registration
       const sessionId = data.sessionId || 'default'
-      logger.debug(`Registering session: ${sessionId}, connection: ${clientId}`)
+      log.debug(`Registering session: ${sessionId}, connection: ${clientId}`)
 
       // Store WebSocket for this session
       clients.set(sessionId, ws)
@@ -328,7 +330,7 @@ async function handleWebSocketMessage(
       clients.set(sessionId, ws)
       ws.data.sessionId = sessionId
 
-      logger.info(`[Dashboard] Session ${sessionId}: ${content.slice(0, 50)}...`)
+      log.info(`[Dashboard] Session ${sessionId}: ${content.slice(0, 50)}...`)
 
       // Handle built-in commands
       if (content === '/new') {
@@ -470,7 +472,7 @@ async function handleWebSocketMessage(
       await dispatcher.dispatch(msg, replyFn, streamFn)
     }
   } catch (error) {
-    logger.error({ err: error }, 'Error handling WebSocket message')
+    log.error('Error handling WebSocket message', { err: error })
     sendToClient(ws, {
       type: 'error',
       sessionId: ws.data?.sessionId || 'unknown',

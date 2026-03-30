@@ -15,7 +15,7 @@ import { WebSocket } from 'ws'
 import { EventEmitter } from 'node:events'
 import { logger } from '../utils/logger'
 
-const log = logger.child({ module: 'wework-ws-client' })
+const log = logger('wework-ws-client')
 
 /**
  * WeCom WebSocket 配置

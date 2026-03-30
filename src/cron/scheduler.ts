@@ -4,6 +4,8 @@ import { CronStorage, type CronJob } from './storage'
 import { DateTime } from 'luxon'
 import { logger } from '../utils/logger'
 
+const log = logger('scheduler')
+
 export interface JobExecuteEvent {
   jobId: string
   job: CronJob
@@ -40,12 +42,12 @@ export class CronScheduler extends EventEmitter {
     try {
       const currentVersion = this.storage.getDataVersion()
       if (currentVersion !== this.lastDataVersion) {
-        logger.debug('Database changed, reloading cron jobs')
+        log.debug('Database changed, reloading cron jobs')
         this.lastDataVersion = currentVersion
         this.reload()
       }
     } catch (error) {
-      logger.error({ err: error }, 'Error checking for cron changes')
+      log.error({ err: error }, 'Error checking for cron changes')
     }
   }
 
@@ -122,10 +124,10 @@ export class CronScheduler extends EventEmitter {
     }
 
     const timezone = job.timezone || 'Asia/Shanghai'
-    logger.debug({ jobId: job.id, expression, timezone }, 'Scheduling cron job')
+    log.debug({ jobId: job.id, expression, timezone }, 'Scheduling cron job')
 
     const cron = new Cron(expression, { timezone }, () => {
-      logger.debug({ jobId: job.id }, 'Cron job triggered')
+      log.debug({ jobId: job.id }, 'Cron job triggered')
       this.fire(job.id)
     })
     this.schedulers.set(job.id, cron)
@@ -176,14 +178,14 @@ export class CronScheduler extends EventEmitter {
 
   private async fire(jobId: string): Promise<void> {
     if (this.inFlight.has(jobId)) {
-      logger.debug({ jobId }, 'Job already in flight, skipping')
+      log.debug({ jobId }, 'Job already in flight, skipping')
       return
     }
     this.inFlight.add(jobId)
 
     const job = this.storage.getJob(jobId)
     if (!job) {
-      logger.warn({ jobId }, 'Job not found in storage')
+      log.warn({ jobId }, 'Job not found in storage')
       this.inFlight.delete(jobId)
       return
     }
@@ -193,10 +195,10 @@ export class CronScheduler extends EventEmitter {
     try {
       this.emit('job:execute', { jobId, job, scheduledTime } as JobExecuteEvent)
       this.storage.recordExecution(jobId, scheduledTime.toISOString(), 'success')
-      logger.debug({ jobId }, 'Job executed successfully')
+      log.debug({ jobId }, 'Job executed successfully')
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error)
-      logger.error({ err: error, jobId }, 'Job execution error')
+      log.error({ err: error, jobId }, 'Job execution error')
       this.storage.recordExecution(jobId, scheduledTime.toISOString(), 'error', errorMessage)
     } finally {
       this.inFlight.delete(jobId)

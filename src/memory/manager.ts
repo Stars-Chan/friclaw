@@ -8,6 +8,8 @@ import { IdentityMemory } from './identity'
 import { KnowledgeMemory } from './knowledge'
 import { EpisodeMemory } from './episode'
 
+const log = logger('memory')
+
 export class MemoryManager {
   identity!: IdentityMemory
   knowledge!: KnowledgeMemory
@@ -26,7 +28,7 @@ export class MemoryManager {
     this.knowledge = new KnowledgeMemory(this.db, dir)
     this.episode = new EpisodeMemory(this.db, dir)
 
-    logger.info({ dir }, 'Memory system initialized')
+    log.info('Memory system initialized', { dir })
   }
 
   search(query: string, category?: string): SearchResult[] {
@@ -35,6 +37,6 @@ export class MemoryManager {
 
   async shutdown(): Promise<void> {
     this.db?.close()
-    logger.info('Memory system shutdown')
+    log.info('Memory system shutdown')
   }
 }

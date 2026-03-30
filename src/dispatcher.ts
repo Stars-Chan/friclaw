@@ -5,6 +5,8 @@ import type { SessionManager } from './session/manager'
 import type { Session } from './session/types'
 import type { Message } from './types/message'
 
+const log = logger('dispatcher')
+
 export interface StreamHandler {
   (stream: AsyncGenerator<{ type: string; [key: string]: unknown }>): Promise<void>
 }
@@ -31,7 +33,7 @@ export class Dispatcher {
   ): Promise<void> {
     if (!this.accepting) throw new Error('Dispatcher is not accepting new messages')
 
-    logger.debug({
+    log.debug('Dispatcher received message', {
       platform: message.platform,
       chatId: message.chatId,
       userId: message.userId,
@@ -40,7 +42,7 @@ export class Dispatcher {
       contentPreview: message.content?.substring(0, 100) ?? '',
       hasStreamHandler: !!streamHandler,
       hasReply: !!reply
-    }, 'Dispatcher received message')
+    })
 
     if (message.type === 'command') {
       const isBuiltinCommand = ['/clear', '/new', '/status'].includes(message.content)
@@ -57,10 +59,10 @@ export class Dispatcher {
       message.userId,
     )
 
-    logger.debug({
+    log.debug('Dispatcher routing to agent', {
       sessionId: session.id,
       workspaceDir: session.workspaceDir
-    }, 'Dispatcher routing to agent')
+    })
 
     await this.laneQueue.enqueue(session.id, () =>
       this.agent.handle(session, message, reply, streamHandler)
@@ -69,7 +71,7 @@ export class Dispatcher {
 
   stopAccepting(): void {
     this.accepting = false
-    logger.info('Dispatcher stopped accepting new messages')
+    log.info('Dispatcher stopped accepting new messages')
   }
 
   async drainQueues(): Promise<void> {
@@ -78,7 +80,7 @@ export class Dispatcher {
     while (this.laneQueue.activeLanes() > 0) {
       await new Promise(r => setTimeout(r, 10))
     }
-    logger.info('Lane queues drained')
+    log.info('Lane queues drained')
   }
 
   activeLanes(): number {
@@ -93,7 +95,7 @@ export class Dispatcher {
     this.stopAccepting()
     await this.drainQueues()
     await this.onShutdown?.()
-    logger.info('Dispatcher shutdown complete')
+    log.info('Dispatcher shutdown complete')
   }
 
   private async handleCommand(
@@ -104,22 +106,22 @@ export class Dispatcher {
     switch (message.content) {
       case '/clear':
         this.sessionManager.clearSession(sessionId)
-        logger.info({ sessionId }, 'Session cleared via /clear')
+        log.info('Session cleared via /clear', { sessionId })
         await reply?.('会话已清除')
         break
       case '/new':
         this.sessionManager.newSession(message.platform, message.chatId, message.userId)
-        logger.info({ sessionId }, 'New session created via /new')
+        log.info('New session created via /new', { sessionId })
         await reply?.('新会话已创建')
         break
       case '/status':
         const stats = this.sessionManager.stats()
         const statusText = `总会话数: ${stats.total}\n各平台: ${JSON.stringify(stats.byPlatform)}`
-        logger.info({ stats }, '/status requested')
+        log.info('/status requested', { stats })
         await reply?.(statusText)
         break
       default:
-        logger.warn({ content: message.content }, 'Unknown command, ignoring')
+        log.warn('Unknown command, ignoring', { content: message.content })
         await reply?.(`未知命令: ${message.content}`)
     }
   }

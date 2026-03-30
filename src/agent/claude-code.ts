@@ -9,6 +9,8 @@ import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { existsSync, readFileSync } from 'node:fs'
 
+const log = logger('claude-code')
+
 type Subprocess = ReturnType<typeof Bun.spawn>
 type SpawnFn = (args: string[], opts?: Parameters<typeof Bun.spawn>[1]) => Subprocess
 
@@ -72,7 +74,7 @@ export class ClaudeCodeAgent implements Agent {
       chatType: message.chatType,
     }
 
-    logger.debug({
+    log.debug({
       conversationId: session.id,
       workspaceDir: session.workspaceDir,
       messageContent: message.content?.substring(0, 100),
@@ -90,12 +92,12 @@ export class ClaudeCodeAgent implements Agent {
           if (event.type === 'text_delta') finalText += event.text
           if (event.type === 'done') { finalText = event.response.text; break }
         }
-        logger.info({ conversationId: session.id, text: finalText }, 'Agent response')
+        log.info({ conversationId: session.id, text: finalText }, 'Agent response')
         await reply?.(finalText)
       }
     } catch (error) {
       // Clean up the process on error to avoid locked streams
-      logger.error({ conversationId: session.id, error }, 'Error in agent handle, cleaning up process')
+      log.error({ conversationId: session.id, error }, 'Error in agent handle, cleaning up process')
       await this.dispose(session.id)
       throw error
     }
@@ -103,7 +105,7 @@ export class ClaudeCodeAgent implements Agent {
 
   async *stream(request: RunRequest): AsyncGenerator<AgentStreamEvent> {
     const startTime = Date.now()
-    logger.info({
+    log.info({
       conversationId: request.conversationId,
       messageText: request.text?.substring(0, 100),
       textLength: request.text?.length
@@ -116,7 +118,7 @@ export class ClaudeCodeAgent implements Agent {
       message: { role: 'user', content: buildContent(request) },
     }) + '\n'
 
-    logger.debug({
+    log.debug({
       conversationId: request.conversationId,
       payloadLength: payload.length
     }, 'Sending payload to Claude Code process')
@@ -142,7 +144,7 @@ export class ClaudeCodeAgent implements Agent {
           event = JSON.parse(line)
           eventCount++
         } catch {
-          logger.debug({ conversationId: request.conversationId, line: line.substring(0, 200) }, 'Failed to parse line, skipping')
+          log.debug({ conversationId: request.conversationId, line: line.substring(0, 200) }, 'Failed to parse line, skipping')
           continue
         }
 
@@ -184,7 +186,7 @@ export class ClaudeCodeAgent implements Agent {
           const model = resultEvt.model ?? this.defaultModel
 
           // 使用 info 级别日志打印 result 事件的关键字段
-          logger.info({
+          log.info({
             conversationId: request.conversationId,
             model,
             costCny,
@@ -197,7 +199,7 @@ export class ClaudeCodeAgent implements Agent {
 
           // 如果tokens为0，记录警告
           if (inputTokens === 0 && outputTokens === 0) {
-            logger.warn({
+            log.warn({
               conversationId: request.conversationId,
               lineCount,
               eventCount,
@@ -225,7 +227,7 @@ export class ClaudeCodeAgent implements Agent {
 
       // 如果没有收到result事件就结束了，记录警告
       if (!hasResult) {
-        logger.warn({
+        log.warn({
           conversationId: request.conversationId,
           lineCount,
           eventCount,
@@ -233,7 +235,7 @@ export class ClaudeCodeAgent implements Agent {
         }, 'Claude Code stream ended without result event')
       }
     } catch (error) {
-      logger.error({ conversationId: request.conversationId, error }, 'Error reading from process stdout')
+      log.error({ conversationId: request.conversationId, error }, 'Error reading from process stdout')
       processState.isHealthy = false
       throw error
     }
@@ -252,7 +254,7 @@ export class ClaudeCodeAgent implements Agent {
        existing.sessionContext.userId !== userId)
 
     if (existing && contextChanged) {
-      logger.info({ conversationId }, 'Session context changed, will recreate process')
+      log.info({ conversationId }, 'Session context changed, will recreate process')
       this.processes.delete(conversationId)
       existing.proc.kill(9)
     }
@@ -266,7 +268,7 @@ export class ClaudeCodeAgent implements Agent {
         return existingAfterCheck
       }
       // Process is idle for too long, kill it and create a new one
-      logger.info({ conversationId, idleTime }, 'Process idle timeout, killing and recreating')
+      log.info({ conversationId, idleTime }, 'Process idle timeout, killing and recreating')
       existingAfterCheck.proc.kill()
       this.processes.delete(conversationId)
       await existingAfterCheck.proc.exited
@@ -333,7 +335,7 @@ export class ClaudeCodeAgent implements Agent {
     if (chatType) env.FRICLAW_CHAT_TYPE = chatType
     env.FRICLAW_WORKDIR = process.cwd() // 传递主进程工作目录
 
-    logger.debug({ conversationId, chatId, platform, userId }, 'Injecting session context to env')
+    log.debug({ conversationId, chatId, platform, userId }, 'Injecting session context to env')
 
     const proc = this.spawnFn(args, {
       cwd: workspaceDir,
@@ -356,10 +358,10 @@ export class ClaudeCodeAgent implements Agent {
     ;(async () => {
       try {
         for await (const line of readLines(proc.stderr as ReadableStream<Uint8Array>)) {
-          if (line.trim()) logger.warn({ conversationId, line }, 'claude stderr')
+          if (line.trim()) log.warn({ conversationId, line }, 'claude stderr')
         }
       } catch (error) {
-        logger.error({ conversationId, error }, 'Error reading stderr')
+        log.error({ conversationId, error }, 'Error reading stderr')
         processState.isHealthy = false
       }
     })()

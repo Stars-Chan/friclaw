@@ -5,6 +5,8 @@ import type { Gateway } from './types'
 import type { Message } from '../types/message'
 import type { GetUpdatesResp, SendMessageReq, WeixinMessage } from './weixin-types'
 
+const log = logger('weixin')
+
 const MESSAGE_TYPE = {
   TEXT: 1,
   REPLY: 2,
@@ -40,13 +42,13 @@ export class WeixinGateway implements Gateway {
     this.dispatcher = dispatcher
     this.abortController = new AbortController()
 
-    logger.info('微信 gateway 启动')
+    log.info('微信 gateway 启动')
     await this.longPoll()
   }
 
   async stop(): Promise<void> {
     this.abortController?.abort()
-    logger.info('微信 gateway 停止')
+    log.info('微信 gateway 停止')
   }
 
   async send(chatId: string, content: string): Promise<string> {
@@ -66,7 +68,7 @@ export class WeixinGateway implements Gateway {
         })
 
         if (!resp.ok) {
-          logger.error({ status: resp.status, statusText: resp.statusText }, 'HTTP 请求失败')
+          log.error({ status: resp.status, statusText: resp.statusText }, 'HTTP 请求失败')
           await this.backoff()
           continue
         }
@@ -75,7 +77,7 @@ export class WeixinGateway implements Gateway {
 
         // 检查是否有错误码
         if (data.ret !== undefined && data.ret !== 0) {
-          logger.error({ errcode: data.errcode, errmsg: data.errmsg, ret: data.ret }, '获取消息失败')
+          log.error({ errcode: data.errcode, errmsg: data.errmsg, ret: data.ret }, '获取消息失败')
           await this.backoff()
           continue
         }
@@ -87,7 +89,7 @@ export class WeixinGateway implements Gateway {
         }
       } catch (err: unknown) {
         if ((err as Error).name === 'AbortError') break
-        logger.error({ err }, '长轮询错误')
+        log.error({ err }, '长轮询错误')
         await this.backoff()
       }
     }
@@ -95,7 +97,7 @@ export class WeixinGateway implements Gateway {
 
   private async backoff(): Promise<void> {
     if (this.retryCount >= this.maxRetries) {
-      logger.error('达到最大重试次数，停止长轮询')
+      log.error('达到最大重试次数，停止长轮询')
       this.abortController?.abort()
       return
     }
@@ -167,7 +169,7 @@ export class WeixinGateway implements Gateway {
 
     if (!resp.ok) {
       const errorText = await resp.text()
-      logger.error({ status: resp.status, toUserId, errorText }, '发送消息失败')
+      log.error({ status: resp.status, toUserId, errorText }, '发送消息失败')
       throw new Error(`发送消息失败: ${resp.status}`)
     }
   }

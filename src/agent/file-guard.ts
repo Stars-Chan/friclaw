@@ -4,6 +4,8 @@ import * as os from 'os'
 import * as fs from 'fs'
 import { logger } from '../utils/logger'
 
+const log = logger('file-guard')
+
 const BLOCKED_PATHS = new Set([
   path.join(os.homedir(), '.ssh'),
   path.join(os.homedir(), '.aws'),
@@ -69,7 +71,7 @@ export class FileGuard {
 }
 
 export function logBlockedAccess(filePath: string, reason: string, conversationId: string): void {
-  logger.warn({
+  log.warn({
     event: 'file_access_blocked',
     filePath,
     reason,

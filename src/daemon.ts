@@ -3,6 +3,7 @@ import { logger } from './utils/logger'
 import type { Dispatcher } from './dispatcher'
 
 const SHUTDOWN_TIMEOUT_MS = 30_000
+const log = logger('daemon')
 
 // Exported for testing — takes exit fn as injectable dependency
 export function createShutdownHandler(
@@ -15,21 +16,21 @@ export function createShutdownHandler(
     if (shuttingDown) return
     shuttingDown = true
 
-    logger.info({ signal }, 'Graceful shutdown initiated')
+    log.info('Graceful shutdown initiated', { signal })
 
     const timer = setTimeout(() => {
-      logger.error(`Shutdown timed out after ${SHUTDOWN_TIMEOUT_MS / 1000}s, forcing exit`)
+      log.error(`Shutdown timed out after ${SHUTDOWN_TIMEOUT_MS / 1000}s, forcing exit`)
       exit(1)
     }, SHUTDOWN_TIMEOUT_MS)
 
     try {
       await dispatcher.shutdown()
       clearTimeout(timer)
-      logger.info('Graceful shutdown complete')
+      log.info('Graceful shutdown complete')
       exit(0)
     } catch (err) {
       clearTimeout(timer)
-      logger.error({ err }, 'Error during shutdown')
+      log.error('Error during shutdown', { err })
       exit(1)
     }
   }

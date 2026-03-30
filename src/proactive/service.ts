@@ -5,6 +5,8 @@
 import { logger } from '../utils/logger'
 import type { Dispatcher } from '../dispatcher'
 
+const log = logger('proactive')
+
 export interface ProactiveConfig {
   enabled: boolean
   dailySummaryHour?: number   // 0-23, default 9
@@ -24,7 +26,7 @@ export class ProactiveService {
     if (!this.config.enabled) return
     // TODO: start hourly context-aware check
     // TODO: start daily pattern analysis
-    logger.info('主动服务已启动（stub）')
+    log.info('主动服务已启动（stub）')
   }
 
   stop(): void {
