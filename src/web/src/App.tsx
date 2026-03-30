@@ -3,6 +3,7 @@ import { Menu, AlertCircle } from 'lucide-react';
 import { Sidebar } from './components/Sidebar';
 import { ChatArea } from './components/ChatArea';
 import { ConfigPage } from './components/ConfigPage';
+import { CronPage } from './components/CronPage';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ComponentErrorBoundary } from './components/ComponentErrorBoundary';
 import { useWebSocket } from './hooks/useWebSocket';
@@ -11,7 +12,7 @@ import './styles/globals.css';
 
 function App() {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
-  const [activeView, setActiveView] = useState<'chat' | 'config'>('chat');
+  const [activeView, setActiveView] = useState<'chat' | 'config' | 'cron'>('chat');
   const { sessions, currentSessionId, selectSession, updateSession } = useSessions();
   const { messages, isConnected, sendMessage, connectionStatus, error } = useWebSocket(
     currentSessionId,
@@ -27,6 +28,11 @@ function App() {
   const handleSelectConfig = () => {
     setIsMobileSidebarOpen(false);
     setActiveView('config');
+  };
+
+  const handleSelectCron = () => {
+    setIsMobileSidebarOpen(false);
+    setActiveView('cron');
   };
 
   const handleSendMessage = (text: string) => {
@@ -58,6 +64,7 @@ function App() {
           currentSessionId={currentSessionId}
           onSelectSession={handleSelectSession}
           onSelectConfig={handleSelectConfig}
+          onSelectCron={handleSelectCron}
           connectionStatus={connectionStatus}
           className={`fixed md:static top-0 left-0 h-full z-50 transform transition-transform md:translate-x-0 ${
             isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'
@@ -82,6 +89,21 @@ function App() {
               <ConfigPage />
             </ComponentErrorBoundary>
           </div>
+        </div>
+      ) : activeView === 'cron' ? (
+        <div className="flex-1 flex flex-col bg-gray-900">
+          <header className="flex items-center gap-3 px-6 py-4 border-b border-gray-800">
+            <button
+              type="button"
+              className="md:hidden p-2 rounded-lg border border-gray-700 text-gray-200 hover:bg-gray-800"
+              onClick={() => setIsMobileSidebarOpen(true)}
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+          </header>
+          <ComponentErrorBoundary componentName="CronPage">
+            <CronPage />
+          </ComponentErrorBoundary>
         </div>
       ) : (
         <ComponentErrorBoundary componentName="ChatArea">

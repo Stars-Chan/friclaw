@@ -8,6 +8,7 @@ import {
   Wifi,
   WifiOff,
   Sliders,
+  Clock,
 } from 'lucide-react';
 import type { Session, ConnectionStatus } from '../types';
 
@@ -16,6 +17,7 @@ interface SidebarProps {
   currentSessionId: string;
   onSelectSession: (id: string) => void;
   onSelectConfig: () => void;
+  onSelectCron: () => void;
   connectionStatus: ConnectionStatus;
   className?: string;
 }
@@ -37,7 +39,14 @@ interface Module {
 
 const MODULES: Module[] = [
   { key: 'chat', title: '聊天', icon: MessageSquare },
-  { key: 'control', title: '控制', icon: BarChart3 },
+  {
+    key: 'control',
+    title: '控制',
+    icon: BarChart3,
+    items: [
+      { key: 'cron', label: '定时任务', icon: Clock },
+    ],
+  },
   {
     key: 'settings',
     title: '设置',
@@ -48,7 +57,7 @@ const MODULES: Module[] = [
   },
 ];
 
-export function Sidebar({ sessions, currentSessionId, onSelectSession, onSelectConfig, connectionStatus, className }: SidebarProps) {
+export function Sidebar({ sessions, currentSessionId, onSelectSession, onSelectConfig, onSelectCron, connectionStatus, className }: SidebarProps) {
   const [expandedModules, setExpandedModules] = useState<Set<ModuleKey>>(new Set(['chat']));
 
   const toggleModule = (moduleKey: ModuleKey) => {
@@ -132,7 +141,10 @@ export function Sidebar({ sessions, currentSessionId, onSelectSession, onSelectC
                       <div
                         key={item.key}
                         className="flex items-center gap-2 px-6 py-2 cursor-pointer hover:bg-gray-100 text-gray-700"
-                        onClick={() => item.key === 'config' && onSelectConfig()}
+                        onClick={() => {
+                          if (item.key === 'config') onSelectConfig();
+                          if (item.key === 'cron') onSelectCron();
+                        }}
                       >
                         <ItemIcon className="w-4 h-4 text-gray-500" />
                         <span className="text-sm">{item.label}</span>

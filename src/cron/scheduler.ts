@@ -2,6 +2,7 @@ import { EventEmitter } from 'events'
 import { Cron } from 'croner'
 import { CronStorage, type CronJob } from './storage'
 import { DateTime } from 'luxon'
+import { logger } from '../utils/logger'
 
 export interface JobExecuteEvent {
   jobId: string
@@ -9,9 +10,11 @@ export interface JobExecuteEvent {
   scheduledTime: Date
 }
 
+type SchedulerEntry = Cron | Timer
+
 export class CronScheduler extends EventEmitter {
   private storage: CronStorage
-  private schedulers: Map<string, Cron> = new Map()
+  private schedulers: Map<string, SchedulerEntry> = new Map()
   private inFlight: Set<string> = new Set()
   private checkInterval?: Timer
   private lastDataVersion = 0
@@ -37,24 +40,19 @@ export class CronScheduler extends EventEmitter {
     try {
       const currentVersion = this.storage.getDataVersion()
       if (currentVersion !== this.lastDataVersion) {
-        console.log('[CronScheduler] Database changed, reloading')
+        logger.debug('Database changed, reloading cron jobs')
         this.lastDataVersion = currentVersion
         this.reload()
       }
     } catch (error) {
-      console.error('[CronScheduler] Error checking for changes:', error)
+      logger.error({ err: error }, 'Error checking for cron changes')
     }
   }
 
   async reload(): Promise<void> {
-    console.log('[CronScheduler] Reloading jobs from database')
     // 停止所有现有任务
-    for (const [id, scheduler] of this.schedulers) {
-      if (typeof scheduler === 'number') {
-        clearTimeout(scheduler)
-      } else if (scheduler && typeof scheduler.stop === 'function') {
-        scheduler.stop()
-      }
+    for (const scheduler of this.schedulers.values()) {
+      this.stopScheduler(scheduler)
     }
     this.schedulers.clear()
 
@@ -64,19 +62,14 @@ export class CronScheduler extends EventEmitter {
       if (job.enabled) this.schedule(job)
     }
     this.lastDataVersion = this.storage.getDataVersion()
-    console.log(`[CronScheduler] Reloaded ${jobs.length} jobs`)
   }
 
   async stop(): Promise<void> {
     if (this.checkInterval) {
       clearInterval(this.checkInterval)
     }
-    for (const [id, scheduler] of this.schedulers) {
-      if (typeof scheduler === 'number') {
-        clearTimeout(scheduler)
-      } else if (scheduler && typeof scheduler.stop === 'function') {
-        scheduler.stop()
-      }
+    for (const scheduler of this.schedulers.values()) {
+      this.stopScheduler(scheduler)
     }
     this.schedulers.clear()
     this.storage.close()
@@ -129,10 +122,10 @@ export class CronScheduler extends EventEmitter {
     }
 
     const timezone = job.timezone || 'Asia/Shanghai'
-    console.log(`[CronScheduler] Scheduling job ${job.id}: ${expression} (${timezone})`)
+    logger.debug({ jobId: job.id, expression, timezone }, 'Scheduling cron job')
 
     const cron = new Cron(expression, { timezone }, () => {
-      console.log(`[CronScheduler] Job ${job.id} triggered at ${new Date().toISOString()}`)
+      logger.debug({ jobId: job.id }, 'Cron job triggered')
       this.fire(job.id)
     })
     this.schedulers.set(job.id, cron)
@@ -159,50 +152,51 @@ export class CronScheduler extends EventEmitter {
     const timer = setTimeout(async () => {
       this.schedulers.delete(job.id)
       await this.fire(job.id)
-      this.storage.updateJob(job.id, { enabled: false })
+      this.storage.deleteJob(job.id)
     }, delay)
 
-    this.schedulers.set(job.id, timer as any)
+    this.schedulers.set(job.id, timer)
   }
 
   private cancel(id: string): void {
     const scheduler = this.schedulers.get(id)
     if (scheduler) {
-      if (typeof scheduler === 'number') {
-        clearTimeout(scheduler)
-      } else if (scheduler && typeof scheduler.stop === 'function') {
-        scheduler.stop()
-      }
+      this.stopScheduler(scheduler)
       this.schedulers.delete(id)
     }
   }
 
-  private async fire(jobId: string): Promise<void> {
-    console.log(`[CronScheduler] fire() called for job ${jobId}`)
+  private stopScheduler(scheduler: SchedulerEntry): void {
+    if (typeof scheduler === 'number') {
+      clearTimeout(scheduler)
+    } else if (scheduler && typeof scheduler.stop === 'function') {
+      scheduler.stop()
+    }
+  }
 
+  private async fire(jobId: string): Promise<void> {
     if (this.inFlight.has(jobId)) {
-      console.log(`[CronScheduler] Job ${jobId} already in flight, skipping`)
+      logger.debug({ jobId }, 'Job already in flight, skipping')
       return
     }
     this.inFlight.add(jobId)
 
     const job = this.storage.getJob(jobId)
     if (!job) {
-      console.log(`[CronScheduler] Job ${jobId} not found in storage`)
+      logger.warn({ jobId }, 'Job not found in storage')
       this.inFlight.delete(jobId)
       return
     }
 
     const scheduledTime = new Date()
-    console.log(`[CronScheduler] Emitting job:execute event for ${jobId}`)
 
     try {
       this.emit('job:execute', { jobId, job, scheduledTime } as JobExecuteEvent)
       this.storage.recordExecution(jobId, scheduledTime.toISOString(), 'success')
-      console.log(`[CronScheduler] Job ${jobId} executed successfully`)
+      logger.debug({ jobId }, 'Job executed successfully')
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error)
-      console.error(`[CronScheduler] Job ${jobId} execution error:`, errorMessage)
+      logger.error({ err: error, jobId }, 'Job execution error')
       this.storage.recordExecution(jobId, scheduledTime.toISOString(), 'error', errorMessage)
     } finally {
       this.inFlight.delete(jobId)

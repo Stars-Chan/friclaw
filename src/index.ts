@@ -114,12 +114,14 @@ async function startDaemon(): Promise<void> {
   cronScheduler.on('job:execute', (event) => {
     logger.info({ jobId: event.jobId, platform: event.job.platform, chatId: event.job.chatId }, 'Cron job executing')
 
-    const message = {
-      platform: event.job.platform as any,
+    const message: Message = {
+      platform: event.job.platform as 'dashboard' | 'feishu' | 'wecom' | 'weixin',
       chatId: event.job.chatId,
       userId: event.job.userId,
-      type: 'text' as const,
+      type: 'text',
       content: event.job.prompt,
+      messageId: `cron_${event.jobId}_${Date.now()}`,
+      attachments: [],
     }
 
     const logResult = (jobId: string) => ({
@@ -159,7 +161,7 @@ async function startDaemon(): Promise<void> {
   logger.info('Cron scheduler started')
 
   if (config.dashboard.enabled) {
-    dashboardPush = await startDashboard(config.dashboard.port, dispatcher, config.workspaces.dir)
+    dashboardPush = await startDashboard(config.dashboard.port, dispatcher, config.workspaces.dir, cronScheduler)
   }
 
   await Promise.all(gateways.map(g => g.start(dispatcher)))

@@ -85,6 +85,10 @@ export class Dispatcher {
     return this.laneQueue.activeLanes()
   }
 
+  clearSession(conversationId: string): void {
+    this.sessionManager.clearSession(conversationId)
+  }
+
   async shutdown(): Promise<void> {
     this.stopAccepting()
     await this.drainQueues()

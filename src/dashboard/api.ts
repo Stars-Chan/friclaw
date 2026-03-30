@@ -4,6 +4,7 @@ import { logger } from '../utils/logger'
 import { DashboardSessionManager } from './session-manager.js'
 import type { ServerMessage } from './types.js'
 import type { Message } from '../types/message.js'
+import type { CronScheduler } from '../cron/scheduler'
 import { spawn } from 'child_process'
 import { existsSync } from 'fs'
 import { join } from 'path'
@@ -30,6 +31,7 @@ export async function startDashboard(
   port: number,
   dispatcher: Dispatcher,
   workspacesDir: string,
+  cronScheduler: CronScheduler,
 ): Promise<DashboardPushFn> {
   const sessionManager = new DashboardSessionManager(workspacesDir)
   const clients = new Map<string, ServerWebSocket>() // sessionId -> WebSocket
@@ -38,7 +40,7 @@ export async function startDashboard(
   let frontendProcess: ReturnType<typeof spawn> | null = null
   if (existsSync(WEB_DIR)) {
     logger.info('Starting frontend dev server...')
-    frontendProcess = spawn('npm', ['run', 'dev'], {
+    frontendProcess = spawn('bun', ['run', 'dev'], {
       cwd: WEB_DIR,
       stdio: 'pipe',
       shell: true,
@@ -73,7 +75,7 @@ export async function startDashboard(
       // CORS headers
       const corsHeaders = {
         'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type',
       }
 
@@ -148,6 +150,64 @@ export async function startDashboard(
             return Response.json({ success: true }, { headers: corsHeaders })
           } catch {
             return Response.json({ success: false }, { status: 500, headers: corsHeaders })
+          }
+        }
+      }
+
+      // Cron jobs endpoints
+      if (url.pathname === '/api/cron/jobs') {
+        if (req.method === 'GET') {
+          return Response.json({ jobs: cronScheduler.list() }, { headers: corsHeaders })
+        }
+        if (req.method === 'POST') {
+          try {
+            const body = await req.json()
+            const job = cronScheduler.create(body)
+            return Response.json({ job }, { headers: corsHeaders })
+          } catch (err) {
+            return Response.json({ error: err instanceof Error ? err.message : 'Failed to create job' }, { status: 500, headers: corsHeaders })
+          }
+        }
+      }
+
+      // Get platform targets (chatId/userId options)
+      if (url.pathname === '/api/cron/targets') {
+        const platform = url.searchParams.get('platform') || 'dashboard'
+        const targets: Array<{ chatId: string; userId: string; label: string }> = []
+
+        if (platform === 'dashboard') {
+          const sessions = sessionManager.listAll()
+          sessions.forEach(s => {
+            targets.push({
+              chatId: s.id,
+              userId: 'dashboard_user',
+              label: s.id,
+            })
+          })
+        }
+
+        return Response.json({ targets }, { headers: corsHeaders })
+      }
+
+      if (url.pathname.match(/^\/api\/cron\/jobs\/[^/]+$/)) {
+        const id = url.pathname.split('/').pop()!
+
+        if (req.method === 'PUT') {
+          try {
+            const body = await req.json()
+            const job = cronScheduler.update(id, body)
+            return Response.json({ job }, { headers: corsHeaders })
+          } catch (err) {
+            return Response.json({ error: err instanceof Error ? err.message : 'Failed to update job' }, { status: 500, headers: corsHeaders })
+          }
+        }
+
+        if (req.method === 'DELETE') {
+          try {
+            cronScheduler.delete(id)
+            return Response.json({ success: true }, { headers: corsHeaders })
+          } catch (err) {
+            return Response.json({ error: err instanceof Error ? err.message : 'Failed to delete job' }, { status: 500, headers: corsHeaders })
           }
         }
       }
@@ -303,7 +363,7 @@ async function handleWebSocketMessage(
 
         // Clear Claude conversation context
         const conversationId = `dashboard:${sessionId}`
-        dispatcher['sessionManager'].clearSession(conversationId)
+        dispatcher.clearSession(conversationId)
 
         sendToClient(ws, {
           type: 'response',
