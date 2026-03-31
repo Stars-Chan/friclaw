@@ -5,6 +5,9 @@ import type { Session } from '../session/types'
 import type { Message } from '../types/message'
 import type { AgentStreamEvent, RunRequest } from './types'
 import { readLines, buildContent } from './utils'
+import { homedir } from 'node:os'
+import { join } from 'node:path'
+import { existsSync, readFileSync } from 'node:fs'
 
 type Subprocess = ReturnType<typeof Bun.spawn>
 type SpawnFn = (args: string[], opts?: Parameters<typeof Bun.spawn>[1]) => Subprocess
@@ -297,6 +300,32 @@ export class ClaudeCodeAgent implements Agent {
     const env = { ...process.env }
     delete env.CLAUDECODE
 
+    // 从 ~/.claude/skills/.env 加载环境变量
+    const skillsEnvPath = join(homedir(), '.claude', 'skills', '.env')
+    if (existsSync(skillsEnvPath)) {
+      try {
+        const envContent = readFileSync(skillsEnvPath, 'utf-8')
+        for (const line of envContent.split('\n')) {
+          const trimmed = line.trim()
+          if (!trimmed || trimmed.startsWith('#')) continue
+          const idx = trimmed.indexOf('=')
+          if (idx > 0) {
+            const key = trimmed.slice(0, idx).trim()
+            let value = trimmed.slice(idx + 1).trim()
+            // 移除引号
+            if ((value.startsWith('"') && value.endsWith('"')) ||
+                (value.startsWith("'") && value.endsWith("'"))) {
+              value = value.slice(1, -1)
+            }
+            env[key] = value
+          }
+        }
+        logger.debug({ path: skillsEnvPath }, 'Loaded env from skills/.env')
+      } catch (error) {
+        logger.warn({ error, path: skillsEnvPath }, 'Failed to load skills/.env')
+      }
+    }
+
     // 注入会话上下文到环境变量，供 MCP 工具使用
     if (chatId) env.FRICLAW_CHAT_ID = chatId
     if (platform) env.FRICLAW_PLATFORM = platform
@@ -306,7 +335,13 @@ export class ClaudeCodeAgent implements Agent {
 
     logger.debug({ conversationId, chatId, platform, userId }, 'Injecting session context to env')
 
-    const proc = this.spawnFn(args, { cwd: workspaceDir, stdin: 'pipe', stdout: 'pipe', stderr: 'pipe', env })
+    const proc = this.spawnFn(args, {
+      cwd: workspaceDir,
+      stdin: 'pipe',
+      stdout: 'pipe',
+      stderr: 'pipe',
+      env
+    })
 
     const processState: ProcessState = {
       proc,
