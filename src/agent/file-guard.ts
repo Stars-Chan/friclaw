@@ -71,13 +71,7 @@ export class FileGuard {
 }
 
 export function logBlockedAccess(filePath: string, reason: string, conversationId: string): void {
-  log.warn({
-    event: 'file_access_blocked',
-    filePath,
-    reason,
-    conversationId,
-    timestamp: new Date().toISOString(),
-  })
+  log.warn(`File access blocked: ${filePath} - ${reason} (conversation: ${conversationId})`)
 }
 
 export function writeClaudeSettings(workspaceDir: string): void {

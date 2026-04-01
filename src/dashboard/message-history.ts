@@ -66,7 +66,7 @@ export class MessageHistory {
     const content = readFileSync(this.historyFile, 'utf-8')
     return content
       .split('\n')
-      .filter(line => line.trim())
-      .map(line => JSON.parse(line))
+      .filter((line: string) => line.trim())
+      .map((line: string) => JSON.parse(line))
   }
 }

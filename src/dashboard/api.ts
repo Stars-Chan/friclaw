@@ -430,13 +430,13 @@ async function handleWebSocketMessage(
             sendToClient(ws, {
               type: 'stream_delta',
               sessionId,
-              data: { text, isThinking },
+              data: { text, isThinking } as any,
             })
           } else if (event.type === 'done') {
             sendToClient(ws, {
               type: 'stream_stats',
               sessionId,
-              data: event.response,
+              data: event.response as any,
             })
           }
         }

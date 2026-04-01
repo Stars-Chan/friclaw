@@ -118,11 +118,11 @@ async function startDaemon(): Promise<void> {
   cronScheduler.on('job:execute', (event) => {
     log.info({ jobId: event.jobId, platform: event.job.platform, chatId: event.job.chatId }, 'Cron job executing')
 
-    const message: Message = {
+    const message = {
       platform: event.job.platform as 'dashboard' | 'feishu' | 'wecom' | 'weixin',
       chatId: event.job.chatId,
       userId: event.job.userId,
-      type: 'text',
+      type: 'text' as const,
       content: event.job.prompt,
       messageId: `cron_${event.jobId}_${Date.now()}`,
       attachments: [],

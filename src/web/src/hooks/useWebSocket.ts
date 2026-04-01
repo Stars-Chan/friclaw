@@ -83,13 +83,13 @@ export function useWebSocket(sessionId: string, onSessionSwitch?: (newSessionId:
               setMessages(data.data.messages);
               break;
             case 'response':
-              setMessages((prev) => [...prev, { role: 'assistant', content: data.data.text, timestamp: Date.now() }]);
+              setMessages((prev) => [...prev, { role: 'assistant' as const, content: data.data.text, timestamp: Date.now() }]);
               break;
             case 'stream_start':
               currentStreamRef.current = '';
               currentThinkingRef.current = '';
               setMessages((prev) => {
-                const newMessages = [...prev, { role: 'assistant', content: '', timestamp: Date.now() }];
+                const newMessages = [...prev, { role: 'assistant' as const, content: '', timestamp: Date.now() }];
                 // 记录新消息的索引
                 streamingMessageIndexRef.current = newMessages.length - 1;
                 return newMessages;
@@ -172,7 +172,7 @@ export function useWebSocket(sessionId: string, onSessionSwitch?: (newSessionId:
 
   const sendMessage = useCallback((text: string) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
-      setMessages((prev) => [...prev, { role: 'user', content: text, timestamp: Date.now() }]);
+      setMessages((prev) => [...prev, { role: 'user' as const, content: text, timestamp: Date.now() }]);
       wsRef.current.send(JSON.stringify({ type: 'message', sessionId: sessionIdRef.current, content: text }));
     } else {
       setError('连接未就绪，无法发送消息');

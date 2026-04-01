@@ -44,19 +44,19 @@ export function MessageBubble({ message }: MessageBubbleProps) {
                     remarkPlugins={[remarkGfm]}
                     className="prose prose-invert prose-sm max-w-none"
                     components={{
-                      code({ inline, className, children, ...props }) {
+                      code({ className, children, ...props }) {
                         const match = /language-(\w+)/.exec(className || '');
+                        const inline = !props.node || props.node.tagName !== 'pre';
                         return !inline && match ? (
                           <SyntaxHighlighter
-                            style={vscDarkPlus}
+                            style={vscDarkPlus as any}
                             language={match[1]}
                             PreTag="div"
-                            {...props}
                           >
                             {String(children).replace(/\n$/, '')}
                           </SyntaxHighlighter>
                         ) : (
-                          <code className={className} {...props}>
+                          <code className={className}>
                             {children}
                           </code>
                         );
@@ -80,14 +80,14 @@ export function MessageBubble({ message }: MessageBubbleProps) {
                 remarkPlugins={[remarkGfm]}
                 className="prose prose-invert prose-p:my-0 prose-headings:my-2 prose-ul:my-1 prose-ol:my-1 max-w-none"
                 components={{
-                  code({ inline, className, children, ...props }) {
+                  code({ className, children, ...props }) {
                     const match = /language-(\w+)/.exec(className || '');
+                    const inline = !props.node || props.node.tagName !== 'pre';
                     return !inline && match ? (
                       <SyntaxHighlighter
-                        style={vscDarkPlus}
+                        style={vscDarkPlus as any}
                         language={match[1]}
                         PreTag="div"
-                        {...props}
                       >
                         {String(children).replace(/\n$/, '')}
                       </SyntaxHighlighter>
@@ -106,14 +106,14 @@ export function MessageBubble({ message }: MessageBubbleProps) {
                 remarkPlugins={[remarkGfm]}
                 className="prose prose-invert max-w-none"
                 components={{
-                  code({ inline, className, children, ...props }) {
+                  code({ className, children, ...props }) {
                     const match = /language-(\w+)/.exec(className || '');
+                    const inline = !props.node || props.node.tagName !== 'pre';
                     return !inline && match ? (
                       <SyntaxHighlighter
-                        style={vscDarkPlus}
+                        style={vscDarkPlus as any}
                         language={match[1]}
                         PreTag="div"
-                        {...props}
                       >
                         {String(children).replace(/\n$/, '')}
                       </SyntaxHighlighter>
