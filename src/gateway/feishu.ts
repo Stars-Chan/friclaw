@@ -91,25 +91,25 @@ export class FeishuGateway implements Gateway {
         if (!msg) return
 
         // 消息去重：检查是否已处理过该message_id
-        if (this.processedMessageIds.has(msg.messageId)) {
-          log.debug('跳过重复消息', { messageId: msg.messageId, conversationId: msg.chatId })
+        if (this.processedMessageIds.has(msg.messageId ?? '')) {
+          log.debug({ messageId: msg.messageId, conversationId: msg.chatId }, '跳过重复消息')
           return
         }
 
         // 记录已处理的message_id
-        this.processedMessageIds.add(msg.messageId)
+        this.processedMessageIds.add(msg.messageId ?? '')
 
         // 防止内存泄漏：当缓存过大时清理最老的条目
         if (this.processedMessageIds.size > this.MAX_PROCESSED_IDS) {
           const firstToDelete = Array.from(this.processedMessageIds).at(0)
           if (firstToDelete) {
             this.processedMessageIds.delete(firstToDelete)
-            log.debug('消息去重缓存已清理', { size: this.processedMessageIds.size })
+            log.debug({ size: this.processedMessageIds.size }, '消息去重缓存已清理')
           }
         }
 
         const reply = (content: string) => {
-          log.info('飞书回复', { content, conversationId: msg.chatId })
+          log.info({ content, conversationId: msg.chatId }, '飞书回复')
           return this.send(msg.chatId, content)
         }
         const streamHandler = this.buildStreamHandler(msg)
@@ -232,11 +232,11 @@ export class FeishuGateway implements Gateway {
         unlinkSync(tmpPath) // Clean up temp file
         return [{ type: 'image', buffer: Buffer.from(buffer) }]
       } else {
-        log.warn('Unexpected messageResource response type', { res })
+        log.warn({ res }, 'Unexpected messageResource response type')
         return []
       }
     } catch (err) {
-      log.error('Failed to download Feishu image', { err })
+      log.error({ err }, 'Failed to download Feishu image')
       return []
     }
   }
@@ -383,7 +383,7 @@ export class FeishuGateway implements Gateway {
 
             // 过滤外部图片URL后再记录和发送
             const sanitizedMainText = sanitizeForFeishuCard(mainText)
-            log.info('飞书流式回复完成', { content: sanitizedMainText, conversationId: msg.chatId })
+            log.info({ content: sanitizedMainText, conversationId: msg.chatId }, '飞书流式回复完成')
           }
         }
       } finally {

@@ -322,9 +322,9 @@ export class ClaudeCodeAgent implements Agent {
             env[key] = value
           }
         }
-        logger.debug({ path: skillsEnvPath }, 'Loaded env from skills/.env')
+        log.debug({ path: skillsEnvPath }, 'Loaded env from skills/.env')
       } catch (error) {
-        logger.warn({ error, path: skillsEnvPath }, 'Failed to load skills/.env')
+        log.warn({ error, path: skillsEnvPath }, 'Failed to load skills/.env')
       }
     }
 

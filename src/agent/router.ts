@@ -13,6 +13,7 @@ interface RouterAgents {
   feishu?: Agent
   wecom?: Agent
   dashboard?: Agent
+  weixin?: Agent
 }
 
 export class Router implements Agent {
@@ -64,5 +65,11 @@ export class Router implements Agent {
 
     // 4. default
     return this.agents.default
+  }
+
+  async dispose(conversationId: string): Promise<void> {
+    await Promise.all(
+      Object.values(this.agents).filter(Boolean).map(agent => agent.dispose(conversationId))
+    )
   }
 }

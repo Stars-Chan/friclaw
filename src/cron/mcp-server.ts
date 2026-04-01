@@ -1,5 +1,5 @@
 import { BaseMcpServer, type Tool, type CallToolResult } from '../mcp/server'
-import type { CronStorage } from './storage'
+import type { CronStorage, CronJob } from './storage'
 import { DateTime } from 'luxon'
 
 export class CronMcpServer extends BaseMcpServer {

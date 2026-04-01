@@ -472,7 +472,7 @@ async function handleWebSocketMessage(
       await dispatcher.dispatch(msg, replyFn, streamFn)
     }
   } catch (error) {
-    log.error('Error handling WebSocket message', { err: error })
+    log.error({ err: error }, 'Error handling WebSocket message')
     sendToClient(ws, {
       type: 'error',
       sessionId: ws.data?.sessionId || 'unknown',

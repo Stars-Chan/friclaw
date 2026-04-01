@@ -28,7 +28,10 @@ const makeMsg = (overrides: Partial<Message> = {}): Message => ({
 
 const makeAgent = () => {
   const calls: Array<{ session: Session; message: Message }> = []
-  const agent: Agent = { handle: async (s, m) => { calls.push({ session: s, message: m }) } }
+  const agent: Agent = {
+    handle: async (s, m) => { calls.push({ session: s, message: m }) },
+    dispose: async () => {}
+  }
   return { agent, calls }
 }
 

@@ -169,10 +169,10 @@ export class CronScheduler extends EventEmitter {
   }
 
   private stopScheduler(scheduler: SchedulerEntry): void {
-    if (typeof scheduler === 'number') {
-      clearTimeout(scheduler)
-    } else if (scheduler && typeof scheduler.stop === 'function') {
+    if ('stop' in scheduler && typeof scheduler.stop === 'function') {
       scheduler.stop()
+    } else {
+      clearTimeout(scheduler as Timer)
     }
   }
 

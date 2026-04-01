@@ -68,7 +68,7 @@ async function startDaemon(): Promise<void> {
   log.info('FriClaw starting...')
 
   const config = await loadConfig()
-  log.info('Config loaded', { model: config.agent.model })
+  log.info({ model: config.agent.model }, 'Config loaded')
 
   const memory = new MemoryManager(config.memory)
   await memory.init()
@@ -116,7 +116,7 @@ async function startDaemon(): Promise<void> {
 
   // 监听任务执行事件（必须在 start() 之前注册）
   cronScheduler.on('job:execute', (event) => {
-    log.info('Cron job executing', { jobId: event.jobId, platform: event.job.platform, chatId: event.job.chatId })
+    log.info({ jobId: event.jobId, platform: event.job.platform, chatId: event.job.chatId }, 'Cron job executing')
 
     const message: Message = {
       platform: event.job.platform as 'dashboard' | 'feishu' | 'wecom' | 'weixin',
@@ -129,8 +129,8 @@ async function startDaemon(): Promise<void> {
     }
 
     const logResult = (jobId: string) => ({
-      onSuccess: () => log.info('Cron job dispatched', { jobId }),
-      onError: (error: any) => log.error('Cron job failed', { err: error, jobId }),
+      onSuccess: () => log.info({ jobId }, 'Cron job dispatched'),
+      onError: (error: any) => log.error({ err: error, jobId }, 'Cron job failed'),
     })
 
     // Dashboard 平台使用推送函数
@@ -150,7 +150,7 @@ async function startDaemon(): Promise<void> {
 
     const gateway = gateways.find(g => g.kind === event.job.platform)
     if (!gateway) {
-      log.error('Gateway not found for cron job', { platform: event.job.platform })
+      log.error({ platform: event.job.platform }, 'Gateway not found for cron job')
       return
     }
 
@@ -169,7 +169,7 @@ async function startDaemon(): Promise<void> {
   }
 
   await Promise.all(gateways.map(g => g.start(dispatcher)))
-  log.info('网关已启动', { gateways: gateways.map(g => g.kind) })
+  log.info({ gateways: gateways.map(g => g.kind) }, '网关已启动')
 
   registerShutdownHandlers(dispatcher)
 
@@ -178,11 +178,11 @@ async function startDaemon(): Promise<void> {
 
 main().catch((err) => {
   const log = logger('main')
-  log.error('Fatal startup error', {
+  log.error({
     message: err?.message || String(err),
     stack: err?.stack,
     err
-  })
+  }, 'Fatal startup error')
   console.error('Fatal error:', err)
   process.exit(1)
 })

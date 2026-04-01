@@ -28,7 +28,7 @@ export class MemoryManager {
     this.knowledge = new KnowledgeMemory(this.db, dir)
     this.episode = new EpisodeMemory(this.db, dir)
 
-    log.info('Memory system initialized', { dir })
+    log.info({ dir }, 'Memory system initialized')
   }
 
   search(query: string, category?: string): SearchResult[] {

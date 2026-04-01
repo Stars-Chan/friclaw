@@ -17,6 +17,7 @@ const makeAgent = () => {
     handle: async (session: { id: string }, msg: Message) => {
       calls.push({ sessionId: session.id, content: msg.content })
     },
+    dispose: async () => {},
   }
 }
 
@@ -60,6 +61,7 @@ describe('Dispatcher', () => {
           order.push(2)
         }
       },
+      dispose: async () => {},
     }
     const dispatcher = new Dispatcher(sessionManager, agent)
     const p1 = dispatcher.dispatch(msg({ content: 'first' }))
@@ -79,6 +81,7 @@ describe('Dispatcher', () => {
           await new Promise<void>(r => { resolve1 = r })
         }
       },
+      dispose: async () => {},
     }
     const dispatcher = new Dispatcher(sessionManager, agent)
     const p1 = dispatcher.dispatch(msg({ chatId: 'ou_aaa' }))

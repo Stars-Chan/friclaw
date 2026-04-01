@@ -80,7 +80,7 @@ export class CronStorage {
     this.db.prepare(`
       INSERT INTO cron_jobs (id, name, cron_expression, prompt, timezone, platform, chat_id, user_id, chat_type, enabled, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(job.id, job.name, job.cronExpression, job.prompt, job.timezone, job.platform, job.chatId, job.userId, job.chatType, job.enabled ? 1 : 0, job.createdAt, job.updatedAt)
+    `).run(job.id, job.name, job.cronExpression, job.prompt, job.timezone ?? null, job.platform, job.chatId ?? null, job.userId ?? null, job.chatType ?? null, job.enabled ? 1 : 0, job.createdAt, job.updatedAt)
     return job
   }
 
@@ -104,7 +104,7 @@ export class CronStorage {
     this.db.prepare(`
       UPDATE cron_jobs SET name = ?, cron_expression = ?, prompt = ?, timezone = ?, platform = ?, chat_id = ?, user_id = ?, chat_type = ?, enabled = ?, updated_at = ?
       WHERE id = ?
-    `).run(updated.name, updated.cronExpression, updated.prompt, updated.timezone, updated.platform, updated.chatId, updated.userId, updated.chatType, updated.enabled ? 1 : 0, updated.updatedAt, id)
+    `).run(updated.name, updated.cronExpression, updated.prompt, updated.timezone ?? null, updated.platform, updated.chatId ?? null, updated.userId ?? null, updated.chatType ?? null, updated.enabled ? 1 : 0, updated.updatedAt, id)
     return updated
   }
 
@@ -124,7 +124,7 @@ export class CronStorage {
     this.db.prepare(`
       INSERT INTO cron_executions (id, job_id, scheduled_time, executed_at, status, error_message)
       VALUES (?, ?, ?, ?, ?, ?)
-    `).run(execution.id, execution.jobId, execution.scheduledTime, execution.executedAt, execution.status, execution.errorMessage)
+    `).run(execution.id, execution.jobId, execution.scheduledTime, execution.executedAt, execution.status, execution.errorMessage ?? null)
   }
 
   getExecutionHistory(jobId: string, limit = 50): CronExecution[] {

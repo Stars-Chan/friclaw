@@ -33,7 +33,7 @@ export class Dispatcher {
   ): Promise<void> {
     if (!this.accepting) throw new Error('Dispatcher is not accepting new messages')
 
-    log.debug('Dispatcher received message', {
+    log.debug({
       platform: message.platform,
       chatId: message.chatId,
       userId: message.userId,
@@ -42,7 +42,7 @@ export class Dispatcher {
       contentPreview: message.content?.substring(0, 100) ?? '',
       hasStreamHandler: !!streamHandler,
       hasReply: !!reply
-    })
+    }, 'Dispatcher received message')
 
     if (message.type === 'command') {
       const isBuiltinCommand = ['/clear', '/new', '/status'].includes(message.content)
@@ -59,10 +59,10 @@ export class Dispatcher {
       message.userId,
     )
 
-    log.debug('Dispatcher routing to agent', {
+    log.debug({
       sessionId: session.id,
       workspaceDir: session.workspaceDir
-    })
+    }, 'Dispatcher routing to agent')
 
     await this.laneQueue.enqueue(session.id, () =>
       this.agent.handle(session, message, reply, streamHandler)
@@ -106,22 +106,22 @@ export class Dispatcher {
     switch (message.content) {
       case '/clear':
         this.sessionManager.clearSession(sessionId)
-        log.info('Session cleared via /clear', { sessionId })
+        log.info({ sessionId }, 'Session cleared via /clear')
         await reply?.('会话已清除')
         break
       case '/new':
         this.sessionManager.newSession(message.platform, message.chatId, message.userId)
-        log.info('New session created via /new', { sessionId })
+        log.info({ sessionId }, 'New session created via /new')
         await reply?.('新会话已创建')
         break
       case '/status':
         const stats = this.sessionManager.stats()
         const statusText = `总会话数: ${stats.total}\n各平台: ${JSON.stringify(stats.byPlatform)}`
-        log.info('/status requested', { stats })
+        log.info({ stats }, '/status requested')
         await reply?.(statusText)
         break
       default:
-        log.warn('Unknown command, ignoring', { content: message.content })
+        log.warn({ content: message.content }, 'Unknown command, ignoring')
         await reply?.(`未知命令: ${message.content}`)
     }
   }

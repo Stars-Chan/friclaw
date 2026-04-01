@@ -37,17 +37,13 @@ function shouldLog(level: Level): boolean {
   return LEVEL_RANK[level] >= LEVEL_RANK[_activeLevel];
 }
 
-function formatLine(level: Level, module: string, msg: string): string {
+function formatLine(level: Level, module: string, msg: string, obj?: object): string {
   const tag = level.toUpperCase().padEnd(5);
-  return `[${timestamp()}] ${tag} [${module}] ${msg}`;
+  const base = `[${timestamp()}] ${tag} [${module}] ${msg}`;
+  return obj ? `${base} ${JSON.stringify(obj)}` : base;
 }
 
-function serializeArgs(args: unknown[]): string {
-  if (!args.length) return '';
-  return ' ' + args.map((a) => (typeof a === 'string' ? a : JSON.stringify(a) ?? 'undefined')).join(' ');
-}
-
-function emit(level: Level, line: string, args: unknown[]): void {
+function emit(level: Level, line: string): void {
   if (_logDir !== null) {
     const date = todayStr();
     if (date !== _currentDate) {
@@ -55,43 +51,48 @@ function emit(level: Level, line: string, args: unknown[]): void {
       _currentLogPath = join(_logDir, `${date}.log`);
     }
     try {
-      appendFileSync(_currentLogPath, line + serializeArgs(args) + '\n');
+      appendFileSync(_currentLogPath, line + '\n');
     } catch {
       if (level === 'warn' || level === 'error') {
-        console.error(line, ...args);
+        console.error(line);
       } else {
-        console.log(line, ...args);
+        console.log(line);
       }
     }
   } else {
     if (level === 'warn' || level === 'error') {
-      console.error(line, ...args);
+      console.error(line);
     } else {
-      console.log(line, ...args);
+      console.log(line);
     }
   }
 }
 
 export interface Logger {
-  debug(msg: string, ...args: unknown[]): void;
-  info(msg: string, ...args: unknown[]): void;
-  warn(msg: string, ...args: unknown[]): void;
-  error(msg: string, ...args: unknown[]): void;
+  debug(msg: string): void;
+  debug(obj: object, msg: string): void;
+  info(msg: string): void;
+  info(obj: object, msg: string): void;
+  warn(msg: string): void;
+  warn(obj: object, msg: string): void;
+  error(msg: string): void;
+  error(obj: object, msg: string): void;
 }
 
 export function logger(module: string): Logger {
+  const log = (level: Level, objOrMsg: object | string, msg?: string) => {
+    if (!shouldLog(level)) return;
+    if (typeof objOrMsg === 'string') {
+      emit(level, formatLine(level, module, objOrMsg));
+    } else {
+      emit(level, formatLine(level, module, msg || '', objOrMsg));
+    }
+  };
+
   return {
-    debug(msg, ...args) {
-      if (shouldLog('debug')) emit('debug', formatLine('debug', module, msg), args);
-    },
-    info(msg, ...args) {
-      if (shouldLog('info')) emit('info', formatLine('info', module, msg), args);
-    },
-    warn(msg, ...args) {
-      if (shouldLog('warn')) emit('warn', formatLine('warn', module, msg), args);
-    },
-    error(msg, ...args) {
-      if (shouldLog('error')) emit('error', formatLine('error', module, msg), args);
-    },
+    debug: ((objOrMsg: any, msg?: string) => log('debug', objOrMsg, msg)) as Logger['debug'],
+    info: ((objOrMsg: any, msg?: string) => log('info', objOrMsg, msg)) as Logger['info'],
+    warn: ((objOrMsg: any, msg?: string) => log('warn', objOrMsg, msg)) as Logger['warn'],
+    error: ((objOrMsg: any, msg?: string) => log('error', objOrMsg, msg)) as Logger['error'],
   };
 }

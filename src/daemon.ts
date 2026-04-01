@@ -16,7 +16,7 @@ export function createShutdownHandler(
     if (shuttingDown) return
     shuttingDown = true
 
-    log.info('Graceful shutdown initiated', { signal })
+    log.info({ signal }, 'Graceful shutdown initiated')
 
     const timer = setTimeout(() => {
       log.error(`Shutdown timed out after ${SHUTDOWN_TIMEOUT_MS / 1000}s, forcing exit`)
@@ -30,7 +30,7 @@ export function createShutdownHandler(
       exit(0)
     } catch (err) {
       clearTimeout(timer)
-      log.error('Error during shutdown', { err })
+      log.error({ err }, 'Error during shutdown')
       exit(1)
     }
   }
