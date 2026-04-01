@@ -5,6 +5,7 @@ import { DashboardSessionManager } from './session-manager.js'
 import type { ServerMessage } from './types.js'
 import type { Message } from '../types/message.js'
 import type { CronScheduler } from '../cron/scheduler'
+import { TokenStatsManager } from './token-stats.js'
 import { spawn } from 'child_process'
 import { existsSync } from 'fs'
 import { join } from 'path'
@@ -34,8 +35,10 @@ export async function startDashboard(
   dispatcher: Dispatcher,
   workspacesDir: string,
   cronScheduler: CronScheduler,
+  memoryManager?: any,
 ): Promise<DashboardPushFn> {
   const sessionManager = new DashboardSessionManager(workspacesDir)
+  const tokenStats = new TokenStatsManager(workspacesDir)
   const clients = new Map<string, ServerWebSocket>() // sessionId -> WebSocket
 
   // Start frontend dev server if web directory exists
@@ -156,6 +159,123 @@ export async function startDashboard(
         }
       }
 
+      // Token stats endpoint
+      if (url.pathname === '/api/stats/tokens') {
+        const days = parseInt(url.searchParams.get('days') || '7')
+        const stats = await tokenStats.getStats(days)
+        return Response.json({ stats }, { headers: corsHeaders })
+      }
+
+      // Memory endpoints
+      if (url.pathname === '/api/memory/identity') {
+        const memoryDir = join(process.env.HOME || '', '.friclaw', 'memory')
+        const soulPath = join(memoryDir, 'SOUL.md')
+
+        if (req.method === 'GET') {
+          try {
+            const file = Bun.file(soulPath)
+            const content = await file.exists() ? await file.text() : ''
+            return Response.json({ content }, { headers: corsHeaders })
+          } catch {
+            return Response.json({ content: '' }, { headers: corsHeaders })
+          }
+        }
+        if (req.method === 'POST') {
+          try {
+            const { content } = await req.json()
+            const today = new Date().toISOString().slice(0, 10)
+            const updatedContent = content.replace(/^date:\s*.+$/m, `date: ${today}`)
+            await Bun.write(soulPath, updatedContent)
+            return Response.json({ success: true }, { headers: corsHeaders })
+          } catch {
+            return Response.json({ success: false }, { status: 500, headers: corsHeaders })
+          }
+        }
+      }
+
+      if (url.pathname === '/api/memory/knowledge') {
+        const memoryDir = join(process.env.HOME || '', '.friclaw', 'memory')
+        const knowledgeDir = join(memoryDir, 'knowledge')
+
+        if (req.method === 'GET') {
+          try {
+            const { readdirSync, existsSync } = await import('fs')
+            if (!existsSync(knowledgeDir)) {
+              return Response.json({ list: [] }, { headers: corsHeaders })
+            }
+            const list = readdirSync(knowledgeDir)
+              .filter(f => f.endsWith('.md'))
+              .map(f => f.replace('.md', ''))
+            return Response.json({ list }, { headers: corsHeaders })
+          } catch {
+            return Response.json({ list: [] }, { headers: corsHeaders })
+          }
+        }
+      }
+
+      if (url.pathname.match(/^\/api\/memory\/knowledge\/.+$/)) {
+        const memoryDir = join(process.env.HOME || '', '.friclaw', 'memory')
+        const knowledgeDir = join(memoryDir, 'knowledge')
+        const topic = decodeURIComponent(url.pathname.split('/').pop()!)
+        const filePath = join(knowledgeDir, `${topic}.md`)
+
+        if (req.method === 'GET') {
+          try {
+            const file = Bun.file(filePath)
+            const content = await file.exists() ? await file.text() : ''
+            return Response.json({ content }, { headers: corsHeaders })
+          } catch {
+            return Response.json({ content: '' }, { headers: corsHeaders })
+          }
+        }
+        if (req.method === 'POST') {
+          try {
+            const { content } = await req.json()
+            const today = new Date().toISOString().slice(0, 10)
+            const updatedContent = content.replace(/^date:\s*.+$/m, `date: ${today}`)
+            await Bun.write(filePath, updatedContent)
+            return Response.json({ success: true }, { headers: corsHeaders })
+          } catch {
+            return Response.json({ success: false }, { status: 500, headers: corsHeaders })
+          }
+        }
+      }
+
+      if (url.pathname === '/api/memory/episodes') {
+        const memoryDir = join(process.env.HOME || '', '.friclaw', 'memory')
+        const episodesDir = join(memoryDir, 'episodes')
+
+        try {
+          const { readdirSync, readFileSync, existsSync } = await import('fs')
+          if (!existsSync(episodesDir)) {
+            return Response.json({ episodes: [] }, { headers: corsHeaders })
+          }
+
+          const episodes = readdirSync(episodesDir)
+            .filter(f => f.endsWith('.md'))
+            .sort()
+            .reverse()
+            .slice(0, 50)
+            .map(f => {
+              const raw = readFileSync(join(episodesDir, f), 'utf-8')
+              const id = f.replace('.md', '')
+              const dateMatch = raw.match(/^date:\s*(.+)$/m)
+              const tagsMatch = raw.match(/^tags:\s*\[(.*)]/m)
+              const summary = raw.replace(/^---[\s\S]*?---\n\n/, '')
+              return {
+                id,
+                date: dateMatch?.[1]?.trim() ?? '',
+                tags: tagsMatch?.[1] ? tagsMatch[1].split(',').map(t => t.trim()).filter(Boolean) : [],
+                summary,
+              }
+            })
+
+          return Response.json({ episodes }, { headers: corsHeaders })
+        } catch {
+          return Response.json({ episodes: [] }, { headers: corsHeaders })
+        }
+      }
+
       // Cron jobs endpoints
       if (url.pathname === '/api/cron/jobs') {
         if (req.method === 'GET') {
@@ -218,7 +338,7 @@ export async function startDashboard(
       return new Response('Not Found', { status: 404, headers: corsHeaders })
     },
     websocket: {
-      message: (ws, message) => handleWebSocketMessage(ws as unknown as ServerWebSocket, message, dispatcher, sessionManager, clients),
+      message: (ws, message) => handleWebSocketMessage(ws as unknown as ServerWebSocket, message, dispatcher, sessionManager, clients, tokenStats),
       open: (ws) => {
         const wsClientId = Math.random().toString(36).slice(2)
         const serverWs = ws as unknown as ServerWebSocket
@@ -283,6 +403,7 @@ async function handleWebSocketMessage(
   dispatcher: Dispatcher,
   sessionManager: DashboardSessionManager,
   clients: Map<string, ServerWebSocket>,
+  tokenStats: TokenStatsManager,
 ): Promise<void> {
   try {
     const data = JSON.parse(message.toString())
@@ -433,11 +554,24 @@ async function handleWebSocketMessage(
               data: { text, isThinking } as any,
             })
           } else if (event.type === 'done') {
+            const response = event.response as any
             sendToClient(ws, {
               type: 'stream_stats',
               sessionId,
-              data: event.response as any,
+              data: response,
             })
+
+            // Record token usage
+            if (response?.inputTokens && response?.outputTokens) {
+              await tokenStats.record({
+                timestamp: Date.now(),
+                sessionId,
+                inputTokens: response.inputTokens,
+                outputTokens: response.outputTokens,
+                model: response.model || 'unknown',
+                costCny: response.costCny,
+              })
+            }
           }
         }
 

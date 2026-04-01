@@ -9,6 +9,7 @@ import {
   WifiOff,
   Sliders,
   Clock,
+  Brain,
 } from 'lucide-react';
 import type { Session, ConnectionStatus } from '../types';
 
@@ -18,8 +19,10 @@ interface SidebarProps {
   onSelectSession: (id: string) => void;
   onSelectConfig: () => void;
   onSelectCron: () => void;
+  onSelectStats?: () => void;
+  onSelectMemory?: () => void;
   connectionStatus: ConnectionStatus;
-  activeView: 'chat' | 'config' | 'cron';
+  activeView: 'chat' | 'config' | 'cron' | 'stats' | 'memory';
   className?: string;
 }
 
@@ -45,6 +48,8 @@ const MODULES: Module[] = [
     title: '控制',
     icon: BarChart3,
     items: [
+      { key: 'memory', label: '记忆体系', icon: Brain },
+      { key: 'stats', label: '使用统计', icon: BarChart3 },
       { key: 'cron', label: '定时任务', icon: Clock },
     ],
   },
@@ -58,7 +63,7 @@ const MODULES: Module[] = [
   },
 ];
 
-export function Sidebar({ sessions, currentSessionId, onSelectSession, onSelectConfig, onSelectCron, connectionStatus, activeView, className }: SidebarProps) {
+export function Sidebar({ sessions, currentSessionId, onSelectSession, onSelectConfig, onSelectCron, onSelectStats, onSelectMemory, connectionStatus, activeView, className }: SidebarProps) {
   const [expandedModules, setExpandedModules] = useState<Set<ModuleKey>>(new Set(['chat']));
 
   const toggleModule = (moduleKey: ModuleKey) => {
@@ -148,6 +153,8 @@ export function Sidebar({ sessions, currentSessionId, onSelectSession, onSelectC
                         onClick={() => {
                           if (item.key === 'config') onSelectConfig();
                           if (item.key === 'cron') onSelectCron();
+                          if (item.key === 'stats' && onSelectStats) onSelectStats();
+                          if (item.key === 'memory' && onSelectMemory) onSelectMemory();
                         }}
                       >
                         <ItemIcon className={`w-4 h-4 ${isActive ? 'text-blue-600' : 'text-gray-500'}`} />

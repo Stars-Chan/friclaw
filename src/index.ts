@@ -165,7 +165,7 @@ async function startDaemon(): Promise<void> {
   log.info('Cron scheduler started')
 
   if (config.dashboard.enabled) {
-    dashboardPush = await startDashboard(config.dashboard.port, dispatcher, config.workspaces.dir, cronScheduler)
+    dashboardPush = await startDashboard(config.dashboard.port, dispatcher, config.workspaces.dir, cronScheduler, memory)
   }
 
   await Promise.all(gateways.map(g => g.start(dispatcher)))

@@ -20,6 +20,11 @@ const CONFIG_FIELDS = [
   { key: 'ANTHROPIC_DEFAULT_OPUS_MODEL', label: 'Opus Model' },
 ];
 
+const PRICING_FIELDS = [
+  { key: 'TOKEN_PRICE_INPUT', label: '输入 Token 价格 (¥/1M)', placeholder: '3.00' },
+  { key: 'TOKEN_PRICE_OUTPUT', label: '输出 Token 价格 (¥/1M)', placeholder: '15.00' },
+];
+
 export function ConfigPage() {
   const [config, setConfig] = useState<Config>({ current: {}, saved: [] });
   const [loading, setLoading] = useState(true);
@@ -204,6 +209,24 @@ export function ConfigPage() {
                 type={(field as any).type || 'text'}
                 value={config.current[field.key] || ''}
                 onChange={(e) => updateCurrent(field.key, e.target.value)}
+                className="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-sm text-gray-300"
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+        <h4 className="text-lg font-medium text-gray-200 mb-3">Token 价格配置</h4>
+        <div className="space-y-3">
+          {PRICING_FIELDS.map(field => (
+            <div key={field.key}>
+              <label className="block text-sm text-gray-400 mb-1">{field.label}</label>
+              <input
+                type="text"
+                value={config.current[field.key] || ''}
+                onChange={(e) => updateCurrent(field.key, e.target.value)}
+                placeholder={field.placeholder}
                 className="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-sm text-gray-300"
               />
             </div>
