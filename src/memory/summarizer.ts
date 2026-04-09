@@ -1,4 +1,5 @@
 // src/memory/summarizer.ts
+import Anthropic from '@anthropic-ai/sdk'
 import { logger } from '../utils/logger'
 
 const log = logger('summarizer')
@@ -31,42 +32,43 @@ tags: [<逗号分隔的相关标签>]
 
 export async function summarizeTranscript(
   transcript: string,
-  model = 'claude-haiku-4-5',
+  model = 'claude-haiku-4-5-20241022',
   timeoutMs = 300_000
 ): Promise<string> {
   const prompt = SUMMARIZE_PROMPT + transcript
-  const env = { ...process.env }
-  delete env.CLAUDECODE
-  delete env.CLAUDE_CODE_ENTRYPOINT
 
   log.info({ transcriptLength: transcript.length, model, timeoutMs }, 'Generating session summary')
 
-  const result = Bun.spawnSync(['claude', '--model', model, '-p', prompt], {
-    stdout: 'pipe',
-    stderr: 'pipe',
-    env,
-    timeout: timeoutMs,
-  })
-
-  if (result.exitCode !== 0) {
-    const stderr = result.stderr.toString().trim()
-    const stdout = result.stdout.toString().trim()
-
-    // 退出码 143 表示超时（SIGTERM）
-    if (result.exitCode === 143) {
-      throw new Error(`Claude CLI timeout after ${timeoutMs}ms`)
+  try {
+    // 使用 Anthropic SDK 直接调用 API
+    const apiKey = process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN
+    if (!apiKey) {
+      throw new Error('ANTHROPIC_API_KEY or ANTHROPIC_AUTH_TOKEN not found in environment')
     }
 
-    log.error({
-      exitCode: result.exitCode,
-      stderr: stderr.substring(0, 500),
-      stdout: stdout.substring(0, 200)
-    }, 'Claude CLI failed')
+    const baseURL = process.env.ANTHROPIC_BASE_URL
+    const client = new Anthropic({
+      apiKey,
+      baseURL,
+      timeout: timeoutMs,
+    })
 
-    throw new Error(`Claude CLI failed (exit ${result.exitCode}): ${stderr || stdout || 'Unknown error'}`)
+    const message = await client.messages.create({
+      model,
+      max_tokens: 2048,
+      messages: [{ role: 'user', content: prompt }],
+    })
+
+    const summary = message.content
+      .filter(block => block.type === 'text')
+      .map(block => (block as { type: 'text'; text: string }).text)
+      .join('\n')
+      .trim()
+
+    log.info({ summaryLength: summary.length }, 'Session summary generated')
+    return summary
+  } catch (error) {
+    log.error({ error, transcriptLength: transcript.length }, 'Failed to generate summary')
+    throw error
   }
-
-  const summary = result.stdout.toString().trim()
-  log.info({ summaryLength: summary.length }, 'Session summary generated')
-  return summary
 }

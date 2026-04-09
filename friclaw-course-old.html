@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FriClaw 互动课程 - 打造你的 AI 管家</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            overflow-x: hidden;
+        }
+
+        .progress-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 0%;
+            height: 4px;
+            background: linear-gradient(90deg, #00d2ff 0%, #3a47d5 100%);
+            z-index: 9999;
+            transition: width 0.3s ease;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 60px 20px;
+        }
+
+        section {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 40px 0;
+            opacity: 0;
+            transform: translateY(50px);
+            transition: all 0.8s ease;
+        }
+
+        section.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            margin-bottom: 40px;
+        }
+
+        h1 {
+            font-size: 3em;
+            color: white;
+            text-align: center;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        h2 {
+            font-size: 2.2em;
+            color: #667eea;
+            margin-bottom: 20px;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        h3 {
+            font-size: 1.5em;
+            color: #764ba2;
+            margin: 25px 0 15px 0;
+        }
+
+        p {
+            font-size: 1.1em;
+            margin-bottom: 15px;
+            color: #555;
+        }
+
+        .highlight {
+            background: linear-gradient(120deg, #ffd89b 0%, #19547b 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: bold;
+        }
+
+        .code-block {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            border-radius: 10px;
+            overflow-x: auto;
+            margin: 20px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.95em;
+            position: relative;
+        }
+
+        .code-block::before {
+            content: attr(data-lang);
+            position: absolute;
+            top: 5px;
+            right: 10px;
+            color: #888;
+            font-size: 0.8em;
+        }
+
+        .architecture-diagram {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 15px;
+            margin: 30px 0;
+            border: 2px solid #e0e0e0;
+        }
+
+        .flow-box {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 10px;
+            margin: 10px 0;
+            text-align: center;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .arrow {
+            text-align: center;
+            font-size: 2em;
+            color: #667eea;
+            margin: 10px 0;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+
+        .feature-card {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            padding: 25px;
+            border-radius: 15px;
+            text-align: center;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.2);
+        }
+
+        .feature-icon {
+            font-size: 3em;
+            margin-bottom: 15px;
+        }
+
+        .quiz-container {
+            background: #fff3cd;
+            border-left: 5px solid #ffc107;
+            padding: 25px;
+            border-radius: 10px;
+            margin: 30px 0;
+        }
+
+        .quiz-question {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #856404;
+            margin-bottom: 15px;
+        }
+
+        .quiz-options {
+            list-style: none;
+        }
+
+        .quiz-option {
+            background: white;
+            padding: 12px 20px;
+            margin: 10px 0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+
+        .quiz-option:hover {
+            background: #f8f9fa;
+            border-color: #667eea;
+            transform: translateX(10px);
+        }
+
+        .quiz-option.correct {
+            background: #d4edda;
+            border-color: #28a745;
+        }
+
+        .quiz-option.wrong {
+            background: #f8d7da;
+            border-color: #dc3545;
+        }
+
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 25px 0;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .comparison-table th {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            text-align: left;
+        }
+
+        .comparison-table td {
+            padding: 15px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .comparison-table tr:hover {
+            background: #f8f9fa;
+        }
+
+        .intro-subtitle {
+            font-size: 1.3em;
+            color: white;
+            text-align: center;
+            margin-bottom: 40px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+        }
+
+        .nav-hint {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: rgba(255,255,255,0.9);
+            padding: 15px 25px;
+            border-radius: 50px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+            font-size: 0.9em;
+            color: #667eea;
+            animation: bounce 2s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .memory-layer {
+            background: linear-gradient(135deg, #e0c3fc 0%, #8ec5fc 100%);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 15px 0;
+            border-left: 5px solid #667eea;
+        }
+
+        .memory-layer h4 {
+            color: #4a148c;
+            margin-bottom: 10px;
+        }
+
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            color: #e83e8c;
+        }
+
+        .tech-stack {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin: 25px 0;
+        }
+
+        .tech-badge {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-weight: bold;
+            box-shadow: 0 4px 10px rgba(102, 126, 234, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="progress-bar" id="progressBar"></div>
+    <div class="nav-hint">👇 向下滚动探索</div>
+
+    <div class="container">
+        <!-- Section 1: 欢迎 -->
+        <section id="intro">
+            <h1>🤖 FriClaw 互动课程</h1>
+            <p class="intro-subtitle">打造你的专属 AI 管家 - Friday + Claw</p>
+            <div class="card">
+                <h2>欢迎来到 FriClaw 的世界</h2>
+                <p>FriClaw 不是一个普通的聊天机器人，而是你的<span class="highlight">私人 AI 管家</span>。</p>
+                <p>就像钢铁侠的 F.R.I.D.A.Y. 一样，它：</p>
+                <ul style="font-size: 1.1em; margin: 20px 0 20px 30px;">
+                    <li>📱 <strong>随时可达</strong> - 通过飞书、企业微信接入</li>
+                    <li>🧠 <strong>深度理解</strong> - 基于 Claude Code 的强大推理</li>
+                    <li>💾 <strong>长期记忆</strong> - 三层记忆系统，越用越懂你</li>
+                    <li>⚡ <strong>主动服务</strong> - 定时提醒，主动执行任务</li>
+                    <li>🛠️ <strong>工具全能</strong> - MCP 协议支持无限扩展</li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- Section 2: 核心架构 -->
+        <section id="architecture">
+            <div class="card">
+                <h2>🏗️ 核心架构</h2>
+                <p>FriClaw 采用分层架构设计，每一层都有明确的职责：</p>
+
+                <div class="architecture-diagram">
+                    <div class="flow-box">飞书 / 企业微信网关</div>
+                    <div class="arrow">↓</div>
+                    <div class="flow-box">Dispatcher (消息路由器)</div>
+                    <div class="arrow">↓</div>
+                    <div class="flow-box">Session Manager (会话管理)</div>
+                    <div class="arrow">↓</div>
+                    <div class="flow-box">Claude Code Agent</div>
+                    <div class="arrow">↓</div>
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
+                        <div class="flow-box" style="font-size: 0.9em;">内存系统</div>
+                        <div class="flow-box" style="font-size: 0.9em;">MCP 服务</div>
+                        <div class="flow-box" style="font-size: 0.9em;">定时任务</div>
+                    </div>
+                </div>
+
+                <h3>🎯 设计亮点</h3>
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <div class="feature-icon">🚦</div>
+                        <h4>Lane Queue</h4>
+                        <p>每个会话独立队列，会话内串行，会话间并行</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">🔄</div>
+                        <h4>热重载</h4>
+                        <p>MCP 配置修改后自动生效，无需重启</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">💬</div>
+                        <h4>流式响应</h4>
+                        <p>实时展示 AI 思考过程和回复内容</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 3: Dispatcher 核心 -->
+        <section id="dispatcher">
+            <div class="card">
+                <h2>🎯 Dispatcher - 消息路由核心</h2>
+                <p>Dispatcher 是 FriClaw 的<span class="highlight">中央调度器</span>，负责接收消息并路由到正确的处理器。</p>
+
+                <h3>核心代码解析</h3>
+                <div class="code-block" data-lang="TypeScript">
+export class Dispatcher {
+  private laneQueue = new LaneQueue()
+  private accepting = true
+
+  async dispatch(
+    message: Message,
+    reply?: (content: string) => Promise&lt;string&gt;,
+    streamHandler?: StreamHandler
+  ): Promise&lt;void&gt; {
+    // 1. 检查是否接受新消息
+    if (!this.accepting) throw new Error('Dispatcher is not accepting')
+
+    // 2. 处理命令消息 (/clear, /new, /status)
+    if (message.type === 'command') {
+      await this.handleCommand(message, reply)
+      return
+    }
+
+    // 3. 获取或创建会话
+    const session = this.sessionManager.getOrCreate(
+      message.platform,
+      message.chatId,
+      message.userId,
+    )
+
+    // 4. 入队处理 - 保证同一会话串行执行
+    await this.laneQueue.enqueue(session.id, () =>
+      this.agent.handle(session, message, reply, streamHandler)
+    )
+  }
+}</div>
+
+                <h3>🔑 关键特性</h3>
+                <table class="comparison-table">
+                    <tr>
+                        <th>特性</th>
+                        <th>说明</th>
+                    </tr>
+                    <tr>
+                        <td><strong>Lane Queue</strong></td>
+                        <td>每个会话 ID 对应一个独立队列，确保消息按顺序处理</td>
+                    </tr>
+                    <tr>
+                        <td><strong>优雅关闭</strong></td>
+                        <td>停止接受新消息 → 等待队列清空 → 清理资源</td>
+                    </tr>
+                    <tr>
+                        <td><strong>命令处理</strong></td>
+                        <td>支持 /clear、/new、/status 等内置命令</td>
+                    </tr>
+                    <tr>
+                        <td><strong>流式支持</strong></td>
+                        <td>可选的 streamHandler 实现实时响应</td>
+                    </tr>
+                </table>
+            </div>
+        </section>
+
+        <!-- Section 4: 三层记忆系统 -->
+        <section id="memory">
+            <div class="card">
+                <h2>🧠 三层记忆系统</h2>
+                <p>FriClaw 的记忆系统让 AI 真正"记住"你，实现<span class="highlight">长期个性化服务</span>。</p>
+
+                <div class="memory-layer">
+                    <h4>📖 Identity 层 (只读)</h4>
+                    <p><strong>作用：</strong>定义 AI 的身份、性格、价值观</p>
+                    <p><strong>文件：</strong>SOUL.md</p>
+                    <p><strong>加载：</strong>系统启动时注入所有对话</p>
+                </div>
+
+                <div class="memory-layer">
+                    <h4>📚 Knowledge 层 (读写)</h4>
+                    <p><strong>作用：</strong>存储用户知识、偏好、联系人</p>
+                    <p><strong>文件：</strong>owner-profile.md, preferences.md, people.md, projects.md</p>
+                    <p><strong>加载：</strong>按需检索注入</p>
+                </div>
+
+                <div class="memory-layer">
+                    <h4>📅 Episode 层 (只读)</h4>
+                    <p><strong>作用：</strong>会话摘要、历史记录</p>
+                    <p><strong>文件：</strong>{date}_episodes.md</p>
+                    <p><strong>加载：</strong>自动生成，定时更新</p>
+                </div>
+
+                <h3>🔍 混合检索系统</h3>
+                <div class="code-block" data-lang="TypeScript">
+// 混合检索策略
+search(query: string, category?: string): SearchResult[] {
+  // 1. SQLite FTS5 关键词搜索
+  const ftsResults = ftsSearch(query, limit * 2)
+
+  // 2. Qdrant 向量语义搜索 (可选)
+  const vectorResults = vectorSearch(query, limit * 2)
+
+  // 3. Rerank 重排序，取 top-N
+  return rerank([...ftsResults, ...vectorResults], limit)
+}</div>
+            </div>
+        </section>
+        <!-- Section 5: Lane Queue 并发控制 -->
+        <section id="lanequeue">
+            <div class="card">
+                <h2>🚦 Lane Queue - 优雅的并发控制</h2>
+                <p>传统的 Mutex 锁需要手动管理，容易出错。FriClaw 使用 <span class="highlight">Lane Queue</span> 实现更优雅的并发控制。</p>
+
+                <h3>为什么不用 Mutex？</h3>
+                <table class="comparison-table">
+                    <tr>
+                        <th>对比项</th>
+                        <th>Mutex</th>
+                        <th>Lane Queue</th>
+                    </tr>
+                    <tr>
+                        <td>语义</td>
+                        <td>锁的获取和释放</td>
+                        <td>任务入队和执行</td>
+                    </tr>
+                    <tr>
+                        <td>代码复杂度</td>
+                        <td>需要 try-finally 包裹</td>
+                        <td>自动处理异常</td>
+                    </tr>
+                    <tr>
+                        <td>执行顺序</td>
+                        <td>不保证 FIFO</td>
+                        <td>严格 FIFO</td>
+                    </tr>
+                    <tr>
+                        <td>错误处理</td>
+                        <td>手动释放锁</td>
+                        <td>自动清理</td>
+                    </tr>
+                </table>
+
+                <h3>Lane Queue 工作原理</h3>
+                <div class="code-block" data-lang="TypeScript">
+class LaneQueue {
+  private lanes = new Map&lt;string, Promise&lt;void&gt;&gt;()
+
+  async enqueue&lt;T&gt;(laneId: string, task: () => Promise&lt;T&gt;): Promise&lt;T&gt; {
+    // 获取当前 lane 的最后一个任务
+    const prev = this.lanes.get(laneId) ?? Promise.resolve()
+
+    // 创建新任务，等待前一个任务完成
+    const next = prev.then(task, task)
+
+    // 更新 lane
+    this.lanes.set(laneId, next.catch(() => {}))
+
+    return next
+  }
+}</div>
+
+                <p><strong>核心思想：</strong>每个 lane (会话 ID) 维护一个 Promise 链，新任务追加到链尾，自动串行执行。</p>
+            </div>
+        </section>
+
+        <!-- Section 6: 网关层设计 -->
+        <section id="gateway">
+            <div class="card">
+                <h2>🌐 网关层 - 多平台接入</h2>
+                <p>FriClaw 支持多个即时通讯平台，通过统一的网关接口实现<span class="highlight">平台无关</span>的消息处理。</p>
+
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <div class="feature-icon">🐦</div>
+                        <h4>飞书网关</h4>
+                        <p>WebSocket 长连接</p>
+                        <p>支持富文本、卡片消息</p>
+                        <p>流式响应增量更新</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">💼</div>
+                        <h4>企业微信网关</h4>
+                        <p>WebSocket 长连接</p>
+                        <p>支持文本、图片、文件</p>
+                        <p>分块消息模拟流式</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">🌐</div>
+                        <h4>Dashboard</h4>
+                        <p>Web 管理界面</p>
+                        <p>实时状态监控</p>
+                        <p>会话管理</p>
+                    </div>
+                </div>
+
+                <h3>统一消息模型</h3>
+                <div class="code-block" data-lang="TypeScript">
+interface Message {
+  // 会话标识
+  sessionId: string
+  platform: 'feishu' | 'wecom' | 'dashboard'
+
+  // 发送者信息
+  userId: string
+  userName: string
+
+  // 接收者信息
+  chatId: string
+  chatType: 'private' | 'group' | 'topic'
+
+  // 消息内容
+  type: 'text' | 'image' | 'file' | 'command'
+  content: string
+
+  // 元数据
+  timestamp: number
+  messageId: string
+}</div>
+            </div>
+        </section>
+
+        <!-- Section 7: MCP 扩展系统 -->
+        <section id="mcp">
+            <div class="card">
+                <h2>🔌 MCP 扩展系统</h2>
+                <p><span class="highlight">Model Context Protocol (MCP)</span> 是 Anthropic 推出的标准化工具调用协议，让 AI 能够调用外部工具。</p>
+
+                <h3>内置 MCP 服务</h3>
+                <table class="comparison-table">
+                    <tr>
+                        <th>服务名称</th>
+                        <th>功能</th>
+                    </tr>
+                    <tr>
+                        <td><code>friclaw-memory</code></td>
+                        <td>内存读写、全文搜索、向量检索</td>
+                    </tr>
+                    <tr>
+                        <td><code>friclaw-cron</code></td>
+                        <td>定时任务管理</td>
+                    </tr>
+                    <tr>
+                        <td><code>friclaw-workspace</code></td>
+                        <td>工作空间管理</td>
+                    </tr>
+                    <tr>
+                        <td><code>friclaw-gateway</code></td>
+                        <td>网关消息发送</td>
+                    </tr>
+                </table>
+
+                <h3>🔥 热重载机制</h3>
+                <p>每次启动新的 Claude Code 子进程时，自动重新读取 MCP 配置，无需重启主进程。</p>
+                <div class="code-block" data-lang="TypeScript">
+// 每个会话启动时动态加载 MCP 配置
+async startSession(conversationId: string) {
+  // 1. 读取用户自定义 MCP 配置
+  const userMcp = await loadUserMcpConfig()
+
+  // 2. 合并内置 MCP 服务
+  const mergedMcp = {
+    ...builtinMcpServers,
+    ...userMcp
+  }
+
+  // 3. 写入工作空间
+  await writeFile(`${workspace}/.mcp.json`, mergedMcp)
+
+  // 4. 启动 Claude Code 子进程
+  spawn('claude-code', ['chat', '--workspace', workspace])
+}</div>
+            </div>
+        </section>
+        <!-- Section 8: 技术栈 -->
+        <section id="techstack">
+            <div class="card">
+                <h2>⚙️ 技术栈</h2>
+                <p>FriClaw 选择了现代化、高性能的技术栈：</p>
+
+                <div class="tech-stack">
+                    <div class="tech-badge">🚀 Bun</div>
+                    <div class="tech-badge">📘 TypeScript</div>
+                    <div class="tech-badge">🤖 Claude Code</div>
+                    <div class="tech-badge">💾 SQLite + FTS5</div>
+                    <div class="tech-badge">🔌 MCP</div>
+                    <div class="tech-badge">🌐 WebSocket</div>
+                </div>
+
+                <h3>为什么选择 Bun？</h3>
+                <ul style="font-size: 1.1em; margin: 20px 0 20px 30px;">
+                    <li>⚡ <strong>极速启动</strong> - 比 Node.js 快 3-4 倍</li>
+                    <li>🔋 <strong>内置电池</strong> - SQLite、WebSocket、测试框架开箱即用</li>
+                    <li>📦 <strong>兼容 Node.js</strong> - 无缝迁移现有代码</li>
+                    <li>🎯 <strong>TypeScript 原生支持</strong> - 无需额外配置</li>
+                </ul>
+
+                <div class="code-block" data-lang="bash">
+# Bun 常用命令
+bun run src/index.ts        # 运行应用
+bun test                     # 运行测试
+bun install                  # 安装依赖
+bun build src/index.ts       # 构建应用</div>
+            </div>
+        </section>
+
+        <!-- Section 9: 快速开始 -->
+        <section id="quickstart">
+            <div class="card">
+                <h2>🚀 快速开始</h2>
+
+                <h3>1️⃣ 安装依赖</h3>
+                <div class="code-block" data-lang="bash">
+# 安装 Bun
+curl -fsSL https://bun.sh/install | bash
+
+# 克隆项目
+git clone https://github.com/Stars-Chan/friclaw.git
+cd friclaw
+
+# 安装依赖
+bun install</div>
+
+                <h3>2️⃣ 配置</h3>
+                <div class="code-block" data-lang="bash">
+# 复制配置文件
+cp config.example.json ~/.friclaw/config.json
+
+# 编辑配置，填入飞书/企业微信凭证
+vim ~/.friclaw/config.json</div>
+
+                <h3>3️⃣ 运行</h3>
+                <div class="code-block" data-lang="bash">
+# 启动服务
+bun run start
+
+# Dashboard 默认运行在 http://localhost:3000</div>
+
+                <h3>4️⃣ 首次使用</h3>
+                <div class="code-block" data-lang="bash">
+# 运行引导程序，设置 AI 身份
+bun run onboard</div>
+            </div>
+        </section>
+
+        <!-- Section 10: 测验 -->
+        <section id="quiz">
+            <div class="card">
+                <h2>📝 知识测验</h2>
+                <p>测试一下你对 FriClaw 的理解程度！</p>
+
+                <div class="quiz-container">
+                    <div class="quiz-question">Q1: FriClaw 使用什么并发控制机制？</div>
+                    <ul class="quiz-options">
+                        <li class="quiz-option" onclick="checkAnswer(this, false)">A. Mutex 锁</li>
+                        <li class="quiz-option" onclick="checkAnswer(this, true)">B. Lane Queue</li>
+                        <li class="quiz-option" onclick="checkAnswer(this, false)">C. Semaphore 信号量</li>
+                        <li class="quiz-option" onclick="checkAnswer(this, false)">D. Actor 模型</li>
+                    </ul>
+                </div>
+
+                <div class="quiz-container">
+                    <div class="quiz-question">Q2: FriClaw 的记忆系统有几层？</div>
+                    <ul class="quiz-options">
+                        <li class="quiz-option" onclick="checkAnswer(this, false)">A. 两层</li>
+                        <li class="quiz-option" onclick="checkAnswer(this, true)">B. 三层</li>
+                        <li class="quiz-option" onclick="checkAnswer(this, false)">C. 四层</li>
+                        <li class="quiz-option" onclick="checkAnswer(this, false)">D. 五层</li>
+                    </ul>
+                </div>
+
+                <div class="quiz-container">
+                    <div class="quiz-question">Q3: Dispatcher 的核心作用是什么？</div>
+                    <ul class="quiz-options">
+                        <li class="quiz-option" onclick="checkAnswer(this, false)">A. 存储消息</li>
+                        <li class="quiz-option" onclick="checkAnswer(this, true)">B. 路由消息到正确的处理器</li>
+                        <li class="quiz-option" onclick="checkAnswer(this, false)">C. 加密消息</li>
+                        <li class="quiz-option" onclick="checkAnswer(this, false)">D. 压缩消息</li>
+                    </ul>
+                </div>
+
+                <div class="quiz-container">
+                    <div class="quiz-question">Q4: MCP 配置修改后需要重启主进程吗？</div>
+                    <ul class="quiz-options">
+                        <li class="quiz-option" onclick="checkAnswer(this, false)">A. 需要</li>
+                        <li class="quiz-option" onclick="checkAnswer(this, true)">B. 不需要，支持热重载</li>
+                        <li class="quiz-option" onclick="checkAnswer(this, false)">C. 需要重启所有服务</li>
+                        <li class="quiz-option" onclick="checkAnswer(this, false)">D. 需要重启数据库</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 11: 总结 -->
+        <section id="summary">
+            <div class="card">
+                <h2>🎓 课程总结</h2>
+                <p>恭喜你完成了 FriClaw 互动课程！让我们回顾一下核心要点：</p>
+
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <div class="feature-icon">🏗️</div>
+                        <h4>分层架构</h4>
+                        <p>网关层、会话层、Agent 层、内存层、扩展层</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">🚦</div>
+                        <h4>Lane Queue</h4>
+                        <p>优雅的并发控制，会话内串行，会话间并行</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">🧠</div>
+                        <h4>三层记忆</h4>
+                        <p>Identity、Knowledge、Episode 实现长期记忆</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">🔌</div>
+                        <h4>MCP 扩展</h4>
+                        <p>标准化工具调用，支持热重载</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">🌐</div>
+                        <h4>多平台</h4>
+                        <p>飞书、企业微信、Web Dashboard</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">⚡</div>
+                        <h4>高性能</h4>
+                        <p>Bun 运行时，SQLite + FTS5</p>
+                    </div>
+                </div>
+
+                <h3 style="text-align: center; margin-top: 40px; color: #667eea;">🎉 开始打造你的专属 AI 管家吧！</h3>
+                <p style="text-align: center; font-size: 1.2em; margin-top: 20px;">
+                    <a href="https://github.com/Stars-Chan/friclaw" style="color: #667eea; text-decoration: none; font-weight: bold;">
+                        📦 GitHub 仓库
+                    </a>
+                </p>
+            </div>
+        </section>
+
+    </div>
+    <script>
+        // 滚动进度条
+        window.addEventListener('scroll', () => {
+            const winScroll = document.body.scrollTop || document.documentElement.scrollTop;
+            const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+            const scrolled = (winScroll / height) * 100;
+            document.getElementById('progressBar').style.width = scrolled + '%';
+        });
+
+        // 滚动动画
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                }
+            });
+        }, { threshold: 0.1 });
+
+        document.querySelectorAll('section').forEach(section => {
+            observer.observe(section);
+        });
+
+        // 测验功能
+        function checkAnswer(element, isCorrect) {
+            const options = element.parentElement.querySelectorAll('.quiz-option');
+            options.forEach(opt => {
+                opt.style.pointerEvents = 'none';
+            });
+
+            if (isCorrect) {
+                element.classList.add('correct');
+                element.innerHTML += ' ✅ 正确！';
+            } else {
+                element.classList.add('wrong');
+                element.innerHTML += ' ❌ 错误';
+            }
+        }
+
+        // 隐藏导航提示
+        window.addEventListener('scroll', () => {
+            if (window.scrollY > 200) {
+                document.querySelector('.nav-hint').style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>
