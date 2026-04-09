@@ -334,6 +334,34 @@ export async function startDashboard(
         }
       }
 
+      // Gateways config endpoint
+      if (url.pathname === '/api/gateways') {
+        const friclawConfigPath = join(process.env.HOME || '', '.friclaw', 'config.json')
+
+        if (req.method === 'GET') {
+          try {
+            const file = Bun.file(friclawConfigPath)
+            const config = await file.json()
+            return Response.json({ gateways: config.gateways || {} }, { headers: corsHeaders })
+          } catch {
+            return Response.json({ gateways: {} }, { headers: corsHeaders })
+          }
+        }
+
+        if (req.method === 'POST') {
+          try {
+            const { gateways } = await req.json()
+            const file = Bun.file(friclawConfigPath)
+            const config = await file.json()
+            config.gateways = gateways
+            await Bun.write(friclawConfigPath, JSON.stringify(config, null, 2))
+            return Response.json({ success: true }, { headers: corsHeaders })
+          } catch {
+            return Response.json({ success: false }, { status: 500, headers: corsHeaders })
+          }
+        }
+      }
+
       // 404 for other endpoints (frontend dev server handles UI)
       return new Response('Not Found', { status: 404, headers: corsHeaders })
     },

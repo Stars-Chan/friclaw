@@ -56,6 +56,35 @@ Dashboard 默认运行在 `http://localhost:3000`。
 
 详细设计见 [docs/DESIGN.md](docs/DESIGN.md)。
 
+## 网关配置
+
+FriClaw 支持通过飞书、企业微信、微信三个平台接入消息。网关配置位于 `~/.friclaw/config.json` 的 `gateways` 字段，也可通过 Dashboard 设置页面管理。
+
+**飞书**
+
+| 字段 | 说明 |
+|------|------|
+| `enabled` | 是否启用 |
+| `appId` | 飞书应用 App ID |
+| `appSecret` | 飞书应用 App Secret |
+| `encryptKey` | 加密密钥 |
+| `verificationToken` | 验证 Token |
+
+**企业微信**
+
+| 字段 | 说明 |
+|------|------|
+| `enabled` | 是否启用 |
+| `botId` | 机器人 ID |
+| `secret` | 应用 Secret |
+
+**微信**
+
+| 字段 | 说明 |
+|------|------|
+| `enabled` | 是否启用 |
+| `token` | 接入 Token |
+
 ## 技术栈
 
 | 组件 | 技术 |

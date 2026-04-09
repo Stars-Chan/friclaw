@@ -6,6 +6,7 @@ import { ConfigPage } from './components/ConfigPage';
 import { CronPage } from './components/CronPage';
 import { StatsPage } from './components/StatsPage';
 import { MemoryPage } from './components/MemoryPage';
+import { GatewaysPage } from './components/GatewaysPage';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ComponentErrorBoundary } from './components/ComponentErrorBoundary';
 import { useWebSocket } from './hooks/useWebSocket';
@@ -14,9 +15,9 @@ import './styles/globals.css';
 
 function App() {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
-  const [activeView, setActiveView] = useState<'chat' | 'config' | 'cron' | 'stats' | 'memory'>(() => {
+  const [activeView, setActiveView] = useState<'chat' | 'config' | 'cron' | 'stats' | 'memory' | 'gateways'>(() => {
     const saved = localStorage.getItem('activeView');
-    return (saved === 'config' || saved === 'cron' || saved === 'stats' || saved === 'memory') ? saved as 'config' | 'cron' | 'stats' | 'memory' : 'chat';
+    return (saved === 'config' || saved === 'cron' || saved === 'stats' || saved === 'memory' || saved === 'gateways') ? saved as 'config' | 'cron' | 'stats' | 'memory' | 'gateways' : 'chat';
   });
   const { sessions, currentSessionId, selectSession, updateSession } = useSessions();
   const { messages, isConnected, sendMessage, connectionStatus, error } = useWebSocket(
@@ -55,6 +56,12 @@ function App() {
     localStorage.setItem('activeView', 'memory');
   };
 
+  const handleSelectGateways = () => {
+    setIsMobileSidebarOpen(false);
+    setActiveView('gateways');
+    localStorage.setItem('activeView', 'gateways');
+  };
+
   const handleSendMessage = (text: string) => {
     sendMessage(text);
     if (messages.length === 0) {
@@ -87,6 +94,7 @@ function App() {
           onSelectCron={handleSelectCron}
           onSelectStats={handleSelectStats}
           onSelectMemory={handleSelectMemory}
+          onSelectGateways={handleSelectGateways}
           connectionStatus={connectionStatus}
           activeView={activeView}
           className={`fixed md:static top-0 left-0 h-full z-50 transform transition-transform md:translate-x-0 ${
@@ -107,7 +115,7 @@ function App() {
             </button>
             <h2 className="text-lg font-semibold text-gray-100">配置</h2>
           </header>
-          <div className="flex-1 p-6">
+          <div className="flex-1 overflow-y-auto p-6">
             <ComponentErrorBoundary componentName="ConfigPage">
               <ConfigPage />
             </ComponentErrorBoundary>
@@ -161,6 +169,24 @@ function App() {
           <div className="flex-1 p-6 overflow-auto">
             <ComponentErrorBoundary componentName="MemoryPage">
               <MemoryPage />
+            </ComponentErrorBoundary>
+          </div>
+        </div>
+      ) : activeView === 'gateways' ? (
+        <div className="flex-1 flex flex-col bg-gray-900">
+          <header className="flex items-center gap-3 px-6 py-4 border-b border-gray-800">
+            <button
+              type="button"
+              className="md:hidden p-2 rounded-lg border border-gray-700 text-gray-200 hover:bg-gray-800"
+              onClick={() => setIsMobileSidebarOpen(true)}
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+            <h2 className="text-lg font-semibold text-gray-100">网关配置</h2>
+          </header>
+          <div className="flex-1 overflow-y-auto p-6">
+            <ComponentErrorBoundary componentName="GatewaysPage">
+              <GatewaysPage />
             </ComponentErrorBoundary>
           </div>
         </div>

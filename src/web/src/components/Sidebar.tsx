@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState } from "react";
 import {
   MessageSquare,
   BarChart3,
@@ -10,8 +10,9 @@ import {
   Sliders,
   Clock,
   Brain,
-} from 'lucide-react';
-import type { Session, ConnectionStatus } from '../types';
+  Radio,
+} from "lucide-react";
+import type { Session, ConnectionStatus } from "../types";
 
 interface SidebarProps {
   sessions: Session[];
@@ -21,12 +22,13 @@ interface SidebarProps {
   onSelectCron: () => void;
   onSelectStats?: () => void;
   onSelectMemory?: () => void;
+  onSelectGateways?: () => void;
   connectionStatus: ConnectionStatus;
-  activeView: 'chat' | 'config' | 'cron' | 'stats' | 'memory';
+  activeView: "chat" | "config" | "cron" | "stats" | "memory" | "gateways";
   className?: string;
 }
 
-type ModuleKey = 'chat' | 'control' | 'settings';
+type ModuleKey = "chat" | "control" | "settings";
 
 interface ModuleItem {
   key: string;
@@ -42,29 +44,44 @@ interface Module {
 }
 
 const MODULES: Module[] = [
-  { key: 'chat', title: '聊天', icon: MessageSquare },
+  { key: "chat", title: "聊天", icon: MessageSquare },
   {
-    key: 'control',
-    title: '控制',
+    key: "control",
+    title: "控制",
     icon: BarChart3,
     items: [
-      { key: 'memory', label: '记忆体系', icon: Brain },
-      { key: 'stats', label: '使用统计', icon: BarChart3 },
-      { key: 'cron', label: '定时任务', icon: Clock },
+      { key: "memory", label: "记忆体系", icon: Brain },
+      { key: "stats", label: "使用统计", icon: BarChart3 },
+      { key: "cron", label: "定时任务", icon: Clock },
     ],
   },
   {
-    key: 'settings',
-    title: '设置',
+    key: "settings",
+    title: "设置",
     icon: Settings,
     items: [
-      { key: 'config', label: '配置', icon: Sliders },
+      { key: "config", label: "模型", icon: Sliders },
+      { key: "gateways", label: "网关", icon: Radio },
     ],
   },
 ];
 
-export function Sidebar({ sessions, currentSessionId, onSelectSession, onSelectConfig, onSelectCron, onSelectStats, onSelectMemory, connectionStatus, activeView, className }: SidebarProps) {
-  const [expandedModules, setExpandedModules] = useState<Set<ModuleKey>>(new Set(['chat']));
+export function Sidebar({
+  sessions,
+  currentSessionId,
+  onSelectSession,
+  onSelectConfig,
+  onSelectCron,
+  onSelectStats,
+  onSelectMemory,
+  onSelectGateways,
+  connectionStatus,
+  activeView,
+  className,
+}: SidebarProps) {
+  const [expandedModules, setExpandedModules] = useState<Set<ModuleKey>>(
+    new Set(["chat"]),
+  );
 
   const toggleModule = (moduleKey: ModuleKey) => {
     setExpandedModules((prev) => {
@@ -79,7 +96,9 @@ export function Sidebar({ sessions, currentSessionId, onSelectSession, onSelectC
   };
 
   return (
-    <div className={`w-64 bg-white border-r border-gray-200 flex flex-col ${className}`}>
+    <div
+      className={`w-64 bg-white border-r border-gray-200 flex flex-col ${className}`}
+    >
       <div className="p-4 border-b border-gray-200">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
@@ -88,7 +107,7 @@ export function Sidebar({ sessions, currentSessionId, onSelectSession, onSelectC
           <h1 className="text-base font-bold text-gray-900">Friday</h1>
         </div>
         <div className="mt-2 flex items-center gap-2 text-sm">
-          {connectionStatus === 'connected' ? (
+          {connectionStatus === "connected" ? (
             <>
               <Wifi className="w-4 h-4 text-green-500" />
               <span className="text-green-600">已连接</span>
@@ -107,12 +126,14 @@ export function Sidebar({ sessions, currentSessionId, onSelectSession, onSelectC
           const isExpanded = expandedModules.has(module.key);
           const ModuleIcon = module.icon;
 
-          if (module.key === 'chat') {
+          if (module.key === "chat") {
             return (
               <div
                 key={module.key}
                 className={`flex items-center gap-2 px-4 py-3 cursor-pointer transition-colors border-b border-gray-100 ${
-                  activeView === 'chat' ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-50 text-gray-700'
+                  activeView === "chat"
+                    ? "bg-blue-50 text-blue-600"
+                    : "hover:bg-gray-50 text-gray-700"
                 }`}
                 onClick={() => onSelectSession(currentSessionId)}
               >
@@ -130,7 +151,9 @@ export function Sidebar({ sessions, currentSessionId, onSelectSession, onSelectC
               >
                 <div className="flex items-center gap-2">
                   <ModuleIcon className="w-4 h-4 text-gray-500" />
-                  <span className="text-sm font-medium text-gray-700">{module.title}</span>
+                  <span className="text-sm font-medium text-gray-700">
+                    {module.title}
+                  </span>
                 </div>
                 {isExpanded ? (
                   <ChevronDown className="w-4 h-4 text-gray-400" />
@@ -148,16 +171,24 @@ export function Sidebar({ sessions, currentSessionId, onSelectSession, onSelectC
                       <div
                         key={item.key}
                         className={`flex items-center gap-2 px-6 py-2 cursor-pointer ${
-                          isActive ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-100 text-gray-700'
+                          isActive
+                            ? "bg-blue-50 text-blue-600"
+                            : "hover:bg-gray-100 text-gray-700"
                         }`}
                         onClick={() => {
-                          if (item.key === 'config') onSelectConfig();
-                          if (item.key === 'cron') onSelectCron();
-                          if (item.key === 'stats' && onSelectStats) onSelectStats();
-                          if (item.key === 'memory' && onSelectMemory) onSelectMemory();
+                          if (item.key === "config") onSelectConfig();
+                          if (item.key === "cron") onSelectCron();
+                          if (item.key === "stats" && onSelectStats)
+                            onSelectStats();
+                          if (item.key === "memory" && onSelectMemory)
+                            onSelectMemory();
+                          if (item.key === "gateways" && onSelectGateways)
+                            onSelectGateways();
                         }}
                       >
-                        <ItemIcon className={`w-4 h-4 ${isActive ? 'text-blue-600' : 'text-gray-500'}`} />
+                        <ItemIcon
+                          className={`w-4 h-4 ${isActive ? "text-blue-600" : "text-gray-500"}`}
+                        />
                         <span className="text-sm">{item.label}</span>
                       </div>
                     );
