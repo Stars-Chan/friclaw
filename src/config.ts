@@ -8,6 +8,7 @@ import { deepMerge, removeUndefined } from './utils/deep-merge'
 const AgentSchema = z.object({
   model: z.string().default('claude-sonnet-4-6'),
   summaryModel: z.string().default('claude-haiku-4-5'),
+  summaryTimeout: z.number().default(300), // 摘要生成超时（秒）
   maxConcurrent: z.number().default(5),
   timeout: z.number().default(300_000),
   allowedTools: z.array(z.string()).optional(), // 工具白名单，为空则跳过权限检查

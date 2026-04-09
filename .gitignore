@@ -27,8 +27,6 @@ Thumbs.db
 .env
 .env.local
 
-friclaw-course.html
-
 # SuperSpec临时文件
 .superspec/cache/
 .superspec/tmp/

@@ -70,7 +70,10 @@ async function startDaemon(): Promise<void> {
   const config = await loadConfig()
   log.info({ model: config.agent.model }, 'Config loaded')
 
-  const memory = new MemoryManager(config.memory)
+  const memory = new MemoryManager(config.memory, {
+    summaryModel: config.agent.summaryModel,
+    summaryTimeout: config.agent.summaryTimeout,
+  })
   await memory.init()
 
   const sessionManager = new SessionManager({
@@ -88,6 +91,9 @@ async function startDaemon(): Promise<void> {
     await agent.dispose()
     await memory.shutdown()
   })
+
+  // 注入 MemoryManager 以支持会话摘要
+  dispatcher.setMemoryManager(memory)
 
   const gateways: Gateway[] = []
   let dashboardPush: ((sessionId: string, content: string) => Promise<void>) | null = null

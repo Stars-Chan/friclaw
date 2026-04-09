@@ -2,6 +2,7 @@
   "agent": {
     "model": "claude-sonnet-4-6",
     "summaryModel": "claude-haiku-4-5",
+    "summaryTimeout": 300,
     "maxConcurrent": 5,
     "timeout": 300000
   },
