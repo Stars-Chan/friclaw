@@ -3,2594 +3,645 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FriClaw 互动课程 — 你的私人 AI 管家</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400;1,9..40,500&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <title>FriClaw 架构展板</title>
   <style>
-/* ═══════════════════════════════════════════
-   DESIGN TOKENS
-   ═══════════════════════════════════════════ */
-:root {
-  --color-bg: #FAF7F2;
-  --color-bg-warm: #F5F0E8;
-  --color-bg-code: #1E1E2E;
-  --color-text: #2C2A28;
-  --color-text-secondary: #6B6560;
-  --color-text-muted: #9E9790;
-  --color-border: #E5DFD6;
-  --color-border-light: #EEEBE5;
-  --color-surface: #FFFFFF;
-  --color-surface-warm: #FDF9F3;
-  --color-accent: #D94F30;
-  --color-accent-hover: #C4432A;
-  --color-accent-light: #FDEEE9;
-  --color-accent-muted: #E8836C;
-  --color-success: #2D8B55;
-  --color-success-light: #E8F5EE;
-  --color-error: #C93B3B;
-  --color-error-light: #FDE8E8;
-  --color-info: #2A7B9B;
-  --color-info-light: #E4F2F7;
-  --color-actor-1: #D94F30;
-  --color-actor-2: #2A7B9B;
-  --color-actor-3: #7B6DAA;
-  --color-actor-4: #D4A843;
-  --color-actor-5: #2D8B55;
-  --font-display: 'Bricolage Grotesque', Georgia, serif;
-  --font-body: 'DM Sans', -apple-system, 'PingFang SC', sans-serif;
-  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
-  --text-xs: 0.75rem;
-  --text-sm: 0.875rem;
-  --text-base: 1rem;
-  --text-lg: 1.125rem;
-  --text-xl: 1.25rem;
-  --text-2xl: 1.5rem;
-  --text-3xl: 1.875rem;
-  --text-4xl: 2.25rem;
-  --text-5xl: 3rem;
-  --text-6xl: 3.75rem;
-  --leading-tight: 1.15;
-  --leading-snug: 1.3;
-  --leading-normal: 1.6;
-  --leading-loose: 1.8;
-  --space-1: 0.25rem;
-  --space-2: 0.5rem;
-  --space-3: 0.75rem;
-  --space-4: 1rem;
-  --space-5: 1.25rem;
-  --space-6: 1.5rem;
-  --space-8: 2rem;
-  --space-10: 2.5rem;
-  --space-12: 3rem;
-  --space-16: 4rem;
-  --space-20: 5rem;
-  --space-24: 6rem;
-  --content-width: 800px;
-  --content-width-wide: 1000px;
-  --nav-height: 50px;
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
-  --radius-full: 9999px;
-  --shadow-sm: 0 1px 2px rgba(44,42,40,0.05);
-  --shadow-md: 0 4px 12px rgba(44,42,40,0.08);
-  --shadow-lg: 0 8px 24px rgba(44,42,40,0.1);
-  --shadow-xl: 0 16px 48px rgba(44,42,40,0.12);
-  --ease-out: cubic-bezier(0.16,1,0.3,1);
-  --ease-in-out: cubic-bezier(0.65,0,0.35,1);
-  --duration-fast: 150ms;
-  --duration-normal: 300ms;
-  --duration-slow: 500ms;
-  --stagger-delay: 120ms;
-}
+    :root {
+      --bg: #f6f2eb;
+      --surface: rgba(255, 255, 255, 0.82);
+      --surface-strong: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --border: rgba(31, 41, 55, 0.12);
+      --accent: #c24c2c;
+      --accent-soft: rgba(194, 76, 44, 0.12);
+      --accent-deep: #7a2f1d;
+      --shadow: 0 18px 48px rgba(15, 23, 42, 0.12);
+      --nav-height: 56px;
+      --radius: 22px;
+      --max-width: 1120px;
+    }
 
-/* ═══════════════════════════════════════════
-   RESET & BASE
-   ═══════════════════════════════════════════ */
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { scroll-snap-type: y proximity; scroll-behavior: smooth; }
-body {
-  font-family: var(--font-body);
-  color: var(--color-text);
-  background: var(--color-bg);
-  background-image: radial-gradient(ellipse at 20% 50%, rgba(217,79,48,0.03) 0%, transparent 50%);
-  line-height: var(--leading-normal);
-  -webkit-font-smoothing: antialiased;
-}
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(194, 76, 44, 0.14), transparent 32%),
+        radial-gradient(circle at top right, rgba(36, 99, 235, 0.08), transparent 26%),
+        linear-gradient(180deg, #fbf8f4 0%, var(--bg) 100%);
+      line-height: 1.6;
+    }
 
-/* Scrollbar */
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: var(--radius-full); }
+    .nav {
+      position: fixed;
+      inset: 0 0 auto 0;
+      height: var(--nav-height);
+      background: rgba(246, 242, 235, 0.88);
+      backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--border);
+      z-index: 1000;
+    }
 
-/* ═══════════════════════════════════════════
-   NAVIGATION
-   ═══════════════════════════════════════════ */
-.nav {
-  position: fixed; top: 0; left: 0; right: 0;
-  height: var(--nav-height);
-  background: rgba(250,247,242,0.92);
-  backdrop-filter: blur(12px);
-  z-index: 1000;
-  border-bottom: 1px solid var(--color-border-light);
-}
-.progress-bar {
-  position: absolute; top: 0; left: 0;
-  height: 3px; width: 0%;
-  background: var(--color-accent);
-  transition: width 100ms linear;
-}
-.nav-inner {
-  max-width: var(--content-width-wide);
-  margin: 0 auto;
-  height: 100%;
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 0 var(--space-6);
-}
-.nav-title {
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: var(--text-lg);
-  color: var(--color-accent);
-}
-.nav-dots { display: flex; gap: var(--space-2); }
-.nav-dot {
-  width: 12px; height: 12px; border-radius: 50%;
-  border: 2px solid var(--color-text-muted);
-  background: transparent; cursor: pointer;
-  transition: all var(--duration-fast);
-}
-.nav-dot.current { border-color: var(--color-accent); background: var(--color-accent); box-shadow: 0 0 8px rgba(217,79,48,0.3); }
-.nav-dot.visited { background: var(--color-accent); border-color: var(--color-accent); }
+    .progress-bar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--accent), #e28a5a);
+      transition: width 0.12s linear;
+    }
 
-/* ═══════════════════════════════════════════
-   MODULE STRUCTURE
-   ═══════════════════════════════════════════ */
-.module {
-  min-height: 100vh; min-height: 100dvh;
-  scroll-snap-align: start;
-  padding: var(--space-16) var(--space-6);
-  padding-top: calc(var(--nav-height) + var(--space-12));
-}
-.module-content { max-width: var(--content-width); margin: 0 auto; }
-.module-header { margin-bottom: var(--space-12); }
-.module-number {
-  font-family: var(--font-display);
-  font-size: var(--text-6xl);
-  font-weight: 800;
-  color: var(--color-accent);
-  opacity: 0.15;
-  line-height: 1;
-}
-.module-title {
-  font-family: var(--font-display);
-  font-size: var(--text-4xl);
-  font-weight: 700;
-  line-height: var(--leading-tight);
-  margin-top: calc(-1 * var(--space-8));
-  position: relative;
-}
-.module-subtitle {
-  font-size: var(--text-lg);
-  color: var(--color-text-secondary);
-  margin-top: var(--space-3);
-}
+    .nav-inner {
+      max-width: var(--max-width);
+      height: 100%;
+      margin: 0 auto;
+      padding: 0 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+    }
 
-/* ═══════════════════════════════════════════
-   SCREENS & ANIMATIONS
-   ═══════════════════════════════════════════ */
-.screen { margin-bottom: var(--space-12); }
-.screen-heading {
-  font-family: var(--font-display);
-  font-size: var(--text-xl);
-  font-weight: 600;
-  margin-bottom: var(--space-4);
-}
-.animate-in {
-  opacity: 0; transform: translateY(20px);
-  transition: opacity var(--duration-slow) var(--ease-out), transform var(--duration-slow) var(--ease-out);
-}
-.animate-in.visible { opacity: 1; transform: translateY(0); }
+    .nav-title {
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      color: var(--accent-deep);
+      white-space: nowrap;
+    }
 
-/* ═══════════════════════════════════════════
-   TRANSLATION BLOCKS (Code ↔ 中文)
-   ═══════════════════════════════════════════ */
-.translation-block {
-  display: grid; grid-template-columns: 1fr 1fr;
-  gap: 0; border-radius: var(--radius-md);
-  overflow: hidden; box-shadow: var(--shadow-md);
-  margin: var(--space-8) 0;
-}
-.translation-code {
-  background: var(--color-bg-code); color: #CDD6F4;
-  padding: var(--space-6); font-family: var(--font-mono);
-  font-size: var(--text-sm); line-height: 1.7;
-  position: relative; overflow-x: hidden;
-}
-.translation-code pre, .translation-code code {
-  white-space: pre-wrap; word-break: break-word; overflow-x: hidden;
-}
-.translation-code::-webkit-scrollbar { display: none; }
-.translation-english {
-  background: var(--color-surface-warm);
-  padding: var(--space-6); font-size: var(--text-sm);
-  line-height: 1.7; border-left: 3px solid var(--color-accent);
-}
-.translation-label {
-  position: absolute; top: var(--space-2); right: var(--space-3);
-  font-size: var(--text-xs); text-transform: uppercase;
-  letter-spacing: 0.1em; opacity: 0.5;
-}
-.translation-english .translation-label { color: var(--color-text-muted); position: relative; top: auto; right: auto; display: block; margin-bottom: var(--space-3); }
-.translation-lines { display: flex; flex-direction: column; gap: var(--space-1); }
-.tl { color: var(--color-text-secondary); margin: 0; }
-.code-keyword { color: #CBA6F7; }
-.code-string { color: #A6E3A1; }
-.code-function { color: #89B4FA; }
-.code-comment { color: #6C7086; }
-.code-number { color: #FAB387; }
-.code-property { color: #F9E2AF; }
-.code-operator { color: #94E2D5; }
-.code-tag { color: #F38BA8; }
-.code-type { color: #89DCEB; }
+    .nav-dots {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
 
-/* ═══════════════════════════════════════════
-   QUIZ
-   ═══════════════════════════════════════════ */
-.quiz-container { margin: var(--space-8) 0; }
-.quiz-question-block { margin-bottom: var(--space-6); padding: var(--space-5); background: var(--color-surface); border-radius: var(--radius-md); box-shadow: var(--shadow-sm); }
-.quiz-question { font-family: var(--font-display); font-size: var(--text-lg); font-weight: 600; margin-bottom: var(--space-4); }
-.quiz-options { display: flex; flex-direction: column; gap: var(--space-2); }
-.quiz-option {
-  display: flex; align-items: center; gap: var(--space-3);
-  padding: var(--space-3) var(--space-4);
-  border: 2px solid var(--color-border); border-radius: var(--radius-sm);
-  background: var(--color-surface); cursor: pointer; width: 100%;
-  text-align: left; font-size: var(--text-base); font-family: var(--font-body);
-  transition: border-color var(--duration-fast), background var(--duration-fast);
-}
-.quiz-option:hover { border-color: var(--color-accent-muted); }
-.quiz-option.selected { border-color: var(--color-accent); background: var(--color-accent-light); }
-.quiz-option.correct { border-color: var(--color-success); background: var(--color-success-light); }
-.quiz-option.incorrect { border-color: var(--color-error); background: var(--color-error-light); }
-.quiz-option:disabled { cursor: default; }
-.quiz-option-radio {
-  width: 18px; height: 18px; border-radius: 50%;
-  border: 2px solid var(--color-border); flex-shrink: 0;
-  transition: all var(--duration-fast);
-}
-.quiz-option.selected .quiz-option-radio { border-color: var(--color-accent); background: var(--color-accent); box-shadow: inset 0 0 0 3px white; }
-.quiz-feedback {
-  max-height: 0; overflow: hidden; opacity: 0;
-  transition: max-height var(--duration-normal), opacity var(--duration-normal);
-}
-.quiz-feedback.show { max-height: 200px; opacity: 1; padding: var(--space-3); margin-top: var(--space-2); border-radius: var(--radius-sm); font-size: var(--text-sm); }
-.quiz-feedback.success { background: var(--color-success-light); color: var(--color-success); }
-.quiz-feedback.error { background: var(--color-error-light); color: var(--color-error); }
-.quiz-feedback.warning { background: #FFF8E1; color: #F57F17; }
-.quiz-check-btn, .quiz-reset-btn {
-  padding: var(--space-3) var(--space-6);
-  border: none; border-radius: var(--radius-sm);
-  font-family: var(--font-body); font-weight: 600;
-  cursor: pointer; margin-right: var(--space-2);
-  transition: all var(--duration-fast);
-}
-.quiz-check-btn { background: var(--color-accent); color: white; }
-.quiz-check-btn:hover { background: var(--color-accent-hover); }
-.quiz-reset-btn { background: var(--color-surface); color: var(--color-text-secondary); border: 1px solid var(--color-border); }
-.quiz-reset-btn:hover { border-color: var(--color-accent-muted); }
+    .nav-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(194, 76, 44, 0.35);
+      background: transparent;
+      cursor: pointer;
+      transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+    }
 
-/* ═══════════════════════════════════════════
-   GROUP CHAT ANIMATION
-   ═══════════════════════════════════════════ */
-.chat-window {
-  background: var(--color-surface); border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-md); overflow: hidden;
-  margin: var(--space-8) 0; max-width: 500px;
-}
-.chat-header {
-  background: var(--color-bg-code); color: #CDD6F4;
-  padding: var(--space-3) var(--space-4); font-size: var(--text-sm);
-  font-weight: 600; text-align: center;
-}
-.chat-messages { padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); min-height: 200px; max-height: 400px; overflow-y: auto; }
-.chat-message { display: none; align-items: flex-start; gap: var(--space-2); animation: fadeSlideUp 0.3s var(--ease-out); }
-.chat-message.right { flex-direction: row-reverse; }
-.chat-avatar {
-  width: 32px; height: 32px; border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  color: white; font-size: var(--text-xs); font-weight: 700; flex-shrink: 0;
-}
-.chat-bubble {
-  max-width: 70%; padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-md); font-size: var(--text-sm);
-  line-height: var(--leading-normal);
-  background: var(--color-surface-warm); color: var(--color-text);
-}
-.chat-message.right .chat-bubble { background: var(--color-accent-light); }
-.chat-sender { font-size: var(--text-xs); font-weight: 600; margin-bottom: 2px; }
-.chat-typing {
-  display: none; align-items: center; gap: var(--space-2);
-  padding: var(--space-2) var(--space-4);
-}
-.chat-typing-dots { display: flex; gap: 4px; }
-.typing-dot {
-  width: 8px; height: 8px; border-radius: 50%;
-  background: var(--color-text-muted);
-  animation: typingBounce 1.4s infinite;
-}
-.typing-dot:nth-child(2) { animation-delay: 0.2s; }
-.typing-dot:nth-child(3) { animation-delay: 0.4s; }
-@keyframes typingBounce { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-6px)} }
-.chat-controls {
-  display: flex; gap: var(--space-2); padding: var(--space-3) var(--space-4);
-  border-top: 1px solid var(--color-border-light); align-items: center;
-}
-.chat-controls button {
-  padding: var(--space-2) var(--space-4); border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm); background: var(--color-surface);
-  cursor: pointer; font-size: var(--text-sm); font-family: var(--font-body);
-  transition: all var(--duration-fast);
-}
-.chat-controls button:hover { border-color: var(--color-accent); color: var(--color-accent); }
-.chat-progress { font-size: var(--text-xs); color: var(--color-text-muted); margin-left: auto; }
+    .nav-dot:hover,
+    .nav-dot.current,
+    .nav-dot.visited {
+      background: var(--accent);
+      border-color: var(--accent);
+      transform: scale(1.08);
+    }
 
-/* ═══════════════════════════════════════════
-   DATA FLOW ANIMATION
-   ═══════════════════════════════════════════ */
-.flow-animation {
-  background: var(--color-surface); border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-md); padding: var(--space-6);
-  margin: var(--space-8) 0;
-}
-.flow-actors {
-  display: flex; justify-content: space-around; flex-wrap: wrap;
-  gap: var(--space-4); margin-bottom: var(--space-8);
-}
-.flow-actor {
-  display: flex; flex-direction: column; align-items: center; gap: var(--space-2);
-  padding: var(--space-3) var(--space-4); border-radius: var(--radius-md);
-  border: 2px solid var(--color-border-light); transition: all var(--duration-normal) var(--ease-out);
-  min-width: 80px;
-}
-.flow-actor.active {
-  border-color: var(--color-accent);
-  box-shadow: 0 0 0 3px rgba(217,79,48,0.15), 0 0 20px rgba(217,79,48,0.1);
-  transform: scale(1.05);
-}
-.flow-actor-icon {
-  width: 40px; height: 40px; border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 1.2rem; color: white;
-}
-.flow-actor span { font-size: var(--text-xs); font-weight: 600; text-align: center; }
-.flow-step-label {
-  text-align: center; font-size: var(--text-base);
-  color: var(--color-text-secondary); min-height: 2em;
-  padding: var(--space-3); background: var(--color-surface-warm);
-  border-radius: var(--radius-sm); margin-bottom: var(--space-4);
-}
-.flow-controls { display: flex; gap: var(--space-2); justify-content: center; align-items: center; }
-.flow-controls button {
-  padding: var(--space-2) var(--space-4); border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm); background: var(--color-surface);
-  cursor: pointer; font-family: var(--font-body); transition: all var(--duration-fast);
-}
-.flow-controls button:hover { border-color: var(--color-accent); color: var(--color-accent); }
-.flow-progress { font-size: var(--text-xs); color: var(--color-text-muted); margin-left: var(--space-3); }
+    .poster-shell {
+      max-width: var(--max-width);
+      margin: 0 auto;
+      padding: calc(var(--nav-height) + 32px) 20px 56px;
+    }
 
-/* ═══════════════════════════════════════════
-   PATTERN CARDS
-   ═══════════════════════════════════════════ */
-.pattern-cards {
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: var(--space-4); margin: var(--space-6) 0;
-}
-.pattern-card {
-  background: var(--color-surface); border-radius: var(--radius-md);
-  padding: var(--space-6); box-shadow: var(--shadow-sm);
-  transition: transform var(--duration-normal) var(--ease-out), box-shadow var(--duration-normal);
-}
-.pattern-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-md); }
-.pattern-icon {
-  width: 40px; height: 40px; border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 1.2rem; color: white; margin-bottom: var(--space-3);
-}
-.pattern-title { font-family: var(--font-display); font-weight: 600; margin-bottom: var(--space-2); }
-.pattern-desc { font-size: var(--text-sm); color: var(--color-text-secondary); }
+    .scroll-hint {
+      margin-bottom: 20px;
+      color: var(--muted);
+      font-size: 0.95rem;
+      letter-spacing: 0.02em;
+    }
 
-/* ═══════════════════════════════════════════
-   ARCHITECTURE DIAGRAM
-   ═══════════════════════════════════════════ */
-.arch-diagram {
-  background: var(--color-surface); border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-md); padding: var(--space-6);
-  margin: var(--space-8) 0;
-}
-.arch-zone { margin-bottom: var(--space-4); }
-.arch-zone-label {
-  font-size: var(--text-xs); text-transform: uppercase;
-  letter-spacing: 0.1em; color: var(--color-text-muted);
-  margin-bottom: var(--space-2); font-weight: 600;
-}
-.arch-components { display: flex; flex-wrap: wrap; gap: var(--space-2); }
-.arch-component {
-  display: flex; align-items: center; gap: var(--space-2);
-  padding: var(--space-2) var(--space-4);
-  border: 2px solid var(--color-border-light); border-radius: var(--radius-sm);
-  cursor: pointer; transition: all var(--duration-fast);
-  background: var(--color-surface-warm);
-}
-.arch-component:hover { border-color: var(--color-accent); }
-.arch-component.active { border-color: var(--color-accent); background: var(--color-accent-light); }
-.arch-icon { font-size: 1.1rem; }
-.arch-component span { font-size: var(--text-sm); font-weight: 500; }
-.arch-description {
-  margin-top: var(--space-4); padding: var(--space-4);
-  background: var(--color-surface-warm); border-radius: var(--radius-sm);
-  border-left: 3px solid var(--color-accent);
-  font-size: var(--text-sm); color: var(--color-text-secondary);
-  min-height: 3em;
-}
+    .module-stack {
+      display: grid;
+      gap: 28px;
+    }
 
-/* ═══════════════════════════════════════════
-   FLOW DIAGRAMS
-   ═══════════════════════════════════════════ */
-.flow-steps { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2); margin: var(--space-6) 0; }
-.flow-step {
-  display: flex; flex-direction: column; align-items: center;
-  padding: var(--space-3) var(--space-4);
-  background: var(--color-surface); border-radius: var(--radius-md);
-  box-shadow: var(--shadow-sm); border-left: 3px solid var(--color-accent);
-}
-.flow-step-num {
-  width: 24px; height: 24px; border-radius: 50%;
-  background: var(--color-accent); color: white;
-  font-weight: 700; font-size: var(--text-xs);
-  display: flex; align-items: center; justify-content: center;
-  margin-bottom: var(--space-2);
-}
-.flow-step p { font-size: var(--text-sm); color: var(--color-text-secondary); text-align: center; }
-.flow-arrow { color: var(--color-accent); font-size: var(--text-lg); font-weight: 700; }
+    .module {
+      min-height: calc(100vh - var(--nav-height) - 40px);
+      padding: 32px;
+      border: 1px solid var(--border);
+      border-radius: 28px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.92), rgba(255,255,255,0.72));
+      box-shadow: var(--shadow);
+      display: grid;
+      grid-template-rows: auto auto auto;
+      gap: 22px;
+      scroll-margin-top: calc(var(--nav-height) + 18px);
+      opacity: 0;
+      transform: translateY(24px);
+      transition: opacity 0.55s ease, transform 0.55s ease;
+    }
 
-/* ═══════════════════════════════════════════
-   ICON ROWS
-   ═══════════════════════════════════════════ */
-.icon-rows { display: flex; flex-direction: column; gap: var(--space-4); margin: var(--space-6) 0; }
-.icon-row {
-  display: flex; align-items: center; gap: var(--space-4);
-  padding: var(--space-4); background: var(--color-surface);
-  border-radius: var(--radius-md); box-shadow: var(--shadow-sm);
-}
-.icon-row p { margin: 0; color: var(--color-text-secondary); font-size: var(--text-sm); }
-.icon-circle {
-  width: 48px; height: 48px; border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 1.25rem; flex-shrink: 0;
-}
+    .module.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
 
-/* ═══════════════════════════════════════════
-   STEP CARDS
-   ═══════════════════════════════════════════ */
-.step-cards { display: flex; flex-direction: column; gap: var(--space-3); margin: var(--space-6) 0; }
-.step-card {
-  display: flex; align-items: flex-start; gap: var(--space-4);
-  padding: var(--space-4) var(--space-5);
-  background: var(--color-surface); border-radius: var(--radius-md);
-  border-left: 3px solid var(--color-accent); box-shadow: var(--shadow-sm);
-}
-.step-num {
-  width: 32px; height: 32px; border-radius: 50%;
-  background: var(--color-accent); color: white; font-weight: 700;
-  display: flex; align-items: center; justify-content: center;
-  font-family: var(--font-display); flex-shrink: 0;
-}
-.step-body p { margin: var(--space-1) 0 0; color: var(--color-text-secondary); font-size: var(--text-sm); }
+    .module-header,
+    .diagram-panel,
+    .key-points {
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: var(--surface);
+      padding: 24px;
+    }
 
-/* ═══════════════════════════════════════════
-   BADGE LIST
-   ═══════════════════════════════════════════ */
-.badge-list { display: flex; flex-direction: column; gap: var(--space-3); margin: var(--space-6) 0; }
-.badge-item {
-  display: flex; align-items: center; gap: var(--space-4);
-  padding: var(--space-3) var(--space-4);
-  border: 1px solid var(--color-border-light); border-radius: var(--radius-sm);
-  transition: border-color var(--duration-fast);
-}
-.badge-item:hover { border-color: var(--color-accent-muted); }
-.badge-code {
-  font-family: var(--font-mono); font-size: var(--text-sm);
-  background: var(--color-bg-code); color: #CBA6F7;
-  padding: var(--space-1) var(--space-3); border-radius: var(--radius-sm);
-  white-space: nowrap;
-}
+    .module-header {
+      display: grid;
+      gap: 10px;
+    }
 
-/* ═══════════════════════════════════════════
-   FILE TREE
-   ═══════════════════════════════════════════ */
-.file-tree { font-family: var(--font-mono); font-size: var(--text-sm); margin: var(--space-6) 0; }
-.ft-folder, .ft-file {
-  padding: var(--space-2) var(--space-3);
-  border-left: 2px solid var(--color-border-light);
-  margin-left: var(--space-4);
-}
-.ft-folder > .ft-name { color: var(--color-accent); font-weight: 600; }
-.ft-folder > .ft-name::before { content: '\1F4C1 '; }
-.ft-file > .ft-name::before { content: '\1F4C4 '; }
-.ft-desc { color: var(--color-text-secondary); font-family: var(--font-body); margin-left: var(--space-2); font-size: var(--text-xs); }
-.ft-children { margin-left: var(--space-4); }
+    .module-number {
+      font-size: 0.82rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
 
-/* ═══════════════════════════════════════════
-   CALLOUT BOXES
-   ═══════════════════════════════════════════ */
-.callout {
-  display: flex; align-items: flex-start; gap: var(--space-4);
-  padding: var(--space-5); border-radius: var(--radius-md);
-  margin: var(--space-6) 0;
-}
-.callout-accent { border-left: 4px solid var(--color-accent); background: var(--color-accent-light); }
-.callout-info { border-left: 4px solid var(--color-info); background: var(--color-info-light); }
-.callout-warning { border-left: 4px solid var(--color-error); background: var(--color-error-light); }
-.callout-icon { font-size: 1.5rem; flex-shrink: 0; }
-.callout-title { font-weight: 700; margin-bottom: var(--space-1); }
-.callout-content p { font-size: var(--text-sm); color: var(--color-text-secondary); }
+    .module-header h2 {
+      font-size: clamp(1.8rem, 3vw, 2.8rem);
+      line-height: 1.18;
+    }
 
-/* ═══════════════════════════════════════════
-   GLOSSARY TOOLTIPS
-   ═══════════════════════════════════════════ */
-.term {
-  border-bottom: 1.5px dashed var(--color-accent-muted);
-  cursor: pointer; transition: color var(--duration-fast);
-}
-.term:hover, .term.active { border-bottom-color: var(--color-accent); color: var(--color-accent); }
-.term-tooltip {
-  position: fixed;
-  background: var(--color-bg-code); color: #CDD6F4;
-  padding: var(--space-3) var(--space-4);
-  border-radius: var(--radius-sm);
-  font-size: var(--text-sm); font-family: var(--font-body);
-  line-height: var(--leading-normal);
-  width: max(200px, min(320px, 80vw));
-  box-shadow: var(--shadow-lg);
-  pointer-events: none; opacity: 0;
-  transition: opacity var(--duration-fast);
-  z-index: 10000;
-}
-.term-tooltip::after {
-  content: ''; position: absolute;
-  top: 100%; left: 50%; transform: translateX(-50%);
-  border: 6px solid transparent; border-top-color: var(--color-bg-code);
-}
-.term-tooltip.visible { opacity: 1; }
-.term-tooltip.flip { }
-.term-tooltip.flip::after { top: auto; bottom: 100%; border-top-color: transparent; border-bottom-color: var(--color-bg-code); }
+    .module-subtitle {
+      color: var(--muted);
+      font-size: 1.02rem;
+      max-width: 72ch;
+    }
 
-/* ═══════════════════════════════════════════
-   HERO
-   ═══════════════════════════════════════════ */
-.hero {
-  min-height: 100vh; min-height: 100dvh;
-  display: flex; flex-direction: column; justify-content: center;
-  align-items: center; text-align: center;
-  padding: var(--space-16) var(--space-6);
-  background: var(--color-bg);
-}
-.hero-title {
-  font-family: var(--font-display);
-  font-size: clamp(3rem, 8vw, 6rem);
-  font-weight: 800; color: var(--color-accent);
-  line-height: var(--leading-tight);
-}
-.hero-sub {
-  font-size: var(--text-xl);
-  color: var(--color-text-secondary);
-  margin-top: var(--space-4); max-width: 600px;
-}
-.hero-tag {
-  display: inline-block; margin-top: var(--space-6);
-  padding: var(--space-2) var(--space-5);
-  border: 2px solid var(--color-accent); border-radius: var(--radius-full);
-  color: var(--color-accent); font-weight: 600;
-  font-size: var(--text-sm); animation: pulse 2s infinite;
-}
-@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.6} }
-.hero-scroll-hint {
-  margin-top: var(--space-12);
-  font-size: var(--text-sm); color: var(--color-text-muted);
-  animation: bounce 2s infinite;
-}
-@keyframes bounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(8px)} }
+    .layer-grid,
+    .summary-strip {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+    }
 
-/* ═══════════════════════════════════════════
-   UTILITIES
-   ═══════════════════════════════════════════ */
-@keyframes fadeSlideUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
-.text-center { text-align: center; }
-.text-accent { color: var(--color-accent); }
-.mt-4 { margin-top: var(--space-4); }
-.mt-8 { margin-top: var(--space-8); }
-.mb-4 { margin-bottom: var(--space-4); }
+    .flow-detail-grid {
+      margin-top: 18px;
+    }
 
-/* ═══════════════════════════════════════════
-   RESPONSIVE
-   ═══════════════════════════════════════════ */
-@media (max-width: 768px) {
-  :root { --text-4xl: 1.875rem; --text-5xl: 2.25rem; --text-6xl: 3rem; }
-  .translation-block { grid-template-columns: 1fr; }
-  .translation-english { border-left: none; border-top: 3px solid var(--color-accent); }
-  .pattern-cards { grid-template-columns: 1fr 1fr; }
-  .flow-actors { gap: var(--space-2); }
-  .flow-actor { min-width: 60px; padding: var(--space-2); }
-}
-@media (max-width: 480px) {
-  :root { --text-4xl: 1.5rem; --text-5xl: 1.875rem; --text-6xl: 2.25rem; }
-  .module { padding: var(--space-8) var(--space-4); }
-  .pattern-cards { grid-template-columns: 1fr; }
-  .flow-steps { flex-direction: column; }
-  .flow-arrow { transform: rotate(90deg); }
-  .flow-actors { flex-direction: column; align-items: stretch; }
-}
+    .point-card {
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 18px;
+      background: rgba(255,255,255,0.78);
+    }
+
+    .point-card strong {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--accent-deep);
+    }
+
+    .code-glimpse {
+      display: grid;
+      gap: 14px;
+      margin-bottom: 18px;
+      padding: 20px;
+      border-radius: 20px;
+      background: linear-gradient(135deg, rgba(194, 76, 44, 0.12), rgba(36, 99, 235, 0.06));
+      border: 1px solid rgba(194, 76, 44, 0.16);
+    }
+
+    .code-glimpse h1 {
+      font-size: clamp(2.6rem, 6vw, 4.8rem);
+      line-height: 1;
+      color: var(--accent-deep);
+    }
+
+    .code-glimpse p {
+      max-width: 72ch;
+      color: #374151;
+    }
+
+    .flow-line {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      gap: 10px;
+      align-items: center;
+    }
+
+    .flow-node {
+      min-height: 84px;
+      border-radius: 18px;
+      background: var(--surface-strong);
+      border: 1px solid var(--border);
+      display: grid;
+      place-items: center;
+      text-align: center;
+      padding: 14px;
+      font-weight: 700;
+    }
+
+    .flow-arrow {
+      text-align: center;
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    .key-points h3,
+    .diagram-panel h3 {
+      font-size: 1.05rem;
+      margin-bottom: 14px;
+      color: var(--accent-deep);
+    }
+
+    .points-list {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      list-style: none;
+    }
+
+    .points-list li,
+    .summary-list li {
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px;
+      background: rgba(255,255,255,0.76);
+      list-style: none;
+    }
+
+    .summary-list {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    p, li { font-size: 0.98rem; }
+
+    @media (max-width: 920px) {
+      .layer-grid,
+      .summary-strip,
+      .points-list,
+      .summary-list,
+      .flow-line {
+        grid-template-columns: 1fr;
+      }
+
+      .flow-arrow {
+        transform: rotate(90deg);
+        padding: 4px 0;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .poster-shell { padding-inline: 14px; }
+      .module { padding: 20px; }
+      .module-header,
+      .diagram-panel,
+      .key-points { padding: 18px; }
+      .nav-inner { padding-inline: 14px; }
+      .nav-title { font-size: 0.95rem; }
+    }
   </style>
 </head>
 <body>
-
-<!-- NAV -->
-<nav class="nav">
-  <div class="progress-bar" id="progressBar"></div>
-  <div class="nav-inner">
-    <span class="nav-title">FriClaw 课程</span>
-    <div class="nav-dots">
-      <button class="nav-dot" data-target="module-1" role="tab" aria-label="模块1"></button>
-      <button class="nav-dot" data-target="module-2" role="tab" aria-label="模块2"></button>
-      <button class="nav-dot" data-target="module-3" role="tab" aria-label="模块3"></button>
-      <button class="nav-dot" data-target="module-4" role="tab" aria-label="模块4"></button>
-      <button class="nav-dot" data-target="module-5" role="tab" aria-label="模块5"></button>
-      <button class="nav-dot" data-target="module-6" role="tab" aria-label="模块6"></button>
-      <button class="nav-dot" data-target="module-7" role="tab" aria-label="模块7"></button>
+  <nav class="nav">
+    <div class="progress-bar" id="progressBar"></div>
+    <div class="nav-inner">
+      <span class="nav-title">FriClaw 架构展板</span>
+      <div class="nav-dots">
+        <button class="nav-dot" data-target="module-1" type="button" aria-label="跳转到模块 1"></button>
+        <button class="nav-dot" data-target="module-2" type="button" aria-label="跳转到模块 2"></button>
+        <button class="nav-dot" data-target="module-3" type="button" aria-label="跳转到模块 3"></button>
+        <button class="nav-dot" data-target="module-4" type="button" aria-label="跳转到模块 4"></button>
+        <button class="nav-dot" data-target="module-5" type="button" aria-label="跳转到模块 5"></button>
+        <button class="nav-dot" data-target="module-6" type="button" aria-label="跳转到模块 6"></button>
+        <button class="nav-dot" data-target="module-7" type="button" aria-label="跳转到模块 7"></button>
+      </div>
     </div>
-  </div>
-</nav>
+  </nav>
 
-<!-- HERO -->
-<section class="hero" id="hero">
-  <h1 class="hero-title">FriClaw</h1>
-  <p class="hero-sub">Friday + Claw — 专属于你的全能 <span class="term" data-definition="AI 是人工智能的缩写，指能像人一样思考和学习的计算机程序">AI</span> 管家</p>
-  <p class="hero-sub" style="font-size:var(--text-base);margin-top:var(--space-3)">通过飞书、企业微信、微信或网页聊天，让 AI 成为你真正的私人助手</p>
-  <span class="hero-tag">向下滚动，开始学习 →</span>
-  <div class="hero-scroll-hint">⬇ 滚动探索</div>
-</section>
-
-<!-- MODULES WILL BE INSERTED HERE -->
-<!-- ============================================================
-     Module 1: 你的私人 AI 管家 — FriClaw 是什么？
-     ============================================================ -->
-<div class="module" id="module-1" style="scroll-snap-align:start;background:var(--color-bg)">
-
-  <div class="module-header">
-    <div class="module-number">模块 01</div>
-    <h2 class="module-title">你的私人 AI 管家 — FriClaw 是什么？</h2>
-    <p class="module-subtitle">从零认识 FriClaw 的核心定位与消息流转机制</p>
-  </div>
-
-  <div class="module-body">
-
-    <!-- Hero -->
-    <section class="screen animate-in">
-      <div class="hero-block">
-        <div class="hero-title" style="font-family:var(--font-display);font-size:4.5rem;font-weight:800;color:var(--color-accent);letter-spacing:-2px;line-height:1">FriClaw</div>
-        <div class="hero-subtitle" style="font-family:var(--font-body);font-size:1.35rem;color:var(--color-text-secondary);margin-top:12px">Friday + Claw — 专属于你的全能 AI 管家</div>
-      </div>
-
-      <div class="prose-block" style="margin-top:40px">
-        <p>FriClaw 是一个<span class="term" data-definition="运行在你的电脑或服务器上、只为你一个人服务的程序，只有你能和它对话">私人 AI 管家</span>。你可以通过飞书、企业微信、微信或网页 <span class="term" data-definition="一个可视化的管理网页，让你在浏览器里查看和控制 FriClaw">Dashboard</span> 随时和它对话。</p>
-        <p>它不只是一个聊天机器人 — 它能记住你是谁、你关心什么，还能在指定的时间主动帮你做事。</p>
-      </div>
-    </section>
-
-    <!-- Group Chat Animation -->
-    <section class="screen animate-in">
-      <h3 class="section-label">消息是如何流转的？</h3>
-      <p class="section-desc">下面的动画模拟了一条消息从发送到收到回复的完整旅程。点击"下一步"逐步观看，或点击"全部播放"一次看完。</p>
-
-      <div class="chat-window" id="m1-chat">
-        <div class="chat-header">
-          <span class="chat-title">FriClaw 内部对话</span>
-          <div class="chat-controls">
-            <button class="chat-btn" onclick="playChatNext('m1-chat')">下一步</button>
-            <button class="chat-btn" onclick="playChatAll('m1-chat')">全部播放</button>
-            <button class="chat-btn chat-btn-secondary" onclick="resetChat('m1-chat')">重置</button>
-          </div>
+  <main class="poster-shell">
+    <div class="scroll-hint">保留导航、进度条与滚动定位机制。向下浏览七层架构收束图谱。</div>
+    <div class="module-stack">
+      <div class="module" id="module-1">
+        <div class="module-header">
+          <div class="module-number">MODULE 01</div>
+          <h2>封面 / 总览</h2>
+          <p class="module-subtitle">将原先 Hero 内容合并进首个模块，以封面视角概览 FriClaw 的角色定位、路径主线与整体架构切面。</p>
         </div>
-        <div class="chat-messages">
-          <!-- Message 1: User -->
-          <div class="chat-message chat-delayed" data-actor="1" data-order="1">
-            <div class="chat-avatar" style="background:var(--color-actor-1)">用户</div>
-            <div class="chat-bubble">帮我看看明天的日程</div>
+        <div class="diagram-panel">
+          <div class="code-glimpse">
+            <h1>FriClaw</h1>
+            <p>Friday + Claw。它不是单一问答机器人，而是一套从消息接入、调度编排、会话上下文、Agent 执行，到能力扩展与系统收束的工程化 AI 助手体系。</p>
           </div>
-          <!-- Message 2: FeishuGateway -->
-          <div class="chat-message chat-delayed" data-actor="2" data-order="2">
-            <div class="chat-avatar" style="background:var(--color-actor-2)">飞书网关</div>
-            <div class="chat-bubble"><span class="term" data-definition="网关是负责接收外部平台消息的组件。每个平台（飞书、企微、微信）都有各自的网关">收到消息</span>，解析平台=feishu，chatId=user_001，内容="帮我看看明天的日程"</div>
-          </div>
-          <!-- Message 3: Dispatcher -->
-          <div class="chat-message chat-delayed" data-actor="3" data-order="3">
-            <div class="chat-avatar" style="background:var(--color-actor-3)">调度器</div>
-            <div class="chat-bubble">路由消息 → 查找会话 feishu:user_001 → 放入 <span class="term" data-definition="队列是一种先进先出的数据结构，就像排队买票，先来先服务">队列</span>等待处理</div>
-          </div>
-          <!-- Message 4: Typing -->
-          <div class="chat-typing chat-delayed" data-actor="4" data-order="4">
-            <div class="chat-avatar" style="background:var(--color-actor-4)">AI 代理</div>
-            <div class="typing-dots"><span></span><span></span><span></span></div>
-          </div>
-          <!-- Message 5: AI Agent -->
-          <div class="chat-message chat-delayed" data-actor="4" data-order="5">
-            <div class="chat-avatar" style="background:var(--color-actor-4)">AI 代理</div>
-            <div class="chat-bubble">正在处理：启动 Claude Code 子进程 → 查询日程数据 → 生成回复…</div>
-          </div>
-          <!-- Message 6: Response -->
-          <div class="chat-message chat-delayed" data-actor="2" data-order="6">
-            <div class="chat-avatar" style="background:var(--color-actor-2)">飞书网关</div>
-            <div class="chat-bubble">明天你有 3 件事：上午 10:00 产品评审会议，下午 2:00 与客户通话，晚上 7:00 健身。需要我帮你调整吗？</div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Code Translation Block: dispatcher.ts -->
-    <section class="screen animate-in">
-      <h3 class="section-label">代码透视：调度器的核心方法</h3>
-      <p class="section-desc">左边是 <code>dispatcher.ts</code> 中 <code>dispatch()</code> 方法的真实代码，右边是逐行中文解读。</p>
-
-      <div class="translation-block">
-        <div class="translation-code">
-          <div class="code-label">dispatcher.ts</div>
-<pre><code>async dispatch(
-  message: Message,
-  reply?: (content: string) =&gt; Promise&lt;string&gt;,
-  streamHandler?: StreamHandler
-): Promise&lt;void&gt; {
-  if (!this.accepting)
-    throw new Error(
-      'Dispatcher is not accepting'
-    )
-
-  const session =
-    this.sessionManager.getOrCreate(
-      message.platform,
-      message.chatId,
-      message.userId
-    )
-
-  await this.laneQueue.enqueue(
-    session.id,
-    () =&gt; this.agent.handle(
-      session, message,
-      reply, streamHandler
-    )
-  )
-}</code></pre>
-        </div>
-        <div class="translation-english">
-          <div class="translation-title">逐行解读</div>
-          <div class="translation-line"><span class="line-num">1-4</span> 定义 dispatch 方法，接收三条信息：消息本体、可选的回复函数、可选的流式处理器。</div>
-          <div class="translation-line"><span class="line-num">5-7</span> 检查调度器是否还在工作。如果已经关闭，就直接报错，不再接收新消息。</div>
-          <div class="translation-line"><span class="line-num">8-12</span> 通过 <span class="term" data-definition="会话管理器负责记录每个聊天的上下文信息。如果你同时在飞书和微信聊天，它会为这两个聊天分别建立独立的会话">会话管理器</span>查找或创建一个<span class="term" data-definition="会话是一次完整的对话上下文，包含聊天记录、工作目录等信息">会话</span>。用平台 + 聊天ID + 用户ID 来标识唯一会话。</div>
-          <div class="translation-line"><span class="line-num">13-18</span> 把任务放入 <span class="term" data-definition="车道队列（LaneQueue）保证同一个会话的消息按顺序处理，不会出现两条消息同时被处理导致混乱">车道队列</span>。当轮到这个任务时，让 <span class="term" data-definition="代理是真正执行 AI 推理的组件，它通过启动 Claude Code 子进程来处理用户请求">代理</span> 去处理消息。</div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Callout -->
-    <section class="screen animate-in">
-      <div class="callout callout-aha">
-        <div class="callout-icon">Aha!</div>
-        <div class="callout-body">
-          <p><strong>调度器模式</strong>是软件工程中最重要的模式之一：<em>把"谁来做"和"做什么"分开</em>。</p>
-          <p>你只需要把消息交给调度器，不需要关心最终是哪个代理来处理 — 调度器会帮你安排好一切。就像餐厅里的服务员，你点菜后不需要亲自去厨房找厨师。</p>
-        </div>
-      </div>
-    </section>
-
-    <!-- Quiz -->
-    <section class="screen animate-in">
-      <div class="quiz-container" id="quiz-m1">
-        <div class="quiz-question-block">
-          <div class="quiz-number">Q1</div>
-          <p class="quiz-question-text">你想给 FriClaw 添加一个新的聊天平台（比如 Discord）。你需要修改哪个组件？</p>
-        </div>
-        <div class="quiz-options">
-          <div class="quiz-option" data-correct="true" onclick="selectOption(this)">
-            <span class="option-letter">A</span>
-            <span class="option-text"><span class="term" data-definition="网关是连接外部平台和 FriClaw 内部系统的桥梁。每个平台需要一个专属网关">网关</span></span>
-          </div>
-          <div class="quiz-option" data-correct="false" onclick="selectOption(this)">
-            <span class="option-letter">B</span>
-            <span class="option-text">调度器</span>
-          </div>
-          <div class="quiz-option" data-correct="false" onclick="selectOption(this)">
-            <span class="option-letter">C</span>
-            <span class="option-text">记忆系统</span>
-          </div>
-          <div class="quiz-option" data-correct="false" onclick="selectOption(this)">
-            <span class="option-letter">D</span>
-            <span class="option-text">定时任务</span>
-          </div>
-        </div>
-        <button class="quiz-check-btn" onclick="checkQuiz('quiz-m1')">查看答案</button>
-        <div class="quiz-explanation" data-explanation="网关负责平台接入，不同平台（飞书、企微、微信、Discord）各有独立的网关实现。添加新平台只需要编写新的网关，不需要修改调度器或其他核心组件 — 这正是调度器模式的好处：各组件各司其职。"></div>
-      </div>
-    </section>
-
-  </div>
-</div>
-
-
-<!-- ============================================================
-     Module 2: 认识各位角色 — 谁负责什么？
-     ============================================================ -->
-<div class="module" id="module-2" style="scroll-snap-align:start;background:var(--color-bg-warm)">
-
-  <div class="module-header">
-    <div class="module-number">模块 02</div>
-    <h2 class="module-title">认识各位角色 — 谁负责什么？</h2>
-    <p class="module-subtitle">揭开 FriClaw 六大核心组件的神秘面纱</p>
-  </div>
-
-  <div class="module-body">
-
-    <!-- Interactive Architecture Diagram -->
-    <section class="screen animate-in">
-      <h3 class="section-label">系统全景图</h3>
-      <p class="section-desc">点击任意组件，查看它的职责说明。</p>
-
-      <div class="arch-diagram" id="arch-diagram">
-        <!-- Zone 1: 消息入口 -->
-        <div class="arch-zone" data-zone="input">
-          <div class="arch-zone-label">消息入口</div>
-          <div class="arch-zone-content">
-            <div class="arch-component" data-desc="飞书网关：通过 WebSocket 长连接接收飞书平台的消息，支持富文本和卡片消息，能实时推送流式响应。" onclick="showArchDetail(this)" style="border-color:var(--color-actor-1)">
-              <span class="arch-icon" style="background:var(--color-actor-1)">飞书</span>
-              <span class="arch-name">飞书网关</span>
+          <div class="layer-grid">
+            <div class="point-card">
+              <strong>平台入口</strong>
+              <p>飞书、企业微信、Dashboard 等入口统一落到同一消息模型，外部渠道差异被隔离在接入层。</p>
             </div>
-            <div class="arch-component" data-desc="企微网关：通过 WebSocket 长连接接收企业微信平台的消息，支持文本、图片、文件，用分块消息模拟流式体验。" onclick="showArchDetail(this)" style="border-color:var(--color-actor-1)">
-              <span class="arch-icon" style="background:var(--color-actor-1)">企微</span>
-              <span class="arch-name">企微网关</span>
+            <div class="point-card">
+              <strong>核心主线</strong>
+              <p>消息进入系统后按层推进：接入 → 调度 → 会话上下文 → Agent 执行 → 能力扩展 → 全局收束。</p>
             </div>
-            <div class="arch-component" data-desc="微信网关：接收微信平台的消息，负责将微信消息格式转换为 FriClaw 内部统一的消息格式。" onclick="showArchDetail(this)" style="border-color:var(--color-actor-1)">
-              <span class="arch-icon" style="background:var(--color-actor-1)">微信</span>
-              <span class="arch-name">微信网关</span>
+            <div class="point-card">
+              <strong>运行方式</strong>
+              <p>同一会话内强调串行与可追踪，不同会话之间保留并发吞吐，确保稳定与可运维性。</p>
             </div>
-            <div class="arch-component" data-desc="Dashboard 网关：Web 管理界面，提供实时状态监控、会话管理、消息发送等功能。" onclick="showArchDetail(this)" style="border-color:var(--color-actor-1)">
-              <span class="arch-icon" style="background:var(--color-actor-1)">面板</span>
-              <span class="arch-name">Dashboard</span>
+            <div class="point-card">
+              <strong>展板目标</strong>
+              <p>本页聚焦架构关系，而非教程导学；重点是帮助工程师快速理解责任边界与系统连接方式。</p>
             </div>
           </div>
         </div>
-
-        <div class="arch-arrow">&#8595;</div>
-
-        <!-- Zone 2: 核心处理 -->
-        <div class="arch-zone" data-zone="core">
-          <div class="arch-zone-label">核心处理</div>
-          <div class="arch-zone-content">
-            <div class="arch-component" data-desc="调度器（Dispatcher）：消息路由中心。接收来自所有网关的消息，为每条消息找到或创建正确的会话，然后把消息放入车道队列排队处理。" onclick="showArchDetail(this)" style="border-color:var(--color-actor-2)">
-              <span class="arch-icon" style="background:var(--color-actor-2)">调</span>
-              <span class="arch-name">Dispatcher</span>
-            </div>
-            <div class="arch-component" data-desc="会话管理器（SessionManager）：管理所有活跃的对话上下文。每个会话用 platform:chatId 唯一标识，包含工作目录、对话历史等信息。" onclick="showArchDetail(this)" style="border-color:var(--color-actor-3)">
-              <span class="arch-icon" style="background:var(--color-actor-3)">会</span>
-              <span class="arch-name">SessionManager</span>
-            </div>
-            <div class="arch-component" data-desc="车道队列（LaneQueue）：并发控制器。每个会话对应一条"车道"，同车道内的消息严格按顺序处理，不同车道可以并行。保证同一会话不会出现两条消息同时被处理。" onclick="showArchDetail(this)" style="border-color:var(--color-actor-3)">
-              <span class="arch-icon" style="background:var(--color-actor-3)">队</span>
-              <span class="arch-name">LaneQueue</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="arch-arrow">&#8595;</div>
-
-        <!-- Zone 3: AI 引擎 -->
-        <div class="arch-zone" data-zone="ai">
-          <div class="arch-zone-label">AI 引擎</div>
-          <div class="arch-zone-content">
-            <div class="arch-component arch-component-wide" data-desc="AI 代理（ClaudeCodeAgent）：FriClaw 的"大脑"。通过启动 Claude Code 子进程来处理用户请求，支持流式输出、MCP 工具调用、工作空间管理。" onclick="showArchDetail(this)" style="border-color:var(--color-actor-4)">
-              <span class="arch-icon" style="background:var(--color-actor-4)">AI</span>
-              <span class="arch-name">ClaudeCodeAgent</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="arch-arrow">&#8595;</div>
-
-        <!-- Zone 4: 持久层 -->
-        <div class="arch-zone" data-zone="persistence">
-          <div class="arch-zone-label">持久层</div>
-          <div class="arch-zone-content">
-            <div class="arch-component" data-desc="记忆管理器（MemoryManager）：三层记忆系统。身份层定义 AI 是谁；知识层存储你的偏好、联系人、项目；经历层记录对话摘要。让 AI 越来越懂你。" onclick="showArchDetail(this)" style="border-color:var(--color-actor-5)">
-              <span class="arch-icon" style="background:var(--color-actor-5)">忆</span>
-              <span class="arch-name">MemoryManager</span>
-            </div>
-            <div class="arch-component" data-desc="定时任务调度器（CronScheduler）：在指定的时间自动执行任务。比如每天早上 8 点总结今日待办，每周五下午提醒写周报。" onclick="showArchDetail(this)" style="border-color:var(--color-actor-1)">
-              <span class="arch-icon" style="background:var(--color-actor-1)">定</span>
-              <span class="arch-name">CronScheduler</span>
-            </div>
-            <div class="arch-component" data-desc="MCP（Model Context Protocol）：标准化工具调用协议。让 AI 能调用外部工具，比如读写文件、搜索记忆、发送消息等。支持热重载，修改配置后无需重启。" onclick="showArchDetail(this)" style="border-color:var(--color-actor-2)">
-              <span class="arch-icon" style="background:var(--color-actor-2)">M</span>
-              <span class="arch-name">MCP 服务</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="arch-detail-panel" id="arch-detail-panel" style="display:none">
-        <div class="arch-detail-title"></div>
-        <div class="arch-detail-desc"></div>
-      </div>
-    </section>
-
-    <!-- Pattern Cards -->
-    <section class="screen animate-in">
-      <h3 class="section-label">六大角色卡片</h3>
-      <p class="section-desc">每个角色都有自己专属的职责，就像一支分工明确的团队。</p>
-
-      <div class="pattern-cards">
-        <!-- Card 1 -->
-        <div class="pattern-card" style="--card-accent:var(--color-actor-1)">
-          <div class="pattern-card-icon" style="background:var(--color-actor-1)">1</div>
-          <div class="pattern-card-title">Gateway 网关</div>
-          <div class="pattern-card-desc">接收来自飞书、企微、微信的消息，就像酒店的不同入口。每个入口通向同一个大厅（调度器），但门口的保安（网关）各自负责自己平台的客人。</div>
-        </div>
-        <!-- Card 2 -->
-        <div class="pattern-card" style="--card-accent:var(--color-actor-2)">
-          <div class="pattern-card-icon" style="background:var(--color-actor-2)">2</div>
-          <div class="pattern-card-title">Dispatcher 调度器</div>
-          <div class="pattern-card-desc">消息路由中心，确保每条消息到达正确的处理者。就像酒店前台，根据客人的需求把信息转给对应的部门。</div>
-        </div>
-        <!-- Card 3 -->
-        <div class="pattern-card" style="--card-accent:var(--color-actor-3)">
-          <div class="pattern-card-icon" style="background:var(--color-actor-3)">3</div>
-          <div class="pattern-card-title">SessionManager</div>
-          <div class="pattern-card-desc">管理对话上下文，每个聊天窗口都是独立的会话。就像酒店给每位客人建立一个独立的档案袋，互不干扰。</div>
-        </div>
-        <!-- Card 4 -->
-        <div class="pattern-card" style="--card-accent:var(--color-actor-4)">
-          <div class="pattern-card-icon" style="background:var(--color-actor-4)">4</div>
-          <div class="pattern-card-title">ClaudeCodeAgent</div>
-          <div class="pattern-card-desc">AI 大脑，通过启动 Claude Code <span class="term" data-definition="子进程是由主程序启动的独立运行的小程序。主程序像一个项目经理，子进程像被分配了具体任务的工作人员">子进程</span>来处理请求。就像酒店请来了一位超级顾问，每遇到一个问题就请顾问分析解答。</div>
-        </div>
-        <!-- Card 5 -->
-        <div class="pattern-card" style="--card-accent:var(--color-actor-5)">
-          <div class="pattern-card-icon" style="background:var(--color-actor-5)">5</div>
-          <div class="pattern-card-title">MemoryManager</div>
-          <div class="pattern-card-desc">三层记忆系统：身份、知识、经历，让 AI 越来越懂你。就像一个贴心的管家，记得你的喜好、习惯和历史。</div>
-        </div>
-        <!-- Card 6 -->
-        <div class="pattern-card" style="--card-accent:var(--color-actor-1)">
-          <div class="pattern-card-icon" style="background:var(--color-actor-1)">6</div>
-          <div class="pattern-card-title">CronScheduler</div>
-          <div class="pattern-card-desc">定时任务调度器，在指定时间自动执行任务。就像管家设置的闹钟，到点就提醒你该做什么事。</div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Code Translation Block: Message interface -->
-    <section class="screen animate-in">
-      <h3 class="section-label">代码透视：消息长什么样？</h3>
-      <p class="section-desc">每条消息在 FriClaw 内部都用一个统一的 <span class="term" data-definition="接口（Interface）是 TypeScript 中用来定义数据形状的工具，描述一个对象应该有哪些字段">接口</span> 来表示，无论它来自哪个平台。</p>
-
-      <div class="translation-block">
-        <div class="translation-code">
-          <div class="code-label">types/message.ts</div>
-<pre><code>export interface Message {
-  platform:
-    | 'feishu'
-    | 'wecom'
-    | 'weixin'
-    | 'dashboard'
-  chatId: string
-  userId: string
-  type: MessageType
-  content: string
-  messageId?: string
-  chatType?: 'private' | 'group'
-  attachments?: unknown[]
-}</code></pre>
-        </div>
-        <div class="translation-english">
-          <div class="translation-title">逐行解读</div>
-          <div class="translation-line"><span class="line-num">1</span> 定义消息的<span class="term" data-definition="接口描述了数据应该长什么样，包含哪些字段">接口</span>，规定了所有消息必须包含哪些信息。</div>
-          <div class="translation-line"><span class="line-num">2-5</span> <code>platform</code> 标识消息来自哪个<span class="term" data-definition="平台指消息的来源渠道，比如飞书、企业微信、微信或 Dashboard 网页">平台</span>。只能是这四种之一。</div>
-          <div class="translation-line"><span class="line-num">6</span> <code>chatId</code> 是聊天的唯一编号，用来区分不同的聊天窗口。</div>
-          <div class="translation-line"><span class="line-num">7</span> <code>userId</code> 是发送者的唯一编号。</div>
-          <div class="translation-line"><span class="line-num">8</span> <code>type</code> 标识消息类型：文本、命令、文件或图片。</div>
-          <div class="translation-line"><span class="line-num">9</span> <code>content</code> 是消息的正文内容。</div>
-          <div class="translation-line"><span class="line-num">10-11</span> <code>messageId</code> 和 <code>chatType</code> 是可选字段。<code>?</code> 表示可以不填。<code>chatType</code> 区分私聊和群聊。</div>
-          <div class="translation-line"><span class="line-num">12</span> <code>attachments</code> 也是可选的，用于携带<span class="term" data-definition="附件是消息中附加的文件，比如图片、文档等">附件</span>，如图片或文件。</div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Metaphor -->
-    <section class="screen animate-in">
-      <div class="metaphor-block">
-        <div class="metaphor-icon">&#9993;</div>
-        <div class="metaphor-content">
-          <div class="metaphor-title">邮局系统</div>
-          <p>把 FriClaw 想象成一个高效的邮局系统：</p>
-          <ul>
-            <li><strong style="color:var(--color-actor-1)">网关</strong>是不同颜色的邮箱 — 蓝色收飞书信，绿色收企微信</li>
-            <li><strong style="color:var(--color-actor-2)">调度器</strong>是分拣室 — 根据地址把信件分发到正确的路线</li>
-            <li><strong style="color:var(--color-actor-3)">会话管理器</strong>是信格编号 — 确保同一收信人的信件放到同一格</li>
-            <li><strong style="color:var(--color-actor-4)">代理</strong>是邮递员 — 拿到信后分析内容、给出回复</li>
-            <li><strong style="color:var(--color-actor-5)">记忆</strong>是档案馆 — 记录所有往来的重要信息</li>
+        <div class="key-points">
+          <h3>总览要点</h3>
+          <ul class="points-list">
+            <li class="point-card"><strong>统一入口</strong>不同平台以统一消息契约进入内核。</li>
+            <li class="point-card"><strong>层次清晰</strong>每一层只承担本层职责，降低改动扩散。</li>
+            <li class="point-card"><strong>系统化视角</strong>关注结构、流向、边界与演进空间。</li>
           </ul>
         </div>
       </div>
-    </section>
 
-    <!-- Callout -->
-    <section class="screen animate-in">
-      <div class="callout callout-insight">
-        <div class="callout-icon">Design</div>
-        <div class="callout-body">
-          <p>这种把职责分给专门角色的模式叫做<strong>"关注点分离"</strong>（Separation of Concerns）。每个组件只做一件事，做好一件事。这样当需要修改或扩展时，只需要动一个地方，不会牵一发动全身。</p>
+      <div class="module" id="module-2">
+        <div class="module-header">
+          <div class="module-number">MODULE 02</div>
+          <h2>接入层</h2>
+          <p class="module-subtitle">负责把平台协议转换为内部一致的输入事件，是系统的边缘适配带。</p>
         </div>
-      </div>
-    </section>
-
-    <!-- Quiz -->
-    <section class="screen animate-in">
-      <div class="quiz-container" id="quiz-m2">
-        <div class="quiz-question-block">
-          <div class="quiz-number">Q2</div>
-          <p class="quiz-question-text">一个用户同时在飞书私聊和群聊中发消息。SessionManager 会创建几个会话？</p>
-        </div>
-        <div class="quiz-options">
-          <div class="quiz-option" data-correct="false" onclick="selectOption(this)">
-            <span class="option-letter">A</span>
-            <span class="option-text">1 个 — 同一个人只有一个会话</span>
-          </div>
-          <div class="quiz-option" data-correct="true" onclick="selectOption(this)">
-            <span class="option-letter">B</span>
-            <span class="option-text">2 个 — 私聊和群聊是不同的 chatId</span>
-          </div>
-          <div class="quiz-option" data-correct="false" onclick="selectOption(this)">
-            <span class="option-letter">C</span>
-            <span class="option-text">3 个 — 私聊、群聊再加上平台</span>
-          </div>
-          <div class="quiz-option" data-correct="false" onclick="selectOption(this)">
-            <span class="option-letter">D</span>
-            <span class="option-text">0 个 — 会话按需创建，还没来得及</span>
+        <div class="diagram-panel">
+          <h3>边缘接入拓扑</h3>
+          <div class="layer-grid">
+            <div class="point-card">
+              <strong>平台网关</strong>
+              <p>飞书、企业微信、Dashboard 等入口处理鉴权、平台格式、回包能力与连接形态。</p>
+            </div>
+            <div class="point-card">
+              <strong>统一消息模型</strong>
+              <p>抽象出平台、chatId、userId、内容、附件和元数据，让后续层无需感知渠道差异。</p>
+            </div>
+            <div class="point-card">
+              <strong>边缘约束</strong>
+              <p>屏蔽平台差异，但保留必要上下文，例如群聊/私聊、消息来源、附件类型与回调句柄。</p>
+            </div>
+            <div class="point-card">
+              <strong>工程收益</strong>
+              <p>新增一个平台主要落在接入层，不需要重写调度与 Agent 主逻辑。</p>
+            </div>
           </div>
         </div>
-        <button class="quiz-check-btn" onclick="checkQuiz('quiz-m2')">查看答案</button>
-        <div class="quiz-explanation" data-explanation="会话的唯一标识是 platform:chatId。私聊和群聊的 chatId 不同，所以 SessionManager 会创建两个独立的会话，分别管理各自的上下文。这样你在私聊中说的内容不会混入群聊的回复中。"></div>
-      </div>
-    </section>
-
-  </div>
-</div>
-
-
-<!-- ============================================================
-     Module 3: 消息的旅程 — 数据如何流转
-     ============================================================ -->
-<div class="module" id="module-3" style="scroll-snap-align:start;background:var(--color-bg)">
-
-  <div class="module-header">
-    <div class="module-number">模块 03</div>
-    <h2 class="module-title">消息的旅程 — 数据如何流转</h2>
-    <p class="module-subtitle">追踪一条消息从发送到回复的完整路径</p>
-  </div>
-
-  <div class="module-body">
-
-    <!-- Data Flow Animation -->
-    <section class="screen animate-in">
-      <h3 class="section-label">消息流转动画</h3>
-      <p class="section-desc">点击"下一步"，一步一步观察消息"今天天气怎样"在系统中的完整旅程。</p>
-
-      <div class="flow-animation" id="flow-m3">
-        <div class="flow-actors">
-          <div class="flow-actor" data-actor="user" id="flow-actor-user">
-            <div class="flow-actor-icon" style="background:var(--color-actor-1)">用户</div>
-            <div class="flow-actor-label">你</div>
-          </div>
-          <div class="flow-connector"></div>
-          <div class="flow-actor" data-actor="gateway" id="flow-actor-gateway">
-            <div class="flow-actor-icon" style="background:var(--color-actor-2)">网关</div>
-            <div class="flow-actor-label">飞书网关</div>
-          </div>
-          <div class="flow-connector"></div>
-          <div class="flow-actor" data-actor="dispatcher" id="flow-actor-dispatcher">
-            <div class="flow-actor-icon" style="background:var(--color-actor-3)">调度</div>
-            <div class="flow-actor-label">Dispatcher</div>
-          </div>
-          <div class="flow-connector"></div>
-          <div class="flow-actor" data-actor="session" id="flow-actor-session">
-            <div class="flow-actor-icon" style="background:var(--color-actor-3)">会话</div>
-            <div class="flow-actor-label">SessionManager</div>
-          </div>
-          <div class="flow-connector"></div>
-          <div class="flow-actor" data-actor="queue" id="flow-actor-queue">
-            <div class="flow-actor-icon" style="background:var(--color-actor-3)">队列</div>
-            <div class="flow-actor-label">LaneQueue</div>
-          </div>
-          <div class="flow-connector"></div>
-          <div class="flow-actor" data-actor="agent" id="flow-actor-agent">
-            <div class="flow-actor-icon" style="background:var(--color-actor-4)">AI</div>
-            <div class="flow-actor-label">ClaudeCodeAgent</div>
-          </div>
-        </div>
-
-        <div class="flow-packet" id="flow-packet" style="display:none">
-          <div class="flow-packet-content"></div>
-        </div>
-
-        <div class="flow-step-desc" id="flow-step-desc">
-          <p>点击"下一步"开始消息旅程。</p>
-        </div>
-
-        <div class="flow-controls">
-          <button class="flow-btn" onclick="flowNext('flow-m3')">下一步</button>
-          <button class="flow-btn flow-btn-secondary" onclick="flowReset('flow-m3')">重置</button>
-        </div>
-      </div>
-    </section>
-
-    <!-- Step descriptions (hidden, used by JS) -->
-    <div id="flow-steps-data" style="display:none"
-      data-steps='[
-        {"highlight":"user","packet":null,"desc":"第 1 步：用户在飞书中输入\"今天天气怎样\"，消息离开手机，飞向飞书网关。"},
-        {"highlight":"gateway","packet":"用户 &#8594; 网关","desc":"第 2 步：飞书网关收到消息，解析出平台=feishu、chatId=chat_123、userId=user_001、内容=\"今天天气怎样\"。将消息封装成统一的 Message 对象。"},
-        {"highlight":"dispatcher","packet":"网关 &#8594; 调度器","desc":"第 3 步：网关调用 dispatcher.dispatch(message, reply, streamHandler)，把消息交给调度器处理。调度器首先检查自己是否还在工作（accepting 状态）。"},
-        {"highlight":"session","packet":null,"desc":"第 4 步：调度器调用 sessionManager.getOrCreate(platform, chatId, userId)。如果会话已存在，直接使用；如果是新聊天，就创建一个新会话，分配工作目录。"},
-        {"highlight":"queue","packet":null,"desc":"第 5 步：调度器将消息和代理处理函数一起放入 LaneQueue.enqueue(session.id, task)。同一会话的消息排队等待，不同会话可以并行处理。"},
-        {"highlight":"agent","packet":"调度器 &#8594; AI代理","desc":"第 6 步：轮到这条消息时，ClaudeCodeAgent 启动 Claude Code <span class=\"term\" data-definition=\"子进程是由主程序创建的独立运行的程序实例，完成特定任务后退出\">子进程</span>，以<span class=\"term\" data-definition=\"流式（Streaming）指数据像流水一样一点点传过来，而不是等到全部完成才一次性返回\">流式</span>方式逐步返回 JSON 响应。"},
-        {"highlight":"gateway","packet":"AI代理 &#8594; 网关 &#8594; 用户","desc":"第 7 步：AI 代理的回复通过 streamHandler 实时传回网关，网关再推送到飞书。用户看到消息一个字一个字地出现 — 这就是流式响应的魅力！"}
-      ]'>
-    </div>
-
-    <!-- Code Translation Block: LaneQueue -->
-    <section class="screen animate-in">
-      <h3 class="section-label">代码透视：车道队列的入队方法</h3>
-      <p class="section-desc">LaneQueue 是 FriClaw 并发控制的核心。理解它的 <code>enqueue</code> 方法，就理解了消息为什么能安全有序地处理。</p>
-
-      <div class="translation-block">
-        <div class="translation-code">
-          <div class="code-label">utils/lane-queue.ts</div>
-<pre><code>enqueue&lt;T&gt;(
-  laneKey: string,
-  task: Task&lt;T&gt;,
-  timeoutMs = 300_000
-): Promise&lt;T&gt; {
-  return new Promise&lt;T&gt;(
-    (resolve, reject) =&gt; {
-      let lane = this.lanes.get(laneKey)
-      if (!lane) {
-        lane = {
-          queue: [],
-          running: false
-        }
-        this.lanes.set(laneKey, lane)
-      }
-      lane.queue.push({
-        task: withTimeout(
-          task, timeoutMs
-        ),
-        resolve, reject
-      })
-      if (!lane.running)
-        this.drain(laneKey)
-    }
-  )
-}</code></pre>
-        </div>
-        <div class="translation-english">
-          <div class="translation-title">逐行解读</div>
-          <div class="translation-line"><span class="line-num">1-3</span> 方法定义：<code>laneKey</code> 是车道标识（即会话 ID）；<code>task</code> 是要执行的任务；<code>timeoutMs</code> 是<span class="term" data-definition="超时（Timeout）是指任务的最长执行时间限制。超过这个时间，任务会被强制取消，防止一个任务永远卡住">超时</span>时间，默认 5 分钟。</div>
-          <div class="translation-line"><span class="line-num">4-6</span> 返回一个 Promise，这样调用者可以等待任务完成后拿到结果。</div>
-          <div class="translation-line"><span class="line-num">7-8</span> 查找是否已有这条车道。如果没有，就创建一条新车道。</div>
-          <div class="translation-line"><span class="line-num">9-11</span> 初始化新车道：空队列，不在运行中。</div>
-          <div class="translation-line"><span class="line-num">12-14</span> 把任务放入车道队列。用 <code>withTimeout</code> 包裹任务，确保超时后自动取消。</div>
-          <div class="translation-line"><span class="line-num">15-16</span> 如果车道没有在运行，立即开始<span class="term" data-definition="排空（Drain）指把队列里的任务一个接一个地执行完，直到队列为空">排空</span>队列。</div>
-          <div class="translation-line"><span class="line-num">重点</span> 同一车道的任务严格按入队顺序执行（FIFO），不同车道之间可以<span class="term" data-definition="并发（Concurrency）指多个任务同时推进，就像多条车道上的车同时行驶">并发</span>执行。</div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Metaphor -->
-    <section class="screen animate-in">
-      <div class="metaphor-block">
-        <div class="metaphor-icon">&#128663;</div>
-        <div class="metaphor-content">
-          <div class="metaphor-title">高速公路收费系统</div>
-          <p>把 LaneQueue 想象成高速公路收费站：</p>
-          <ul>
-            <li>每条<span class="term" data-definition="车道（Lane）是 LaneQueue 中的基本单位，每个会话 ID 对应一条独立的车道">车道</span>（session）一次只处理一辆车（message）</li>
-            <li>同一条车道上的车必须排队等候，先到先过</li>
-            <li>不同车道可以同时通过，互不影响</li>
-            <li>每辆车有过站时间限制（超时机制），不能永远停在收费站</li>
+        <div class="key-points">
+          <h3>接入层职责</h3>
+          <ul class="points-list">
+            <li class="point-card"><strong>协议适配</strong>把外部消息协议映射成内部事件。</li>
+            <li class="point-card"><strong>身份透传</strong>保留用户、会话、群组等关键标识。</li>
+            <li class="point-card"><strong>响应封装</strong>将执行结果回写为平台可消费格式。</li>
           </ul>
         </div>
       </div>
-    </section>
 
-    <!-- Callout -->
-    <section class="screen animate-in">
-      <div class="callout callout-warning">
-        <div class="callout-icon">Tip</div>
-        <div class="callout-body">
-          <p><strong>超时机制是防御性编程的重要手段。</strong>默认 5 分钟超时意味着如果一个 AI 回复卡住了（比如网络问题），最多等 5 分钟就会自动取消，不会永远阻塞后面的消息。这就像收费站给每辆车设了一个最长过站时间。</p>
+      <div class="module" id="module-3">
+        <div class="module-header">
+          <div class="module-number">MODULE 03</div>
+          <h2>调度层</h2>
+          <p class="module-subtitle">调度层是消息总线与执行编排入口，负责分流、排队和生命周期控制。</p>
+        </div>
+        <div class="diagram-panel">
+          <h3>消息编排路径</h3>
+          <div class="flow-line">
+            <div class="flow-node">消息到达</div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-node">命令识别</div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-node">会话归属</div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-node">队列排程</div>
+          </div>
+          <div class="layer-grid flow-detail-grid">
+            <div class="point-card">
+              <strong>Dispatcher</strong>
+              <p>统一承接接入层消息，决定走命令路径还是正常对话路径。</p>
+            </div>
+            <div class="point-card">
+              <strong>Lane Queue</strong>
+              <p>以会话为粒度串行化处理，避免同一上下文出现竞争执行。</p>
+            </div>
+            <div class="point-card">
+              <strong>流式转发</strong>
+              <p>为后续执行层保留流式回传通道，让前端或平台能持续看到处理进度。</p>
+            </div>
+            <div class="point-card">
+              <strong>关闭策略</strong>
+              <p>在停止接收新任务与等待已有队列清空之间建立可控的关停边界。</p>
+            </div>
+          </div>
+        </div>
+        <div class="key-points">
+          <h3>调度层要点</h3>
+          <ul class="points-list">
+            <li class="point-card"><strong>路由</strong>决定消息走哪条系统路径。</li>
+            <li class="point-card"><strong>排队</strong>确保同会话处理顺序稳定。</li>
+            <li class="point-card"><strong>编排</strong>把上下游组件串成可运营链路。</li>
+          </ul>
         </div>
       </div>
-    </section>
 
-    <!-- Quiz -->
-    <section class="screen animate-in">
-      <div class="quiz-container" id="quiz-m3">
-        <div class="quiz-question-block">
-          <div class="quiz-number">Q3</div>
-          <p class="quiz-question-text">如果同一会话中用户连续快速发送了 3 条消息，LaneQueue 会怎么处理？</p>
+      <div class="module" id="module-4">
+        <div class="module-header">
+          <div class="module-number">MODULE 04</div>
+          <h2>会话与上下文层</h2>
+          <p class="module-subtitle">这一层决定系统如何记住谁在说话、此前发生了什么、当前执行所需的上下文应如何装配。</p>
         </div>
-        <div class="quiz-options">
-          <div class="quiz-option" data-correct="false" onclick="selectOption(this)">
-            <span class="option-letter">A</span>
-            <span class="option-text">只处理第一条，丢弃其余</span>
-          </div>
-          <div class="quiz-option" data-correct="false" onclick="selectOption(this)">
-            <span class="option-letter">B</span>
-            <span class="option-text">三条同时处理，谁先完成算谁的</span>
-          </div>
-          <div class="quiz-option" data-correct="true" onclick="selectOption(this)">
-            <span class="option-letter">C</span>
-            <span class="option-text">按顺序逐一处理：第一条完成后再处理第二条</span>
-          </div>
-          <div class="quiz-option" data-correct="false" onclick="selectOption(this)">
-            <span class="option-letter">D</span>
-            <span class="option-text">随机选一条处理</span>
+        <div class="diagram-panel">
+          <h3>上下文组装面板</h3>
+          <div class="layer-grid">
+            <div class="point-card">
+              <strong>Session Manager</strong>
+              <p>为 platform + chatId 等标识建立可复用的会话实体，管理工作目录和对话状态。</p>
+            </div>
+            <div class="point-card">
+              <strong>Identity / Knowledge / Episode</strong>
+              <p>静态身份、长期知识与会话经历共同构成多层上下文来源。</p>
+            </div>
+            <div class="point-card">
+              <strong>检索注入</strong>
+              <p>按请求需要装配相关内容，而不是将所有记忆粗暴堆入提示词。</p>
+            </div>
+            <div class="point-card">
+              <strong>上下文边界</strong>
+              <p>这一层控制注入范围、粒度与顺序，直接影响成本、准确性与稳定性。</p>
+            </div>
           </div>
         </div>
-        <button class="quiz-check-btn" onclick="checkQuiz('quiz-m3')">查看答案</button>
-        <div class="quiz-explanation" data-explanation="LaneQueue 保证同一车道（同一会话 ID）内的消息严格按照入队顺序（FIFO）逐一处理。第一条消息完全处理完毕后，才会从队列中取出第二条开始处理。这样能避免消息乱序导致的上下文混乱。不同会话的消息则不受影响，可以并行处理。"></div>
+        <div class="key-points">
+          <h3>会话层要点</h3>
+          <ul class="points-list">
+            <li class="point-card"><strong>会话隔离</strong>不同聊天保持独立上下文空间。</li>
+            <li class="point-card"><strong>多层记忆</strong>人格、知识、经历承担不同信息职责。</li>
+            <li class="point-card"><strong>按需组装</strong>控制上下文规模与相关度。</li>
+          </ul>
+        </div>
       </div>
-    </section>
 
-  </div>
-</div>
+      <div class="module" id="module-5">
+        <div class="module-header">
+          <div class="module-number">MODULE 05</div>
+          <h2>Agent 执行层</h2>
+          <p class="module-subtitle">真正承担推理与操作的是 Agent 执行层，它负责驱动 Claude Code 子进程、消费事件流并组织最终回复。</p>
+        </div>
+        <div class="diagram-panel">
+          <h3>执行循环</h3>
+          <div class="layer-grid">
+            <div class="point-card">
+              <strong>请求构造</strong>
+              <p>把用户输入、会话上下文、能力定义整理成执行请求，发往 Agent 运行单元。</p>
+            </div>
+            <div class="point-card">
+              <strong>子进程复用</strong>
+              <p>通过可复用进程或工作区减少重复冷启动，提升多轮对话吞吐。</p>
+            </div>
+            <div class="point-card">
+              <strong>事件流解析</strong>
+              <p>从 thinking、text、tool_use、done 等事件中还原执行过程与最终结果。</p>
+            </div>
+            <div class="point-card">
+              <strong>结果回传</strong>
+              <p>将执行产物重新映射到调度链路，供平台侧持续流式展示或一次性回复。</p>
+            </div>
+          </div>
+        </div>
+        <div class="key-points">
+          <h3>执行层要点</h3>
+          <ul class="points-list">
+            <li class="point-card"><strong>推理核心</strong>承担模型调用与步骤推进。</li>
+            <li class="point-card"><strong>过程可见</strong>通过事件流暴露执行状态。</li>
+            <li class="point-card"><strong>结果可交付</strong>输出回复、调用记录与收束信号。</li>
+          </ul>
+        </div>
+      </div>
 
+      <div class="module" id="module-6">
+        <div class="module-header">
+          <div class="module-number">MODULE 06</div>
+          <h2>能力扩展层</h2>
+          <p class="module-subtitle">系统不仅要回答问题，还要调用工具、触发任务并与外部能力生态连接，这一层负责扩展可做的事。</p>
+        </div>
+        <div class="diagram-panel">
+          <h3>能力挂载矩阵</h3>
+          <div class="layer-grid">
+            <div class="point-card">
+              <strong>MCP 服务</strong>
+              <p>通过标准协议接入搜索、文件、知识、网关发送等可组合能力，形成统一扩展面。</p>
+            </div>
+            <div class="point-card">
+              <strong>Cron / 主动任务</strong>
+              <p>定时与延迟执行让系统具备主动性，不再局限于收到消息后被动响应。</p>
+            </div>
+            <div class="point-card">
+              <strong>配置热更新</strong>
+              <p>能力清单可随着会话或运行时变化而重载，降低主进程重启成本。</p>
+            </div>
+            <div class="point-card">
+              <strong>边界治理</strong>
+              <p>能力扩展越强，越要清楚约束权限、执行成本、故障回退和可观测性。</p>
+            </div>
+          </div>
+        </div>
+        <div class="key-points">
+          <h3>扩展层要点</h3>
+          <ul class="points-list">
+            <li class="point-card"><strong>工具化</strong>把外部系统能力变成可调用接口。</li>
+            <li class="point-card"><strong>主动化</strong>支持定时、提醒与异步任务闭环。</li>
+            <li class="point-card"><strong>可演进</strong>新增能力不必重写主流程。</li>
+          </ul>
+        </div>
+      </div>
 
-<!-- ============================================================
-     JavaScript for Modules 1-3
-     ============================================================ -->
-<script>
-(function() {
-  'use strict';
+      <div class="module" id="module-7">
+        <div class="module-header">
+          <div class="module-number">MODULE 07</div>
+          <h2>全局收束</h2>
+          <p class="module-subtitle">最终从系统视角收束所有层级关系，回答这套架构为什么成立、如何维护、以及演进时应优先守住什么。</p>
+        </div>
+        <div class="diagram-panel">
+          <h3>全局架构闭环</h3>
+          <div class="summary-strip">
+            <div class="point-card">
+              <strong>主链路闭环</strong>
+              <p>接入层负责收口，调度层负责组织，会话层负责理解，执行层负责产出，扩展层负责放大能力。</p>
+            </div>
+            <div class="point-card">
+              <strong>核心设计原则</strong>
+              <p>统一模型、会话隔离、串行保障、流式反馈、能力外置，是这一架构最重要的工程原则。</p>
+            </div>
+            <div class="point-card">
+              <strong>演进方向</strong>
+              <p>后续优化通常落在观测性、缓存、调度策略、工具治理与跨平台一致性，而不是重新拆穿主链路。</p>
+            </div>
+            <div class="point-card">
+              <strong>维护重点</strong>
+              <p>优先守住职责边界和数据契约，避免让接入、调度、上下文与执行逻辑互相渗透。</p>
+            </div>
+          </div>
+        </div>
+        <div class="key-points">
+          <h3>收束结论</h3>
+          <ul class="summary-list">
+            <li class="point-card"><strong>一条主轴</strong>七个模块沿同一工程主轴展开，不再混入教程型杂项内容。</li>
+            <li class="point-card"><strong>一个页面</strong>整页保留导航、进度、滚动与 reveal，但主体严格收敛为七个顶层模块。</li>
+            <li class="point-card"><strong>一种视角</strong>从工程师视角阅读系统，而不是从新手学习视角拆分交互教学。</li>
+            <li class="point-card"><strong>一个结论</strong>FriClaw 的关键优势在于层次分明、可扩展且可维护的执行架构。</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </main>
 
-  // ---- Scroll-triggered reveal ----
-  const animateObserver = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        entry.target.classList.add('animate-in-visible');
-      }
-    });
-  }, { threshold: 0.1 });
+  <script>
+    const progressBar = document.getElementById('progressBar');
+    const modules = Array.from(document.querySelectorAll('.module'));
+    const navDots = Array.from(document.querySelectorAll('.nav-dot'));
 
-  document.querySelectorAll('.animate-in').forEach(el => animateObserver.observe(el));
-
-  // ---- Tooltip system (position:fixed, appended to body) ----
-  let activeTooltip = null;
-
-  document.addEventListener('mouseover', function(e) {
-    const term = e.target.closest('.term');
-    if (!term) return;
-    const definition = term.getAttribute('data-definition');
-    if (!definition) return;
-
-    removeTooltip();
-
-    const tooltip = document.createElement('div');
-    tooltip.className = 'term-tooltip';
-    tooltip.textContent = definition;
-    document.body.appendChild(tooltip);
-
-    const rect = term.getBoundingClientRect();
-    const ttRect = tooltip.getBoundingClientRect();
-    let left = rect.left + rect.width / 2 - ttRect.width / 2;
-    let top = rect.bottom + 8;
-
-    if (left < 8) left = 8;
-    if (left + ttRect.width > window.innerWidth - 8) left = window.innerWidth - ttRect.width - 8;
-    if (top + ttRect.height > window.innerHeight - 8) {
-      top = rect.top - ttRect.height - 8;
+    function updateProgress() {
+      const scrollTop = window.scrollY;
+      const scrollHeight = document.documentElement.scrollHeight - window.innerHeight;
+      const ratio = scrollHeight > 0 ? (scrollTop / scrollHeight) * 100 : 0;
+      progressBar.style.width = ratio + '%';
     }
 
-    tooltip.style.left = left + 'px';
-    tooltip.style.top = top + 'px';
-    activeTooltip = tooltip;
-  });
+    function updateNavState(activeId) {
+      const activeIndex = modules.findIndex((module) => module.id === activeId);
 
-  document.addEventListener('mouseout', function(e) {
-    const term = e.target.closest('.term');
-    if (term) removeTooltip();
-  });
-
-  function removeTooltip() {
-    if (activeTooltip) {
-      activeTooltip.remove();
-      activeTooltip = null;
-    }
-  }
-
-  // ---- Chat Animation ----
-  window.playChatNext = function(chatId) {
-    const container = document.getElementById(chatId);
-    if (!container) return;
-    const messages = container.querySelectorAll('.chat-delayed');
-    for (let i = 0; i < messages.length; i++) {
-      if (!messages[i].classList.contains('chat-visible')) {
-        messages[i].classList.add('chat-visible');
-        break;
-      }
-    }
-  };
-
-  window.playChatAll = function(chatId) {
-    const container = document.getElementById(chatId);
-    if (!container) return;
-    const messages = container.querySelectorAll('.chat-delayed');
-    messages.forEach((msg, idx) => {
-      setTimeout(() => msg.classList.add('chat-visible'), idx * 600);
-    });
-  };
-
-  window.resetChat = function(chatId) {
-    const container = document.getElementById(chatId);
-    if (!container) return;
-    const messages = container.querySelectorAll('.chat-delayed');
-    messages.forEach(msg => msg.classList.remove('chat-visible'));
-  };
-
-  // ---- Architecture Diagram ----
-  window.showArchDetail = function(el) {
-    const panel = document.getElementById('arch-detail-panel');
-    if (!panel) return;
-
-    // Remove active from all
-    document.querySelectorAll('.arch-component').forEach(c => c.classList.remove('arch-active'));
-    el.classList.add('arch-active');
-
-    const name = el.querySelector('.arch-name').textContent;
-    const desc = el.getAttribute('data-desc');
-    panel.querySelector('.arch-detail-title').textContent = name;
-    panel.querySelector('.arch-detail-desc').textContent = desc;
-    panel.style.display = 'block';
-  };
-
-  // ---- Flow Animation ----
-  const flowStates = {};
-
-  function getFlowSteps(flowId) {
-    const dataEl = document.getElementById('flow-steps-data');
-    if (!dataEl) return [];
-    return JSON.parse(dataEl.getAttribute('data-steps'));
-  }
-
-  window.flowNext = function(flowId) {
-    if (!flowStates[flowId]) flowStates[flowId] = { step: -1 };
-    const state = flowStates[flowId];
-    const steps = getFlowSteps(flowId);
-    state.step++;
-
-    if (state.step >= steps.length) {
-      state.step = steps.length;
-      return;
+      navDots.forEach((dot, index) => {
+        const target = dot.getAttribute('data-target');
+        dot.classList.toggle('current', target === activeId);
+        dot.classList.toggle('visited', index <= activeIndex);
+      });
     }
 
-    const step = steps[state.step];
-    const container = document.getElementById(flowId);
-    if (!container) return;
-
-    // Clear highlights
-    container.querySelectorAll('.flow-actor').forEach(a => a.classList.remove('flow-active'));
-
-    // Highlight actor
-    if (step.highlight) {
-      const actor = container.querySelector(`.flow-actor[data-actor="${step.highlight}"]`);
-      if (actor) actor.classList.add('flow-active');
-    }
-
-    // Show packet
-    const packet = document.getElementById('flow-packet');
-    if (step.packet) {
-      packet.style.display = 'flex';
-      packet.querySelector('.flow-packet-content').innerHTML = step.packet;
-    } else {
-      packet.style.display = 'none';
-    }
-
-    // Show description
-    const descEl = document.getElementById('flow-step-desc');
-    descEl.innerHTML = '<p>' + step.desc + '</p>';
-  };
-
-  window.flowReset = function(flowId) {
-    flowStates[flowId] = { step: -1 };
-    const container = document.getElementById(flowId);
-    if (!container) return;
-
-    container.querySelectorAll('.flow-actor').forEach(a => a.classList.remove('flow-active'));
-    const packet = document.getElementById('flow-packet');
-    if (packet) packet.style.display = 'none';
-
-    const descEl = document.getElementById('flow-step-desc');
-    if (descEl) descEl.innerHTML = '<p>点击"下一步"开始消息旅程。</p>';
-  };
-
-  // ---- Quiz System ----
-  window.selectOption = function(el) {
-    const container = el.closest('.quiz-container');
-    if (!container) return;
-
-    // Deselect siblings
-    container.querySelectorAll('.quiz-option').forEach(opt => {
-      opt.classList.remove('selected');
-    });
-    el.classList.add('selected');
-  };
-
-  window.checkQuiz = function(quizId) {
-    const container = document.getElementById(quizId);
-    if (!container) return;
-
-    const selected = container.querySelector('.quiz-option.selected');
-    if (!selected) return;
-
-    // Disable further selection
-    container.querySelectorAll('.quiz-option').forEach(opt => {
-      opt.style.pointerEvents = 'none';
-    });
-
-    const isCorrect = selected.getAttribute('data-correct') === 'true';
-
-    if (isCorrect) {
-      selected.classList.add('correct');
-    } else {
-      selected.classList.add('wrong');
-      // Highlight correct
-      container.querySelectorAll('.quiz-option').forEach(opt => {
-        if (opt.getAttribute('data-correct') === 'true') {
-          opt.classList.add('correct');
+    const moduleObserver = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+          updateNavState(entry.target.id);
         }
       });
-    }
-
-    // Show explanation
-    const explanation = container.querySelector('.quiz-explanation');
-    if (explanation) {
-      explanation.classList.add('quiz-explanation-visible');
-      explanation.textContent = explanation.getAttribute('data-explanation');
-    }
-
-    // Hide check button
-    const checkBtn = container.querySelector('.quiz-check-btn');
-    if (checkBtn) checkBtn.style.display = 'none';
-  };
-
-})();
-</script>
-
-<!-- Modules 4-7 -->
-
-<!-- Module 4: 三层记忆 — 越用越懂你 -->
-<div class="module" id="module-4" style="scroll-snap-align:start;background:var(--color-bg-warm)">
-  <div class="module-header">
-    <h2>模块四：三层记忆 — 越用越懂你</h2>
-    <p>MemoryManager 通过三种不同类型的记忆，让 FriClaw 随着使用越来越了解你。每条信息都有不同的保存方式，就像你有不同的笔记本记录不同的事情。</p>
-  </div>
-
-  <div class="module-body">
-    <!-- Screen 1: 三种记忆类型 -->
-    <div class="screen animate-in" style="scroll-snap-align: start;">
-      <h3>三种记忆，各有分工</h3>
-
-      <div class="icon-rows">
-        <div class="icon-row">
-          <div class="icon-circle" style="background: var(--color-actor-1);">🎭</div>
-          <div class="icon-label-content">
-            <strong>身份记忆 (IdentityMemory)</strong>
-            <p>记住 FriClaw 的性格和行为准则，存在 <span data-tooltip="SOUL.md 是一个 Markdown 格式的配置文件，定义了 AI 的身份和个性。它在系统启动时被读取并注入到每次对话的系统提示中。">SOUL.md</span> 文件中。</p>
-          </div>
-        </div>
-
-        <div class="icon-row">
-          <div class="icon-circle" style="background: var(--color-actor-2);">📚</div>
-          <div class="icon-label-content">
-            <strong>知识记忆 (KnowledgeMemory)</strong>
-            <p>存储用户的事实性知识，如"我喜欢喝咖啡"，每个主题一个 <span data-tooltip="Markdown 是一种轻量级标记语言，用简单的语法格式化文本，扩展名为 .md。">.md</span> 文件。</p>
-          </div>
-        </div>
-
-        <div class="icon-row">
-          <div class="icon-circle" style="background: var(--color-actor-3);">📝</div>
-          <div class="icon-label-content">
-            <strong>经历记忆 (EpisodeMemory)</strong>
-            <p>记录每次重要互动的摘要，按时间排序，可搜索。</p>
-          </div>
-        </div>
-      </div>
-
-      <div class="callout">
-        <strong>比喻：</strong>个人日记 + 百科全书 + 性格档案 — 三本不同的笔记本，各有各的用途。
-      </div>
-    </div>
-
-    <!-- Screen 2: MemoryManager 初始化代码 -->
-    <div class="screen animate-in" style="scroll-snap-align: start;">
-      <h3>MemoryManager 初始化过程</h3>
-      <p>系统启动时，MemoryManager 会创建必要的目录、初始化 <span data-tooltip="SQLite 是一种轻量级的文件型数据库，不需要单独的数据库服务器进程，所有数据存储在一个文件中。">SQLite</span> 数据库，并分别创建三种记忆管理器。</p>
-
-      <div class="translation-block">
-        <div class="translation-english">
-          <p>Initialize the memory system: create knowledge and episodes directories, open the SQLite database, and instantiate the three memory modules.</p>
-        </div>
-        <div class="translation-code">
-          <pre style="white-space: pre-wrap;"><code>async init(): Promise&lt;void&gt; {
-  const { dir } = this.config
-  // 创建 knowledge 和 episodes 子目录
-  mkdirSync(join(dir, 'knowledge'), { recursive: true })
-  mkdirSync(join(dir, 'episodes'), { recursive: true })
-
-  // 初始化 SQLite 数据库（含 FTS5 全文搜索表）
-  this.db = initDatabase(join(dir, 'index.sqlite'))
-
-  // 创建三种记忆管理器
-  this.identity = new IdentityMemory(this.db, dir)
-  this.knowledge = new KnowledgeMemory(this.db, dir)
-  this.episode = new EpisodeMemory(this.db, dir)
-
-  log.info({ dir }, 'Memory system initialized')
-}</code></pre>
-        </div>
-      </div>
-    </div>
-
-    <!-- Screen 3: FTS5 搜索代码 -->
-    <div class="screen animate-in" style="scroll-snap-align: start;">
-      <h3><span data-tooltip="FTS5 (Full-Text Search 5) 是 SQLite 内置的全文搜索引擎，可以像百度一样快速搜索大量文本数据。它通过建立倒排索引来加速搜索，比普通的 LIKE 查询快得多。">全文搜索</span> — 用 FTS5 搜索记忆</h3>
-      <p>搜索是记忆系统的核心能力。SQLite 的 FTS5 模块提供了高性能的全文搜索，支持按分类过滤和按相关度排序。</p>
-
-      <div class="callout">
-        <strong>提示：</strong>全文搜索(FTS5)是搜索引擎的核心技术，让你像用百度一样搜索本地数据。它通过建立<span data-tooltip="索引就像书的目录，帮助你快速找到内容所在的位置，而不需要逐页翻阅。">索引</span>来加速搜索。
-      </div>
-
-      <div class="translation-block">
-        <div class="translation-english">
-          <p>Search the memory index. If a category filter is provided, restrict results to that category. Results are ranked by relevance. Returns an empty array on any error.</p>
-        </div>
-        <div class="translation-code">
-          <pre style="white-space: pre-wrap;"><code>export function search(
-  db: Database, query: string, category?: string, limit = 10
-): SearchResult[] {
-  try {
-    if (category) {
-      return db.prepare(
-        `SELECT id, category, title, content, tags
-         FROM memory_fts
-         WHERE memory_fts MATCH ? AND category = ?
-         ORDER BY rank LIMIT ?`
-      ).all(query, category, limit) as SearchResult[]
-    }
-    return db.prepare(
-      `SELECT id, category, title, content, tags
-       FROM memory_fts
-       WHERE memory_fts MATCH ?
-       ORDER BY rank LIMIT ?`
-    ).all(query, limit) as SearchResult[]
-  } catch { return [] }
-}</code></pre>
-        </div>
-      </div>
-    </div>
-
-    <!-- Screen 4: 术语表 + 测验 -->
-    <div class="screen animate-in" style="scroll-snap-align: start;">
-      <h3>术语表</h3>
-      <div class="glossary">
-        <div class="glossary-item">
-          <strong>全文搜索 (FTS5)</strong>：SQLite 内置的全文搜索引擎，通过建立倒排索引，实现对大量文本的快速关键词搜索。
-        </div>
-        <div class="glossary-item">
-          <strong>索引</strong>：一种数据结构，用于加速数据库查询操作，类似于书籍的目录。
-        </div>
-        <div class="glossary-item">
-          <strong>数据库 (SQLite)</strong>：轻量级文件型关系数据库，所有数据存储在单个文件中，无需独立服务器。
-        </div>
-        <div class="glossary-item">
-          <strong>Markdown (.md)</strong>：轻量级标记语言，用纯文本格式编写文档，支持标题、列表、链接等格式。
-        </div>
-        <div class="glossary-item">
-          <strong><span data-tooltip="前缀搜索是指输入一个词的开头部分（前缀），搜索引擎就能匹配所有以该前缀开头的词。比如输入'人工'，可以匹配到'人工智能'、'人工语音'等。">前缀</span></strong>：在搜索中，前缀指词语的开头部分。FTS5 支持前缀搜索，输入词的开头即可匹配相关结果。
-        </div>
-      </div>
-
-      <div class="quiz-container" id="quiz-module4">
-        <div class="quiz-question-block">
-          <p class="quiz-question">用户告诉 FriClaw "我对花生过敏"。这应该存入哪种记忆？</p>
-        </div>
-        <div class="quiz-options">
-          <div class="quiz-option" data-correct="false" onclick="selectOption(this, 'quiz-module4')">A) 身份记忆</div>
-          <div class="quiz-option" data-correct="true" onclick="selectOption(this, 'quiz-module4')">B) 知识记忆</div>
-          <div class="quiz-option" data-correct="false" onclick="selectOption(this, 'quiz-module4')">C) 经历记忆</div>
-          <div class="quiz-option" data-correct="false" onclick="selectOption(this, 'quiz-module4')">D) 不用存</div>
-        </div>
-        <div class="quiz-feedback" data-explanation="知识记忆存储关于用户的事实性知识。" style="display: none;"></div>
-        <button class="quiz-check-btn" onclick="checkQuiz('quiz-module4')">检查答案</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-
-<!-- Module 5: AI 大脑 — Claude Code 是如何工作的 -->
-<div class="module" id="module-5" style="scroll-snap-align:start;background:var(--color-bg)">
-  <div class="module-header">
-    <h2>模块五：AI 大脑 — Claude Code 是如何工作的</h2>
-    <p>ClaudeCodeAgent 是 FriClaw 的"大脑"。它通过启动 Claude Code CLI <span data-tooltip="子进程是由父进程创建的独立运行程序。在 FriClaw 中，主进程通过 spawn 创建 Claude Code CLI 作为子进程来处理 AI 请求。">子进程</span>来处理用户的每一条消息，并将 AI 的回复流式传回。</p>
-  </div>
-
-  <div class="module-body">
-    <!-- Screen 1: 工作流程 -->
-    <div class="screen animate-in" style="scroll-snap-align: start;">
-      <h3>ClaudeCodeAgent 处理流程</h3>
-      <p>从收到用户消息到返回 AI 回复，一共经历以下 7 个步骤：</p>
-
-      <div class="step-cards">
-        <div class="step-card">
-          <div class="step-num">1</div>
-          <p>收到消息，构造 JSON 请求体</p>
-        </div>
-        <div class="step-card">
-          <div class="step-num">2</div>
-          <p>检查是否有可复用的<span data-tooltip="进程池是一种复用机制，将已完成任务的子进程保留在内存中，下次请求直接复用，避免重复启动的开销。">子进程</span>（进程池）</p>
-        </div>
-        <div class="step-card">
-          <div class="step-num">3</div>
-          <p>如果没有空闲子进程，启动新的 Claude Code CLI 子进程</p>
-        </div>
-        <div class="step-card">
-          <div class="step-num">4</div>
-          <p>通过 <span data-tooltip="stdin（标准输入）是进程接收数据的通道。在这里，主进程通过子进程的 stdin 写入 JSON 数据来发送消息。">stdin</span> 发送 JSON 格式的消息</p>
-        </div>
-        <div class="step-card">
-          <div class="step-num">5</div>
-          <p>从 <span data-tooltip="stdout（标准输出）是进程发送数据的通道。Claude Code CLI 通过 stdout 逐行输出 JSON 格式的事件流。">stdout</span> 逐行读取<span data-tooltip="流式传输是指数据不是一次性全部发送，而是像水流一样持续不断地一小块一小块地传输。在 AI 对话中，这意味着回答可以边生成边展示，不用等全部生成完毕。">流式</span> JSON 响应</p>
-        </div>
-        <div class="step-card">
-          <div class="step-num">6</div>
-          <p>解析事件类型：<code>thinking_delta</code>、<code>text_delta</code>、<code>tool_use</code>、<code>done</code></p>
-        </div>
-        <div class="step-card">
-          <div class="step-num">7</div>
-          <p>将响应回传给调用者（网关或 Dashboard）</p>
-        </div>
-      </div>
-    </div>
-
-    <!-- Screen 2: stream() 代码 -->
-    <div class="screen animate-in" style="scroll-snap-align: start;">
-      <h3>stream() 方法核心代码</h3>
-      <p>这是 ClaudeCodeAgent 最核心的方法。它使用 <span data-tooltip="AsyncGenerator 是 JavaScript 中的异步生成器函数，可以像迭代器一样逐步产出结果，但每一步都可以是异步操作。">AsyncGenerator</span> 实现流式输出，让调用者可以实时接收 AI 的思考过程和回复。</p>
-
-      <div class="translation-block">
-        <div class="translation-english">
-          <p>Stream events from Claude Code: get or create a reusable subprocess, send the user message as JSON via stdin, then read JSON events line-by-line from stdout, yielding thinking, text, and tool-use events until the final result.</p>
-        </div>
-        <div class="translation-code">
-          <pre style="white-space: pre-wrap;"><code>async *stream(request: RunRequest): AsyncGenerator&lt;AgentStreamEvent&gt; {
-  // 获取或创建可复用的子进程
-  const processState = await this.getOrCreateProcess(request)
-  const payload = JSON.stringify({
-    type: 'user',
-    message: { role: 'user', content: buildContent(request) },
-  }) + '\n'
-
-  // 通过 stdin 发送消息
-  const stdin = processState.proc.stdin
-  stdin.write(payload)
-
-  // 逐行读取 stdout 的流式 JSON 响应
-  for await (const line of readLines(proc.stdout)) {
-    const event = JSON.parse(line)
-    if (event.type === 'assistant') {
-      // 逐步产出：思考过程、文本回复、工具调用
-      for (const block of content) {
-        if (block.type === 'thinking') yield { type: 'thinking_delta', text }
-        if (block.type === 'text') yield { type: 'text_delta', text }
-        if (block.type === 'tool_use') yield { type: 'tool_use', name, input }
-      }
-    }
-    if (event.type === 'result') {
-      yield { type: 'done', response: { text, model, costCny, ... } }
-    }
-  }
-}</code></pre>
-        </div>
-      </div>
-    </div>
-
-    <!-- Screen 3: MCP 工具扩展 -->
-    <div class="screen animate-in" style="scroll-snap-align: start;">
-      <h3>MCP <span data-tooltip="协议是计算机之间通信的规则和格式约定，就像人与人之间交流需要遵循的语言和礼节。">协议</span> — 工具扩展</h3>
-      <p>MCP（Model Context Protocol）是 Anthropic 推出的标准化工具调用协议。它让 Claude 能够调用自定义工具，如读写记忆、管理定时任务等。</p>
-      <p>每次启动新的 Claude Code 子进程时，FriClaw 会将 MCP 配置写入工作空间的 <code>.mcp.json</code> 文件中，子进程自动加载这些工具。</p>
-
-      <div class="translation-block">
-        <div class="translation-english">
-          <p>Write the merged MCP server configuration into the workspace directory so the Claude Code subprocess can discover and use the available tools.</p>
-        </div>
-        <div class="translation-code">
-          <pre style="white-space: pre-wrap;"><code>writeFileSync(
-  join(workspaceDir, '.mcp.json'),
-  JSON.stringify({ mcpServers }, null, 2),
-  'utf-8'
-)</code></pre>
-        </div>
-      </div>
-
-      <div class="callout">
-        <strong>比喻：</strong>打电话 — 你拨号（spawn 创建子进程），通话（JSON 流式传输），挂断（dispose 释放进程）。
-      </div>
-
-      <div class="callout">
-        <strong>性能优化：</strong>子进程复用 + 空闲超时是性能优化的经典模式 — 不用每次都重新启动。空闲超过 5 分钟的子进程会自动销毁。
-      </div>
-    </div>
-
-    <!-- Screen 4: 术语表 + 测验 -->
-    <div class="screen animate-in" style="scroll-snap-align: start;">
-      <h3>术语表</h3>
-      <div class="glossary">
-        <div class="glossary-item">
-          <strong>子进程 (Subprocess)</strong>：由父进程创建的独立运行程序。FriClaw 主进程通过 Bun.spawn 创建 Claude Code CLI 子进程。
-        </div>
-        <div class="glossary-item">
-          <strong>标准输入 (stdin)</strong>：进程接收数据的通道。主进程通过子进程的 stdin 写入 JSON 数据。
-        </div>
-        <div class="glossary-item">
-          <strong>标准输出 (stdout)</strong>：进程发送数据的通道。Claude Code 通过 stdout 逐行输出 JSON 事件流。
-        </div>
-        <div class="glossary-item">
-          <strong>流式传输 (Streaming)</strong>：数据像水流一样持续不断地小块传输。AI 回复可以边生成边展示。
-        </div>
-        <div class="glossary-item">
-          <strong>进程池 (Process Pool)</strong>：复用已完成任务的子进程，避免重复启动开销。
-        </div>
-        <div class="glossary-item">
-          <strong>协议 (Protocol)</strong>：计算机之间通信的规则和格式约定。MCP 是 Anthropic 定义的工具调用协议。
-        </div>
-      </div>
-
-      <div class="quiz-container" id="quiz-module5">
-        <div class="quiz-question-block">
-          <p class="quiz-question">Claude Code Agent 处理完一个请求后，子进程会怎样？</p>
-        </div>
-        <div class="quiz-options">
-          <div class="quiz-option" data-correct="false" onclick="selectOption(this, 'quiz-module5')">A) 立即销毁</div>
-          <div class="quiz-option" data-correct="true" onclick="selectOption(this, 'quiz-module5')">B) 保留 5 分钟等待复用</div>
-          <div class="quiz-option" data-correct="false" onclick="selectOption(this, 'quiz-module5')">C) 永久保留</div>
-          <div class="quiz-option" data-correct="false" onclick="selectOption(this, 'quiz-module5')">D) 转为后台服务</div>
-        </div>
-        <div class="quiz-feedback" data-explanation="子进程会保留 5 分钟（PROCESS_IDLE_TIMEOUT_MS = 5 * 60 * 1000），如果这段时间内有新请求到来，可以直接复用，避免重新启动的开销。" style="display: none;"></div>
-        <button class="quiz-check-btn" onclick="checkQuiz('quiz-module5')">检查答案</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-
-<!-- Module 6: 定时任务与工具扩展 -->
-<div class="module" id="module-6" style="scroll-snap-align:start;background:var(--color-bg-warm)">
-  <div class="module-header">
-    <h2>模块六：定时任务与工具扩展</h2>
-    <p>CronScheduler 让 FriClaw 具备了"主动服务"能力 — 不等你问，它就能按时执行任务。MCP 工具则让 FriClaw 的能力可以无限扩展。</p>
-  </div>
-
-  <div class="module-body">
-    <!-- Screen 1: Cron 生命周期流程图 -->
-    <div class="screen animate-in" style="scroll-snap-align: start;">
-      <h3>定时任务<span data-tooltip="生命周期是指一个实体从创建到销毁的完整过程，包括所有状态变化。">生命周期</span></h3>
-      <p>一个定时任务从创建到执行，经历以下完整流程：</p>
-
-      <div class="flow-steps">
-        <div class="flow-step">创建任务</div>
-        <div class="flow-arrow">&#10140;</div>
-        <div class="flow-step">存入 SQLite</div>
-        <div class="flow-arrow">&#10140;</div>
-        <div class="flow-step"><span data-tooltip="CronScheduler 负责解析 cron 表达式并按时间表触发任务执行。">CronScheduler 调度</span></div>
-        <div class="flow-arrow">&#10140;</div>
-        <div class="flow-step">时间到达</div>
-        <div class="flow-arrow">&#10140;</div>
-        <div class="flow-step">发射事件</div>
-        <div class="flow-arrow">&#10140;</div>
-        <div class="flow-step">Dispatcher 路由</div>
-        <div class="flow-arrow">&#10140;</div>
-        <div class="flow-step">Agent 执行</div>
-        <div class="flow-arrow">&#10140;</div>
-        <div class="flow-step">结果回传</div>
-      </div>
-
-      <div class="callout">
-        <strong>提示：</strong>定时任务<span data-tooltip="持久化是指将数据从内存保存到持久存储（如硬盘上的数据库文件），这样即使程序重启数据也不会丢失。">持久化</span>到数据库意味着即使程序重启，任务也不会丢失。启动时 CronScheduler 会从数据库重新加载所有任务。
-      </div>
-    </div>
-
-    <!-- Screen 2: schedule() 代码 -->
-    <div class="screen animate-in" style="scroll-snap-align: start;">
-      <h3>CronScheduler <span data-tooltip="调度器是负责按照时间表安排和触发任务执行的组件。">调度器</span>核心代码</h3>
-      <p>schedule() 方法是调度器的核心。它支持两种模式：标准 <span data-tooltip="cron 表达式是一种时间表达式，用 5 个字段（分 时 日 月 周）描述执行周期。例如 '0 9 * * *' 表示每天早上 9 点执行。">cron 表达式</span>（循环任务）和 ISO 时间字符串（一次性任务）。</p>
-
-      <div class="translation-block">
-        <div class="translation-english">
-          <p>Schedule a cron job. If the expression is an ISO datetime, treat it as a one-shot timer. Otherwise, normalize the 5-field cron expression to 6-field format (adding a seconds prefix) and register it with the Cron library using the specified timezone.</p>
-        </div>
-        <div class="translation-code">
-          <pre style="white-space: pre-wrap;"><code>private schedule(job: CronJob): void {
-  // 检查是否为 ISO 时间字符串（一次性任务）
-  if (this.isISODateTime(job.cronExpression)) {
-    this.scheduleOneShot(job); return
-  }
-
-  // 标准化 cron 表达式：5 字段转 6 字段
-  let expression = job.cronExpression
-  const fields = expression.trim().split(/\s+/)
-  if (fields.length === 5) {
-    expression = `0 ${expression}`
-  }
-
-  // 使用 Cron 库注册定时任务
-  const cron = new Cron(expression, { timezone }, () => {
-    this.fire(job.id)
-  })
-  this.schedulers.set(job.id, cron)
-}</code></pre>
-        </div>
-      </div>
-    </div>
-
-    <!-- Screen 3: MCP 工具徽章列表 -->
-    <div class="screen animate-in" style="scroll-snap-align: start;">
-      <h3>内置 MCP 工具</h3>
-      <p>FriClaw 通过 MCP 协议提供了以下内置工具，Claude 可以在对话中直接调用它们：</p>
-
-      <div class="badge-list">
-        <div class="badge-item">
-          <span class="badge-code">friclaw-memory</span>
-          <span class="badge-desc">记忆读写 — 存取用户知识、搜索历史记忆、管理身份信息</span>
-        </div>
-        <div class="badge-item">
-          <span class="badge-code">friclaw-cron</span>
-          <span class="badge-desc">定时任务管理 — 创建、删除、查询定时任务</span>
-        </div>
-      </div>
-
-      <div class="callout">
-        <strong>比喻：</strong>闹钟 + 瑞士军刀 — 定时任务像闹钟按时响铃，MCP 像瑞士军刀无限扩展能力。你甚至可以通过对话让 Claude 自己创建定时任务。
-      </div>
-    </div>
-
-    <!-- Screen 4: 术语表 + 测验 -->
-    <div class="screen animate-in" style="scroll-snap-align: start;">
-      <h3>术语表</h3>
-      <div class="glossary">
-        <div class="glossary-item">
-          <strong>cron 表达式</strong>：一种时间描述格式，标准形式为"分 时 日 月 周"5 个字段。例如 <code>0 9 * * *</code> 表示每天 9:00 执行。
-        </div>
-        <div class="glossary-item">
-          <strong>调度器 (Scheduler)</strong>：按照时间表安排和触发任务执行的组件。FriClaw 使用 croner 库实现。
-        </div>
-        <div class="glossary-item">
-          <strong><span data-tooltip="时区是地球上不同地区使用的标准时间偏移。例如中国使用 Asia/Shanghai 时区（UTC+8）。">时区</span></strong>：地球上的时间区域划分。FriClaw 默认使用 Asia/Shanghai 时区。
-        </div>
-        <div class="glossary-item">
-          <strong>持久化 (Persistence)</strong>：将内存中的数据保存到持久存储（如数据库文件），确保程序重启后数据不丢失。
-        </div>
-        <div class="glossary-item">
-          <strong>生命周期 (Lifecycle)</strong>：实体从创建到销毁的完整过程。定时任务的生命周期包括创建、存储、调度、执行、记录。
-        </div>
-      </div>
-
-      <div class="quiz-container" id="quiz-module6">
-        <div class="quiz-question-block">
-          <p class="quiz-question">你想让 FriClaw 每天早上 9 点主动给你发天气预报。你应该用什么功能？</p>
-        </div>
-        <div class="quiz-options">
-          <div class="quiz-option" data-correct="false" onclick="selectOption(this, 'quiz-module6')">A) 记忆系统</div>
-          <div class="quiz-option" data-correct="false" onclick="selectOption(this, 'quiz-module6')">B) MCP 工具</div>
-          <div class="quiz-option" data-correct="true" onclick="selectOption(this, 'quiz-module6')">C) 定时任务</div>
-          <div class="quiz-option" data-correct="false" onclick="selectOption(this, 'quiz-module6')">D) 网关</div>
-        </div>
-        <div class="quiz-feedback" data-explanation="定时任务（CronScheduler）专门用于按时间周期执行任务。你可以创建一个 cron 表达式为 '0 9 * * *' 的任务，让 FriClaw 每天早上 9 点自动查询天气并发送给你。" style="display: none;"></div>
-        <button class="quiz-check-btn" onclick="checkQuiz('quiz-module6')">检查答案</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-
-<!-- Module 7: 全局架构 — 把一切串起来 -->
-<div class="module" id="module-7" style="scroll-snap-align:start;background:var(--color-bg)">
-  <div class="module-header">
-    <h2>模块七：全局架构 — 把一切串起来</h2>
-    <p>前面六个模块分别介绍了 FriClaw 的各个组件。现在让我们看看它们是如何组合在一起，形成一个完整的系统的。</p>
-  </div>
-
-  <div class="module-body">
-    <!-- Screen 1: 全局架构图 -->
-    <div class="screen animate-in" style="scroll-snap-align: start;">
-      <h3>全局架构图</h3>
-      <p>下面是 FriClaw 的完整架构。从用户发消息到收到回复，数据流经多个层级：</p>
-
-      <div class="arch-diagram">
-        <div class="arch-zone" data-zone="用户端">
-          <div class="arch-zone-label">用户端</div>
-          <div class="arch-components">
-            <div class="arch-component" data-tooltip="飞书是字节跳动推出的企业协作平台，通过 WebSocket 长连接接入 FriClaw。">飞书</div>
-            <div class="arch-component" data-tooltip="企业微信是腾讯推出的企业通讯平台，通过 WebSocket 长连接接入。">企微</div>
-            <div class="arch-component" data-tooltip="微信个人号网关，通过 HTTP API 接入。">微信</div>
-            <div class="arch-component" data-tooltip="Dashboard 是 FriClaw 的 Web 管理面板，可以直接在浏览器中和 AI 对话。">Dashboard</div>
-          </div>
-        </div>
-
-        <div class="arch-connector">&#9660;</div>
-
-        <div class="arch-zone" data-zone="消息层">
-          <div class="arch-zone-label">消息层</div>
-          <div class="arch-components">
-            <div class="arch-component" data-tooltip="各平台网关负责接收消息并转换为统一的 Message 格式，然后将消息发送给 Dispatcher。">Gateway 层</div>
-          </div>
-        </div>
-
-        <div class="arch-connector">&#9660;</div>
-
-        <div class="arch-zone" data-zone="调度层">
-          <div class="arch-zone-label">调度层</div>
-          <div class="arch-components">
-            <div class="arch-component" data-tooltip="Dispatcher 是中央调度器，负责接收消息、管理会话、并将消息路由到 AI Agent。">Dispatcher</div>
-            <div class="arch-component" data-tooltip="LaneQueue 保证同一会话内的消息按顺序处理，不同会话之间可以并行。">LaneQueue</div>
-            <div class="arch-component" data-tooltip="SessionManager 管理所有活跃的会话，包括创建、超时清理和工作空间分配。">SessionManager</div>
-          </div>
-        </div>
-
-        <div class="arch-connector">&#9660;</div>
-
-        <div class="arch-zone" data-zone="AI层">
-          <div class="arch-zone-label">AI 层</div>
-          <div class="arch-components">
-            <div class="arch-component" data-tooltip="ClaudeCodeAgent 通过子进程方式调用 Claude Code CLI，实现 AI 对话和工具调用。">ClaudeCodeAgent</div>
-            <div class="arch-component" data-tooltip="Router 决定将消息发送到哪个 AI 模型进行处理。">Router</div>
-            <div class="arch-component" data-tooltip="MCP（Model Context Protocol）服务器提供工具扩展能力，让 AI 可以调用自定义工具。">MCP</div>
-          </div>
-        </div>
-
-        <div class="arch-connector">&#9660;</div>
-
-        <div class="arch-zone" data-zone="数据层">
-          <div class="arch-zone-label">数据层</div>
-          <div class="arch-components">
-            <div class="arch-component" data-tooltip="MemoryManager 管理三层记忆系统：身份记忆、知识记忆和经历记忆。">MemoryManager</div>
-            <div class="arch-component" data-tooltip="SQLite 是轻量级文件数据库，存储 FTS5 索引、定时任务和会话数据。">SQLite</div>
-            <div class="arch-component" data-tooltip="CronScheduler 负责定时任务的调度和执行。">CronScheduler</div>
-            <div class="arch-component" data-tooltip="CronStorage 使用 SQLite 持久化存储定时任务配置和执行历史。">CronStorage</div>
-          </div>
-        </div>
-
-        <div class="arch-connector">&#9660;</div>
-
-        <div class="arch-zone" data-zone="Web层">
-          <div class="arch-zone-label">Web 层</div>
-          <div class="arch-components">
-            <div class="arch-component" data-tooltip="Dashboard API 提供 RESTful 接口供前端调用，包括会话列表、消息历史等。">Dashboard API</div>
-            <div class="arch-component" data-tooltip="WebSocket 实现前后端实时通信，支持流式响应和状态推送。">WebSocket</div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Screen 2: startDaemon() 代码 -->
-    <div class="screen animate-in" style="scroll-snap-align: start;">
-      <h3>startDaemon() — 系统启动主流程</h3>
-      <p>这是 FriClaw 的入口函数。它按顺序初始化所有组件，并将它们连接在一起。</p>
-
-      <div class="callout">
-        <strong>比喻：</strong>智能家居系统 — 所有设备（组件）通过中枢（调度器）连接，统一控制。
-      </div>
-
-      <div class="translation-block">
-        <div class="translation-english">
-          <p>Start the FriClaw daemon: load configuration, initialize the memory system, create the session manager and AI agent, wire up the dispatcher, start the cron scheduler, launch all enabled gateways, and register graceful shutdown handlers.</p>
-        </div>
-        <div class="translation-code">
-          <pre style="white-space: pre-wrap;"><code>async function startDaemon(): Promise&lt;void&gt; {
-  const config = await loadConfig()
-
-  // 初始化三层记忆系统
-  const memory = new MemoryManager(config.memory)
-  await memory.init()
-
-  // 创建会话管理器
-  const sessionManager = new SessionManager({
-    workspacesDir, timeoutMs
-  })
-
-  // 创建 AI 代理（注入身份记忆作为系统提示）
-  const agent = new ClaudeCodeAgent({
-    model, allowedTools, soulContent: memory.identity.read()
-  })
-
-  // 创建调度器（连接会话管理器和 AI 代理）
-  const dispatcher = new Dispatcher(sessionManager, agent, async () => {
-    await agent.dispose()
-    await memory.shutdown()
-  })
-
-  // 启动定时任务调度器
-  const cronScheduler = new CronScheduler(dbPath)
-  await cronScheduler.start()
-
-  // 启动所有网关（飞书、企微、微信等）
-  const gateways = [
-    new FeishuGateway(cfg),
-    new WecomGateway(cfg)
-  ]
-  await Promise.all(gateways.map(g => g.start(dispatcher)))
-
-  // 注册优雅关闭处理器
-  registerShutdownHandlers(dispatcher)
-}</code></pre>
-        </div>
-      </div>
-
-      <div class="callout">
-        <strong>关键设计：</strong><span data-tooltip="优雅关闭（graceful shutdown）是生产级应用的必备特性 — 先停止接收新消息，再处理完队列中的消息，最后清理资源。它通常通过监听 SIGTERM/SIGINT 信号来触发。">优雅关闭</span>是生产级应用的必备特性 — 先停止接收新消息，再处理完队列中的消息，最后清理资源。
-      </div>
-    </div>
-
-    <!-- Screen 3: 项目目录结构 -->
-    <div class="screen animate-in" style="scroll-snap-align: start;">
-      <h3>项目<span data-tooltip="文件树是展示项目目录和文件层级结构的可视化方式。">文件树</span></h3>
-      <p>以下是 FriClaw 源代码的目录结构。每个目录对应一个独立的功能模块：</p>
-
-      <div class="file-tree">
-        <div class="ft-folder">
-          <span class="ft-name">src/</span>
-          <span class="ft-desc">— 源代码根目录</span>
-          <div class="ft-children">
-            <div class="ft-folder">
-              <span class="ft-name">gateway/</span>
-              <span class="ft-desc">— 各平台网关实现（飞书、企微、微信）</span>
-            </div>
-            <div class="ft-folder">
-              <span class="ft-name">agent/</span>
-              <span class="ft-desc">— AI 代理和路由（ClaudeCodeAgent、Router）</span>
-            </div>
-            <div class="ft-folder">
-              <span class="ft-name">session/</span>
-              <span class="ft-desc">— 会话管理（SessionManager、工作空间分配）</span>
-            </div>
-            <div class="ft-folder">
-              <span class="ft-name">memory/</span>
-              <span class="ft-desc">— 三层记忆系统（Identity、Knowledge、Episode）</span>
-            </div>
-            <div class="ft-folder">
-              <span class="ft-name">cron/</span>
-              <span class="ft-desc">— 定时任务调度（CronScheduler、CronStorage）</span>
-            </div>
-            <div class="ft-folder">
-              <span class="ft-name">mcp/</span>
-              <span class="ft-desc">— MCP 工具服务器（工具扩展）</span>
-            </div>
-            <div class="ft-folder">
-              <span class="ft-name">dashboard/</span>
-              <span class="ft-desc">— Web 管理面板（API、前端）</span>
-            </div>
-            <div class="ft-folder">
-              <span class="ft-name">utils/</span>
-              <span class="ft-desc">— 工具函数（日志、通用工具）</span>
-            </div>
-            <div class="ft-file">
-              <span class="ft-name">dispatcher.ts</span>
-              <span class="ft-desc">— 消息调度器（连接所有组件的核心）</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Screen 4: 术语表 + 综合测验 -->
-    <div class="screen animate-in" style="scroll-snap-align: start;">
-      <h3>术语表</h3>
-      <div class="glossary">
-        <div class="glossary-item">
-          <strong><span data-tooltip="守护进程是在后台持续运行的程序，不依附于任何终端或用户会话。FriClaw 作为守护进程运行，持续监听各平台的消息。">守护进程</span> (Daemon)</strong>：在后台持续运行的程序。FriClaw 的 startDaemon() 函数启动守护进程模式。
-        </div>
-        <div class="glossary-item">
-          <strong>优雅关闭 (Graceful Shutdown)</strong>：先停止接收新请求，处理完进行中的任务，最后释放资源。通过监听 SIGTERM/SIGINT 信号触发。
-        </div>
-        <div class="glossary-item">
-          <strong><span data-tooltip="配置文件是存储程序运行参数的文件，通常是 JSON 或 YAML 格式。FriClaw 的配置文件位于 ~/.friclaw/config.json。">配置文件</span></strong>：存储程序运行参数的文件。FriClaw 使用 config.json 存储各组件的配置。
-        </div>
-        <div class="glossary-item">
-          <strong><span data-tooltip="验证是指检查输入数据是否符合预期的格式和规则。FriClaw 使用 Zod 库来定义和验证配置文件的结构。">验证</span> (Validation)</strong>：检查数据是否符合预期格式。FriClaw 使用 Zod 库进行配置验证。
-        </div>
-        <div class="glossary-item">
-          <strong><span data-tooltip="环境变量是操作系统中定义的键值对，程序运行时可以读取。常用于存储密钥、端口等敏感或可变配置。">环境变量</span></strong>：操作系统提供的键值对存储，用于向程序传递配置信息，如 API 密钥。
-        </div>
-      </div>
-
-      <h3>综合测验</h3>
-
-      <div class="quiz-container" id="quiz-module7">
-        <div class="quiz-question-block">
-          <p class="quiz-question">Q1: FriClaw 程序收到 SIGTERM 信号后，会怎样？</p>
-        </div>
-        <div class="quiz-options">
-          <div class="quiz-option" data-correct="false" onclick="selectOption(this, 'quiz-module7-q1')">A) 立即退出</div>
-          <div class="quiz-option" data-correct="true" onclick="selectOption(this, 'quiz-module7-q1')">B) 停止接收新消息，处理完队列后退出</div>
-          <div class="quiz-option" data-correct="false" onclick="selectOption(this, 'quiz-module7-q1')">C) 忽略信号</div>
-          <div class="quiz-option" data-correct="false" onclick="selectOption(this, 'quiz-module7-q1')">D) 重启</div>
-        </div>
-        <div class="quiz-feedback" data-explanation="这是优雅关闭的标准流程：先停止接收新消息，等待队列中的消息处理完毕，最后清理资源并退出。" style="display: none;"></div>
-        <button class="quiz-check-btn" onclick="checkQuiz('quiz-module7-q1')">检查答案</button>
-      </div>
-
-      <div class="quiz-container" id="quiz-module7-q2">
-        <div class="quiz-question-block">
-          <p class="quiz-question">Q2: 如果你想让 FriClaw 支持一个全新的 AI 模型（不是 Claude），你需要修改哪个组件？</p>
-        </div>
-        <div class="quiz-options">
-          <div class="quiz-option" data-correct="false" onclick="selectOption(this, 'quiz-module7-q2')">A) 网关</div>
-          <div class="quiz-option" data-correct="false" onclick="selectOption(this, 'quiz-module7-q2')">B) 调度器</div>
-          <div class="quiz-option" data-correct="true" onclick="selectOption(this, 'quiz-module7-q2')">C) 代理 (Agent)</div>
-          <div class="quiz-option" data-correct="false" onclick="selectOption(this, 'quiz-module7-q2')">D) 记忆系统</div>
-        </div>
-        <div class="quiz-feedback" data-explanation="代理（Agent）是负责与 AI 模型通信的组件。如果要支持新的 AI 模型，需要实现一个新的 Agent 类（类似 ClaudeCodeAgent）。" style="display: none;"></div>
-        <button class="quiz-check-btn" onclick="checkQuiz('quiz-module7-q2')">检查答案</button>
-      </div>
-
-      <div class="quiz-container" id="quiz-module7-q3">
-        <div class="quiz-question-block">
-          <p class="quiz-question">Q3: 配置验证使用的是什么库？</p>
-        </div>
-        <div class="quiz-options">
-          <div class="quiz-option" data-correct="false" onclick="selectOption(this, 'quiz-module7-q3')">A) Express</div>
-          <div class="quiz-option" data-correct="true" onclick="selectOption(this, 'quiz-module7-q3')">B) Zod</div>
-          <div class="quiz-option" data-correct="false" onclick="selectOption(this, 'quiz-module7-q3')">C) React</div>
-          <div class="quiz-option" data-correct="false" onclick="selectOption(this, 'quiz-module7-q3')">D) SQLite</div>
-        </div>
-        <div class="quiz-feedback" data-explanation="Zod 是一个 TypeScript 优先的数据验证库，FriClaw 使用它来定义和验证配置文件的结构。" style="display: none;"></div>
-        <button class="quiz-check-btn" onclick="checkQuiz('quiz-module7-q3')">检查答案</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<script>
-// Quiz interaction functions
-function selectOption(el, quizId) {
-  const container = document.getElementById(quizId);
-  if (!container) return;
-  const options = container.querySelectorAll('.quiz-option');
-  options.forEach(function(opt) {
-    opt.classList.remove('selected');
-    opt.style.pointerEvents = '';
-  });
-  el.classList.add('selected');
-  options.forEach(function(opt) {
-    opt.style.pointerEvents = 'none';
-  });
-}
-
-function checkQuiz(quizId) {
-  const container = document.getElementById(quizId);
-  if (!container) return;
-  const selected = container.querySelector('.quiz-option.selected');
-  const feedback = container.querySelector('.quiz-feedback');
-  const btn = container.querySelector('.quiz-check-btn');
-  if (!selected || !feedback) return;
-
-  const isCorrect = selected.getAttribute('data-correct') === 'true';
-  const explanation = feedback.getAttribute('data-explanation');
-
-  if (isCorrect) {
-    selected.classList.add('correct');
-    feedback.textContent = '正确！ ' + explanation;
-  } else {
-    selected.classList.add('wrong');
-    // Also highlight the correct answer
-    const options = container.querySelectorAll('.quiz-option');
-    options.forEach(function(opt) {
-      if (opt.getAttribute('data-correct') === 'true') {
-        opt.classList.add('correct');
-      }
+    }, {
+      threshold: 0.35,
+      rootMargin: '-10% 0px -35% 0px'
     });
-    feedback.textContent = '不正确。 ' + explanation;
-  }
 
-  feedback.style.display = 'block';
-  if (btn) btn.style.display = 'none';
-}
+    modules.forEach((module) => moduleObserver.observe(module));
 
-// Position:fixed tooltip system
-(function() {
-  var style = document.createElement('style');
-  style.textContent = '\
-    .friclaw-tooltip {\
-      position: fixed;\
-      z-index: 999999;\
-      background: var(--color-bg-code, #1E1E2E);\
-      color: #E0DDD8;\
-      padding: 10px 14px;\
-      border-radius: 8px;\
-      font-size: 14px;\
-      line-height: 1.5;\
-      max-width: 320px;\
-      pointer-events: none;\
-      box-shadow: 0 4px 16px rgba(0,0,0,0.25);\
-      white-space: normal;\
-      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;\
-      opacity: 0;\
-      transition: opacity 0.2s ease;\
-    }\
-    .friclaw-tooltip.visible {\
-      opacity: 1;\
-    }\
-    [data-tooltip] {\
-      border-bottom: 1px dashed var(--color-text-secondary, #6B6560);\
-      cursor: help;\
-    }\
-    [data-tooltip]:hover {\
-      color: var(--color-accent, #D94F30);\
-    }\
-  ';
-  document.head.appendChild(style);
-
-  var tooltip = document.createElement('div');
-  tooltip.className = 'friclaw-tooltip';
-  document.body.appendChild(tooltip);
-
-  var hideTimer = null;
-
-  document.addEventListener('mouseover', function(e) {
-    var target = e.target.closest('[data-tooltip]');
-    if (!target) return;
-    clearTimeout(hideTimer);
-    var text = target.getAttribute('data-tooltip');
-    if (!text) return;
-    tooltip.textContent = text;
-
-    var rect = target.getBoundingClientRect();
-    var tooltipRect = tooltip.getBoundingClientRect();
-    var top = rect.bottom + 8;
-    var left = rect.left;
-
-    // Prevent going off-screen bottom
-    if (top + 150 > window.innerHeight) {
-      top = rect.top - 8;
-      tooltip.style.transform = 'translateY(-100%)';
-    } else {
-      tooltip.style.transform = 'none';
-    }
-
-    // Prevent going off-screen right
-    if (left + 320 > window.innerWidth) {
-      left = window.innerWidth - 330;
-    }
-
-    tooltip.style.top = top + 'px';
-    tooltip.style.left = Math.max(8, left) + 'px';
-    tooltip.classList.add('visible');
-  });
-
-  document.addEventListener('mouseout', function(e) {
-    var target = e.target.closest('[data-tooltip]');
-    if (!target) return;
-    hideTimer = setTimeout(function() {
-      tooltip.classList.remove('visible');
-    }, 100);
-  });
-})();
-
-// Scroll-reveal animation
-(function() {
-  var observer = new IntersectionObserver(function(entries) {
-    entries.forEach(function(entry) {
-      if (entry.isIntersecting) {
-        entry.target.classList.add('animate-in-visible');
-      }
-    });
-  }, { threshold: 0.1 });
-
-  document.querySelectorAll('.animate-in').forEach(function(el) {
-    observer.observe(el);
-  });
-})();
-</script>
-
-</div>
-<!-- Modules 1-7 will be inserted -->
-</div>
-
-<!-- ═══════════════════════════════════════════
-     JAVASCRIPT
-     ═══════════════════════════════════════════ -->
-<script>
-(function() {
-  'use strict';
-
-  // ── Progress Bar ──
-  const progressBar = document.getElementById('progressBar');
-  function updateProgressBar() {
-    const scrollTop = window.scrollY;
-    const scrollHeight = document.documentElement.scrollHeight - window.innerHeight;
-    if (scrollHeight > 0) progressBar.style.width = (scrollTop / scrollHeight * 100) + '%';
-  }
-  window.addEventListener('scroll', function() { requestAnimationFrame(updateProgressBar); }, { passive: true });
-
-  // ── Scroll Reveal ──
-  const observer = new IntersectionObserver(function(entries) {
-    entries.forEach(function(entry) {
-      if (entry.isIntersecting) {
-        entry.target.classList.add('visible');
-        observer.unobserve(entry.target);
-      }
-    });
-  }, { rootMargin: '0px 0px -10% 0px', threshold: 0.1 });
-  document.querySelectorAll('.animate-in').forEach(function(el) { observer.observe(el); });
-
-  // ── Stagger children ──
-  document.querySelectorAll('.stagger-children').forEach(function(parent) {
-    Array.from(parent.children).forEach(function(child, i) {
-      child.style.setProperty('--stagger-index', i);
-    });
-  });
-
-  // ── Nav dots ──
-  const modules = document.querySelectorAll('.module');
-  const dots = document.querySelectorAll('.nav-dot');
-  const moduleObserver = new IntersectionObserver(function(entries) {
-    entries.forEach(function(entry) {
-      if (entry.isIntersecting) {
-        var id = entry.target.id;
-        dots.forEach(function(d) {
-          d.classList.remove('current');
-          if (d.dataset.target === id) d.classList.add('current');
-        });
-      }
-    });
-  }, { threshold: 0.3 });
-  modules.forEach(function(m) { moduleObserver.observe(m); });
-  dots.forEach(function(dot) {
-    dot.addEventListener('click', function() {
-      var target = document.getElementById(dot.dataset.target);
-      if (target) target.scrollIntoView({ behavior: 'smooth' });
-    });
-  });
-
-  // ── Keyboard navigation ──
-  document.addEventListener('keydown', function(e) {
-    if (['INPUT','TEXTAREA'].includes(e.target.tagName)) return;
-    if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
-      var current = document.querySelector('.nav-dot.current');
-      if (current && current.nextElementSibling) {
-        current.nextElementSibling.click(); e.preventDefault();
-      }
-    }
-    if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
-      var current2 = document.querySelector('.nav-dot.current');
-      if (current2 && current2.previousElementSibling) {
-        current2.previousElementSibling.click(); e.preventDefault();
-      }
-    }
-  });
-
-  // ── Glossary Tooltips ──
-  var activeTooltip = null;
-  function positionTooltip(term, tip) {
-    var rect = term.getBoundingClientRect();
-    var tipWidth = 300;
-    var left = rect.left + rect.width / 2 - tipWidth / 2;
-    left = Math.max(8, Math.min(left, window.innerWidth - tipWidth - 8));
-    tip.style.left = left + 'px';
-    document.body.appendChild(tip);
-    var tipHeight = tip.offsetHeight;
-    if (rect.top - tipHeight - 8 < 0) {
-      tip.style.top = (rect.bottom + 8) + 'px';
-      tip.classList.add('flip');
-    } else {
-      tip.style.top = (rect.top - tipHeight - 8) + 'px';
-      tip.classList.remove('flip');
-    }
-  }
-  function setupTooltips() {
-    document.querySelectorAll('.term').forEach(function(term) {
-      var tip = document.createElement('span');
-      tip.className = 'term-tooltip';
-      tip.textContent = term.dataset.definition;
-      term.addEventListener('mouseenter', function() {
-        if (activeTooltip && activeTooltip !== tip) { activeTooltip.classList.remove('visible'); activeTooltip.remove(); }
-        positionTooltip(term, tip);
-        requestAnimationFrame(function() { tip.classList.add('visible'); });
-        activeTooltip = tip;
-      });
-      term.addEventListener('mouseleave', function() {
-        tip.classList.remove('visible');
-        setTimeout(function() { if (!tip.classList.contains('visible')) tip.remove(); }, 150);
-        activeTooltip = null;
-      });
-      term.addEventListener('click', function(e) {
-        e.stopPropagation();
-        if (activeTooltip && activeTooltip !== tip) { activeTooltip.classList.remove('visible'); activeTooltip.remove(); }
-        if (tip.classList.contains('visible')) { tip.classList.remove('visible'); tip.remove(); activeTooltip = null; }
-        else { positionTooltip(term, tip); requestAnimationFrame(function() { tip.classList.add('visible'); }); activeTooltip = tip; }
-      });
-    });
-    document.addEventListener('click', function() {
-      if (activeTooltip) { activeTooltip.classList.remove('visible'); activeTooltip.remove(); activeTooltip = null; }
-    });
-  }
-  setupTooltips();
-
-  // ── Quiz Logic ──
-  window.selectOption = function(btn) {
-    var block = btn.closest('.quiz-question-block');
-    block.querySelectorAll('.quiz-option').forEach(function(o) { o.classList.remove('selected'); });
-    btn.classList.add('selected');
-  };
-  window.checkQuiz = function(containerId) {
-    var container = document.getElementById(containerId);
-    if (!container) return;
-    var questions = container.querySelectorAll('.quiz-question-block');
-    questions.forEach(function(q) {
-      var selected = q.querySelector('.quiz-option.selected');
-      var feedback = q.querySelector('.quiz-feedback');
-      var correctValue = q.dataset.correct;
-      if (!selected) {
-        feedback.textContent = '请先选择一个答案！';
-        feedback.className = 'quiz-feedback show warning';
-        return;
-      }
-      if (selected.dataset.value === correctValue) {
-        selected.classList.add('correct');
-        feedback.innerHTML = '<strong>完全正确！</strong> ' + (q.dataset.explain || '');
-        feedback.className = 'quiz-feedback show success';
-      } else {
-        selected.classList.add('incorrect');
-        var correctEl = q.querySelector('[data-value="' + correctValue + '"]');
-        if (correctEl) correctEl.classList.add('correct');
-        feedback.innerHTML = '<strong>不太对哦。</strong> ' + (q.dataset.explain || '');
-        feedback.className = 'quiz-feedback show error';
-      }
-      q.querySelectorAll('.quiz-option').forEach(function(o) { o.disabled = true; });
-    });
-  };
-  window.resetQuiz = function(containerId) {
-    var container = document.getElementById(containerId);
-    if (!container) return;
-    container.querySelectorAll('.quiz-question-block').forEach(function(q) {
-      q.querySelectorAll('.quiz-option').forEach(function(o) {
-        o.classList.remove('selected','correct','incorrect'); o.disabled = false;
-      });
-      var fb = q.querySelector('.quiz-feedback');
-      fb.className = 'quiz-feedback'; fb.textContent = '';
-    });
-  };
-
-  // ── Chat Animation ──
-  window.initChat = function(chatId) {
-    var chatEl = document.getElementById(chatId);
-    if (!chatEl) return;
-    var msgs = chatEl.querySelectorAll('.chat-message');
-    var idx = 0;
-    var typingEl = chatEl.querySelector('.chat-typing');
-    var progressEl = chatEl.querySelector('.chat-progress');
-    var playing = false;
-
-    function playNext() {
-      if (idx >= msgs.length) return;
-      var msg = msgs[idx];
-      var sender = msg.dataset.sender;
-      if (typingEl) {
-        var av = typingEl.querySelector('.chat-avatar');
-        if (av) {
-          var actorMap = {
-            'user': { t: '你', c: 'var(--color-actor-1)' },
-            'gateway': { t: '网关', c: 'var(--color-actor-2)' },
-            'dispatcher': { t: '调度', c: 'var(--color-actor-3)' },
-            'agent': { t: 'AI', c: 'var(--color-actor-4)' },
-          };
-          var actor = actorMap[sender] || { t: '?', c: '#999' };
-          av.textContent = actor.t; av.style.background = actor.c;
+    navDots.forEach((dot) => {
+      dot.addEventListener('click', () => {
+        const targetId = dot.getAttribute('data-target');
+        const target = document.getElementById(targetId);
+        if (target) {
+          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
-        typingEl.style.display = 'flex';
-      }
-      setTimeout(function() {
-        if (typingEl) typingEl.style.display = 'none';
-        msg.style.display = 'flex';
-        idx++;
-        if (progressEl) progressEl.textContent = idx + ' / ' + msgs.length + ' 条消息';
-        chatEl.querySelector('.chat-messages').scrollTop = 99999;
-      }, 800);
-    }
-    function playAll() {
-      if (playing) return;
-      playing = true;
-      var interval = setInterval(function() {
-        if (idx >= msgs.length) { clearInterval(interval); playing = false; return; }
-        playNext();
-      }, 1200);
-    }
-    function reset() {
-      idx = 0; playing = false;
-      msgs.forEach(function(m) { m.style.display = 'none'; });
-      if (progressEl) progressEl.textContent = '0 / ' + msgs.length + ' 条消息';
-    }
-    chatEl.querySelector('.chat-play-next').onclick = playNext;
-    chatEl.querySelector('.chat-play-all').onclick = playAll;
-    chatEl.querySelector('.chat-reset').onclick = reset;
-    if (progressEl) progressEl.textContent = '0 / ' + msgs.length + ' 条消息';
-  };
-
-  // ── Flow Animation ──
-  window.initFlow = function(flowId, steps) {
-    var flowEl = document.getElementById(flowId);
-    if (!flowEl) return;
-    var actors = flowEl.querySelectorAll('.flow-actor');
-    var labelEl = flowEl.querySelector('.flow-step-label');
-    var progressEl = flowEl.querySelector('.flow-progress');
-    var step = 0;
-
-    function next() {
-      if (step >= steps.length) return;
-      var s = steps[step];
-      actors.forEach(function(a) { a.classList.remove('active'); });
-      var target = flowEl.querySelector('#' + s.highlight);
-      if (target) target.classList.add('active');
-      if (labelEl) labelEl.textContent = s.label;
-      step++;
-      if (progressEl) progressEl.textContent = '步骤 ' + step + ' / ' + steps.length;
-    }
-    function resetFlow() {
-      step = 0;
-      actors.forEach(function(a) { a.classList.remove('active'); });
-      if (labelEl) labelEl.textContent = '点击"下一步"开始';
-      if (progressEl) progressEl.textContent = '步骤 0 / ' + steps.length;
-    }
-    flowEl.querySelector('.flow-next').onclick = next;
-    flowEl.querySelector('.flow-reset').onclick = resetFlow;
-    if (labelEl) labelEl.textContent = '点击"下一步"开始';
-    if (progressEl) progressEl.textContent = '步骤 0 / ' + steps.length;
-  };
-
-  // ── Architecture Diagram ──
-  window.initArch = function(archId) {
-    var archEl = document.getElementById(archId);
-    if (!archEl) return;
-    var descEl = archEl.querySelector('.arch-description');
-    var components = archEl.querySelectorAll('.arch-component');
-    components.forEach(function(comp) {
-      comp.addEventListener('click', function() {
-        components.forEach(function(c) { c.classList.remove('active'); });
-        comp.classList.add('active');
-        if (descEl) descEl.textContent = comp.dataset.desc;
       });
     });
-  };
 
-})();
-</script>
+    window.addEventListener('scroll', updateProgress, { passive: true });
+    updateProgress();
+    if (modules[0]) {
+      modules[0].classList.add('visible');
+      updateNavState(modules[0].id);
+    }
+  </script>
 </body>
 </html>
