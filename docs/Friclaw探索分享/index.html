@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FriClaw 探索分享</title>
+
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400;1,9..40,500&family=JetBrains+Mono:wght@400;500;600&display=swap"
+    rel="stylesheet">
+
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    :root {
+      --color-accent: #6E56CF;
+      --color-accent-hover: #5A45B7;
+      --color-accent-light: #EEE9FF;
+      --color-accent-muted: #9B8BE8;
+    }
+  </style>
+
+  <script src="main.js" defer></script>
+</head>
+
+<body>
+  <nav class="nav" id="nav">
+    <div class="progress-bar" id="progress-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0"
+      aria-valuemax="100"></div>
+    <div class="nav-inner">
+      <span class="nav-title">FriClaw 探索分享</span>
+      <div class="nav-dots" id="nav-dots" role="tablist">
+        <button class="nav-dot" data-target="module-1" data-tooltip="背景与动机" role="tab"
+          aria-label="Module 1: 背景与动机"></button>
+        <button class="nav-dot" data-target="module-2" data-tooltip="整体架构" role="tab"
+          aria-label="Module 2: 整体架构"></button>
+        <button class="nav-dot" data-target="module-3" data-tooltip="网关调度会话" role="tab"
+          aria-label="Module 3: 网关调度会话"></button>
+        <button class="nav-dot" data-target="module-4" data-tooltip="执行与记忆" role="tab"
+          aria-label="Module 4: 执行与记忆"></button>
+        <button class="nav-dot" data-target="module-5" data-tooltip="主链路总结" role="tab"
+          aria-label="Module 5: 主链路总结"></button>
+      </div>
+    </div>
+  </nav>
+
+  <main id="main">
+    <section class="module" id="module-1" style="background: var(--color-bg-warm)">
+      <div class="module-content">
+        <header class="module-header animate-in"
+          style="min-height: calc(100dvh - 180px); display: flex; flex-direction: column; justify-content: center; align-items: flex-start;">
+          <span class="module-number">01</span>
+          <h1 class="module-title" style="font-size: clamp(3rem, 8vw, 5.5rem); line-height: 1.05; max-width: 11ch;">
+            FriClaw 探索分享</h1>
+        </header>
+
+        <div class="module-body stagger-children">
+          <section class="screen animate-in">
+            <h2 class="screen-heading">FriClaw 为什么值得做</h2>
+            <p>今年很多人开始注意到 OpenClaw，不只是因为它“很强”，而是它第一次把 Agent 从零散能力点组织成了一条更完整的工作链路。</p>
+            <p>它让程序员看到模型还能怎样进入工作流，也让更多非程序员开始意识到：通用大模型不只属于聊天界面，它也可以被组织成一个持续帮人做事的系统。</p>
+            <h2 class="screen-heading"> OpenClaw 四大亮点</h2>
+            <div class="pattern-cards">
+              <div class="pattern-card">
+                <div class="pattern-icon" style="background: var(--color-accent-light)">💬</div>
+                <h3 class="pattern-title">接入真实沟通场景</h3>
+                <p class="pattern-desc">不是只能在本地命令行里工作，而是能接到外部 IM，进入团队已经存在的协作入口。</p>
+              </div>
+              <div class="pattern-card">
+                <div class="pattern-icon" style="background: var(--color-info-light)">♾️</div>
+                <h3 class="pattern-title">持续工作</h3>
+                <p class="pattern-desc">不是聊两句就结束，而是会话可以延续、状态可以承接、任务可以继续推进。</p>
+              </div>
+              <div class="pattern-card">
+                <div class="pattern-icon" style="background: var(--color-success-light)">🧠</div>
+                <h3 class="pattern-title">更强上下文</h3>
+                <p class="pattern-desc">不是只看眼前一句话，而是带着历史和环境继续执行，更像一个在现场干活的系统。</p>
+              </div>
+              <div class="pattern-card">
+                <div class="pattern-icon" style="background: var(--color-accent-light)">🧰</div>
+                <h3 class="pattern-title">可扩展能力</h3>
+                <p class="pattern-desc">通过 Skill 与 MCP 把能力沉淀下来，而不是把所有逻辑都塞进一段 prompt 里。</p>
+              </div>
+            </div>
+
+          </section>
+
+          <section class="screen animate-in">
+            <h2 class="screen-heading">为什么不是直接把 OpenClaw 部署到工作电脑</h2>
+            <p>OpenClaw 很强，但对我来说也有现实顾虑：它需要的权限比较大，整体代码量也很大，我会天然担心系统边界和可控性问题。</p>
+            <p>换句话说，我想要的不只是“一个能做很多事的 Agent”，而是一个更符合自己使用方式、更容易把握住边界的系统。</p>
+
+            <div class="translation-english">
+              <span class="translation-label">PLAIN ENGLISH</span>
+              <div class="translation-lines">
+                <p class="tl">不是从零再造一个完整 Agent 内核。</p>
+                <p class="tl">而是把已经很强的 Claude Code 当成执行核心。</p>
+                <p class="tl">在它之上补 IM 接入、上下文管理和后续扩展机制。</p>
+                <p class="tl">这样做，更贴近真实工作方式，也更可控。</p>
+              </div>
+            </div>
+
+
+            <div class="callout callout-accent">
+              <div class="callout-icon">💡</div>
+              <div class="callout-content">
+                <span class="callout-title">核心判断</span>
+                <p>FriClaw 不是为了复刻 OpenClaw，而是把 OpenClaw 代表的方向、Claude Code 已有的能力，以及我们自己的业务场景重新组织成一套真正适合自己的系统。</p>
+              </div>
+            </div>
+          </section>
+
+          <section class="screen animate-in">
+            <h2 class="screen-heading">所以 FriClaw 的定位，就是一个“co-worker”</h2>
+            <p class="module-subtitle" style="font-size: var(--text-xl); max-width: 760px;">从 OpenClaw 的启发出发，站在 Claude Code 的执行能力之上，把 IM 接入、持续工作、上下文管理与能力扩展重新组织成一个真正能进入日常工作的 co-worker。</p>
+            <div class="flow-steps">
+              <div class="flow-step">
+                <div class="flow-step-num">1</div>
+                <p>进入 IM 场景</p>
+              </div>
+              <div class="flow-arrow">→</div>
+              <div class="flow-step">
+                <div class="flow-step-num">2</div>
+                <p>持续承接会话</p>
+              </div>
+              <div class="flow-arrow">→</div>
+              <div class="flow-step">
+                <div class="flow-step-num">3</div>
+                <p>调用 Agent 能力</p>
+              </div>
+              <div class="flow-arrow">→</div>
+              <div class="flow-step">
+                <div class="flow-step-num">4</div>
+                <p>成为 team co-worker</p>
+              </div>
+            </div>
+
+            <div class="callout callout-info">
+              <div class="callout-icon">🧭</div>
+              <div class="callout-content">
+                <span class="callout-title">定位变化</span>
+                <p>FriClaw 不是围绕“单次问答”组织的，而是围绕“一个 Agent 系统怎样稳定运行，并真正成为团队 co-worker”来组织的。</p>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </section>
+
+    <section class="module" id="module-2" style="background: var(--color-bg)">
+      <div class="module-content">
+        <header class="module-header animate-in">
+          <span class="module-number">02</span>
+          <h1 class="module-title">整体架构总览</h1>
+          <p class="module-subtitle">先把系统骨架搭起来：外部入口负责接入消息，调度层负责组织运行，会话层负责承接状态，Agent 层负责理解和执行，记忆与扩展层负责让系统持续工作和持续生长。</p>
+        </header>
+
+        <div class="module-body stagger-children">
+          <section class="screen animate-in">
+            <h2 class="screen-heading">FriClaw 的主骨架是一条很清晰的链路</h2>
+            <div class="translation-block animate-in">
+              <div class="translation-code">
+                <span class="translation-label">ARCHITECTURE</span>
+                <pre><code><span class="code-line">企业微信（同步支持飞书、微信）</span>
+<span class="code-line">        ↓</span>
+<span class="code-line">      网关层</span>
+<span class="code-line">        ↓</span>
+<span class="code-line"> 调度层（Dispatcher / Lane Queue）</span>
+<span class="code-line">        ↓</span>
+<span class="code-line">   会话层（SessionManager）</span>
+<span class="code-line">        ↓</span>
+<span class="code-line">   Claude Code Agent</span>
+<span class="code-line">   ↙        ↓        ↘</span>
+<span class="code-line">Memory    Skill     MCP</span>
+<span class="code-line">        ↓</span>
+<span class="code-line">   响应回到企业微信</span></code></pre>
+              </div>
+              <div class="translation-english">
+                <span class="translation-label">PLAIN ENGLISH</span>
+                <div class="translation-lines">
+                  <p class="tl">入口层解决消息怎么进来。</p>
+                  <p class="tl">调度层解决消息怎么有秩序地被处理。</p>
+                  <p class="tl">会话层解决状态接到哪里、怎么延续。</p>
+                  <p class="tl">Agent 层解决谁来理解任务、执行任务。</p>
+                  <p class="tl">Memory / Skill / MCP 让系统能长期工作、不断长出新能力。</p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="screen animate-in">
+            <h2 class="screen-heading">每一层都在回答一个明确问题</h2>
+            <div class="pattern-cards">
+              <div class="pattern-card">
+                <div class="pattern-icon" style="background: var(--color-info-light)">🌉</div>
+                <h3 class="pattern-title">网关层</h3>
+                <p class="pattern-desc">消息从哪里来、以什么格式进入系统。先统一入口，再谈后面的智能处理。</p>
+              </div>
+              <div class="pattern-card">
+                <div class="pattern-icon" style="background: var(--color-accent-light)">🚦</div>
+                <h3 class="pattern-title">调度层</h3>
+                <p class="pattern-desc">消息应该如何排队、如何分发、按什么顺序执行，先建立秩序再谈智能。</p>
+              </div>
+              <div class="pattern-card">
+                <div class="pattern-icon" style="background: var(--color-success-light)">🗂️</div>
+                <h3 class="pattern-title">会话层</h3>
+                <p class="pattern-desc">消息归属到哪个会话、状态如何承接、上下文如何隔离和恢复。</p>
+              </div>
+              <div class="pattern-card">
+                <div class="pattern-icon" style="background: var(--color-accent-light)">🤖</div>
+                <h3 class="pattern-title">Agent 执行层</h3>
+                <p class="pattern-desc">谁来理解任务、调用能力、持续执行，而不是只返回一段回答文本。</p>
+              </div>
+              <div class="pattern-card">
+                <div class="pattern-icon" style="background: var(--color-info-light)">🧠</div>
+                <h3 class="pattern-title">Memory</h3>
+                <p class="pattern-desc">系统怎样组织历史、记忆和上下文，支撑 Agent 持续工作。</p>
+              </div>
+              <div class="pattern-card">
+                <div class="pattern-icon" style="background: var(--color-success-light)">🛠️</div>
+                <h3 class="pattern-title">Skill / MCP</h3>
+                <p class="pattern-desc">系统在执行过程中能调用哪些原生能力和扩展能力，决定它能做多深。</p>
+              </div>
+            </div>
+          </section>
+
+          <section class="screen animate-in">
+            <h2 class="screen-heading">把 FriClaw 理解成一个被系统组织起来的智能核心</h2>
+            <div class="arch-diagram">
+              <div class="arch-zone">
+                <h4 class="arch-zone-label">外层承接</h4>
+                <div class="arch-component" data-desc="外部平台负责真实工作入口。FriClaw 不是悬浮在本地的玩具，而是能出现在企业微信、飞书、微信这些已经存在的协作场景里。">
+                  <div class="arch-icon">📨</div>
+                  <span>IM 入口</span>
+                </div>
+                <div class="arch-component" data-desc="调度和会话层先把秩序与连续性建立起来，让后面的智能执行建立在稳定输入之上，而不是建立在乱序与并发冲突之上。">
+                  <div class="arch-icon">🧭</div>
+                  <span>调度 / 会话</span>
+                </div>
+              </div>
+              <div class="arch-zone">
+                <h4 class="arch-zone-label">智能内核</h4>
+                <div class="arch-component" data-desc="Claude Code 在 FriClaw 里不是聊天接口，而是会话级执行引擎。它负责理解任务、调用能力、产出执行过程与结果。">
+                  <div class="arch-icon">🤖</div>
+                  <span>Claude Code Agent</span>
+                </div>
+                <div class="arch-component" data-desc="Memory、Skill、MCP 并不是附属功能，而是让 Agent 可以持续承接上下文、扩展能力边界、真正进入工作流的关键支撑层。">
+                  <div class="arch-icon">🧠</div>
+                  <span>Memory / Skill / MCP</span>
+                </div>
+              </div>
+              <div class="arch-description" id="arch-desc">点击任一组件查看它在 FriClaw 架构中的作用</div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </section>
+
+    <section class="module" id="module-3" style="background: var(--color-bg-warm)">
+      <div class="module-content">
+        <header class="module-header animate-in">
+          <span class="module-number">03</span>
+          <h1 class="module-title">网关层、调度层、会话层</h1>
+          <p class="module-subtitle">前面三层不直接负责“变聪明”，而是负责把外部消息变成一个可稳定运行的内部系统。</p>
+        </header>
+
+        <div class="module-body stagger-children">
+          <section class="screen animate-in">
+            <h2 class="screen-heading">网关层：先统一入口，再谈后面的智能处理</h2>
+            <p>对 FriClaw 来说，第一步不是“模型怎么回答”，而是“外部消息怎么稳定进入系统”。只有入口先统一，后面的调度、会话、Agent 执行和记忆承接，才有可能建立在一个稳定基础上。</p>
+
+            <div class="icon-rows">
+              <div class="icon-row">
+                <div class="icon-circle" style="background: var(--color-accent-light)">🔌</div>
+                <div><strong>建立连接</strong>
+                  <p>与企业微信、飞书、微信等平台建立接入关系，把系统真正放到工作入口里。</p>
+                </div>
+              </div>
+              <div class="icon-row">
+                <div class="icon-circle" style="background: var(--color-info-light)">🔄</div>
+                <div><strong>统一消息结构</strong>
+                  <p>把平台原始消息转成标准格式，让核心系统消费统一消息，而不是消费平台差异。</p>
+                </div>
+              </div>
+              <div class="icon-row">
+                <div class="icon-circle" style="background: var(--color-success-light)">🎛️</div>
+                <div><strong>保留平台特性</strong>
+                  <p>统一抽象不等于抹平差异。外层可以保留线程、卡片、富文本等平台能力，但这些差异不继续向内层扩散。</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="callout callout-info">
+              <div class="callout-icon">边界</div>
+              <div class="callout-content">
+                <span class="callout-title">关键边界</span>
+                <p>平台差异留在网关层，系统核心只消费标准消息。这样新增入口时，不需要重写 Agent 核心逻辑；调整平台交互方式时，也不需要改动会话和记忆系统。</p>
+              </div>
+            </div>
+          </section>
+
+          <section class="screen animate-in">
+            <h2 class="screen-heading">调度层：让消息处理变得有秩序</h2>
+            <div class="step-cards">
+              <div class="step-card">
+                <div class="step-num">1</div>
+                <div class="step-body"><strong>Dispatcher 接管入口</strong>
+                  <p>它不是简单消息转发器，而是把外部平台事件转换成系统内部任务流程。</p>
+                </div>
+              </div>
+              <div class="step-card">
+                <div class="step-num">2</div>
+                <div class="step-body"><strong>定位处理目标</strong>
+                  <p>根据消息归属定位目标会话，把外部事件真正纳入 FriClaw 自己的运行秩序。</p>
+                </div>
+              </div>
+              <div class="step-card">
+                <div class="step-num">3</div>
+                <div class="step-body"><strong>Lane Queue 建立泳道</strong>
+                  <p>同一会话内严格串行，不同会话间完全并行，避免上下文串线和回复乱序。</p>
+                </div>
+              </div>
+              <div class="step-card">
+                <div class="step-num">4</div>
+                <div class="step-body"><strong>让机制先于智能</strong>
+                  <p>模型再聪明，也不该承担消息乱序带来的系统性问题，这类问题应先由架构解决。</p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="screen animate-in">
+            <h2 class="screen-heading">会话层：把消息组织成可持续的工作上下文</h2>
+            <div class="chat-window" id="chat-module3">
+              <div class="chat-messages">
+                <div class="chat-message" data-msg="0" data-sender="user" style="display:none">
+                  <div class="chat-avatar" style="background: var(--color-actor-1)">用</div>
+                  <div class="chat-bubble"><span class="chat-sender" style="color: var(--color-actor-1)">用户</span>
+                    <p>帮我看一下这件事还能不能继续接着做。</p>
+                  </div>
+                </div>
+                <div class="chat-message" data-msg="1" data-sender="dispatch" style="display:none">
+                  <div class="chat-avatar" style="background: var(--color-actor-2)">调</div>
+                  <div class="chat-bubble"><span class="chat-sender" style="color: var(--color-actor-2)">Dispatcher</span>
+                    <p>我先把这条消息送进正确的会话泳道，不让它和别的任务打架。</p>
+                  </div>
+                </div>
+                <div class="chat-message" data-msg="2" data-sender="session" style="display:none">
+                  <div class="chat-avatar" style="background: var(--color-actor-3)">会</div>
+                  <div class="chat-bubble"><span class="chat-sender" style="color: var(--color-actor-3)">SessionManager</span>
+                    <p>我负责把这条消息接到现有 session 上，而不是把它当成一条孤立的新请求。</p>
+                  </div>
+                </div>
+                <div class="chat-message" data-msg="3" data-sender="agent" style="display:none">
+                  <div class="chat-avatar" style="background: var(--color-actor-4)">A</div>
+                  <div class="chat-bubble"><span class="chat-sender" style="color: var(--color-actor-4)">Agent</span>
+                    <p>这样我拿到的就不是零散消息，而是一段持续存在、可恢复的工作上下文。</p>
+                  </div>
+                </div>
+              </div>
+              <div class="chat-typing" id="chat-module3-typing" style="display:none">
+                <div class="chat-avatar" id="chat-module3-typing-avatar">?</div>
+                <div class="chat-typing-dots"><span class="typing-dot"></span><span class="typing-dot"></span><span
+                    class="typing-dot"></span></div>
+              </div>
+              <div class="chat-controls">
+                <button class="btn chat-next-btn">Next Message</button>
+                <button class="btn chat-all-btn">Play All</button>
+                <button class="btn chat-reset-btn">Replay</button>
+                <span class="chat-progress"></span>
+              </div>
+            </div>
+
+            <div class="callout callout-accent">
+              <div class="callout-icon">Aha</div>
+              <div class="callout-content">
+                <span class="callout-title">真正的处理单位不是 message，而是 session</span>
+                <p>只有把连续消息提升成会话对象，后面的上下文延续、工作空间复用、Claude Code 执行上下文恢复和历史状态继承，才有稳定落点。</p>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </section>
+
+    <section class="module" id="module-4" style="background: var(--color-bg)">
+      <div class="module-content">
+        <header class="module-header animate-in">
+          <span class="module-number">04</span>
+          <h1 class="module-title">Agent 执行层与记忆上下文层</h1>
+          <p class="module-subtitle">Claude Code 在这里不是聊天接口，而是执行引擎；而记忆系统也不是聊天记录堆叠，而是可持续的上下文供给系统。</p>
+        </header>
+
+        <div class="module-body stagger-children">
+          <section class="screen animate-in">
+            <h2 class="screen-heading">Claude Code Agent 在 FriClaw 里更像会话级执行引擎</h2>
+            <p>到了 Agent 层，FriClaw 才真正进入“智能处理”。但这里最重要的区别是：Claude Code 承担的角色不是一个单纯回答器，而是一个会话级执行引擎。</p>
+
+            <div class="pattern-cards">
+              <div class="pattern-card">
+                <div class="pattern-icon" style="background: var(--color-accent-light)">🔁</div>
+                <h3 class="pattern-title">延续上下文</h3>
+                <p class="pattern-desc">在同一会话里持续承接状态，而不是每轮都从零开始组装一次 prompt。</p>
+              </div>
+              <div class="pattern-card">
+                <div class="pattern-icon" style="background: var(--color-info-light)">🛠️</div>
+                <h3 class="pattern-title">调用工具</h3>
+                <p class="pattern-desc">在需要时调用工具、Skill 和 MCP，而不是只输出一段文字答案。</p>
+              </div>
+              <div class="pattern-card">
+                <div class="pattern-icon" style="background: var(--color-success-light)">🌊</div>
+                <h3 class="pattern-title">流式执行</h3>
+                <p class="pattern-desc">输出的是 thinking、text、tool_use、done 等执行事件，而不是一次性黑箱结果。</p>
+              </div>
+              <div class="pattern-card">
+                <div class="pattern-icon" style="background: var(--color-accent-light)">♻️</div>
+                <h3 class="pattern-title">可恢复</h3>
+                <p class="pattern-desc">上下文过大或 session 过期时，不是简单丢掉，而是通过工作续接摘要平滑转移到新的执行上下文。</p>
+              </div>
+            </div>
+          </section>
+
+          <section class="screen animate-in">
+            <h2 class="screen-heading">原上下文不可复用时，FriClaw 的目标不是“不断电”而是“不断线”</h2>
+            <div class="flow-animation" data-steps='[
+              {"highlight":"agent-actor-1","label":"会话先在现有 Claude Code 执行上下文中持续工作"},
+              {"highlight":"agent-actor-2","label":"当上下文接近上限或 session 过期时，系统生成工作续接摘要","packet":true,"from":"actor-1","to":"actor-2"},
+              {"highlight":"agent-actor-3","label":"旧上下文结束，系统拉起新的 Claude Code 进程","packet":true,"from":"actor-2","to":"actor-3"},
+              {"highlight":"agent-actor-4","label":"摘要被注入新上下文，工作继续推进","packet":true,"from":"actor-3","to":"actor-4"}
+            ]'>
+              <div class="flow-actors">
+                <div class="flow-actor" id="flow-agent-actor-1">
+                  <div class="flow-actor-icon">C1</div><span>原执行上下文</span>
+                </div>
+                <div class="flow-actor" id="flow-agent-actor-2">
+                  <div class="flow-actor-icon">📝</div><span>工作续接摘要</span>
+                </div>
+                <div class="flow-actor" id="flow-agent-actor-3">
+                  <div class="flow-actor-icon">C2</div><span>新执行上下文</span>
+                </div>
+                <div class="flow-actor" id="flow-agent-actor-4">
+                  <div class="flow-actor-icon">▶</div><span>继续工作</span>
+                </div>
+              </div>
+              <div class="flow-packet" id="flow-packet"></div>
+              <div class="flow-step-label" id="flow-label">点击 Next Step 开始</div>
+              <div class="flow-controls">
+                <button class="btn flow-next-btn">Next Step</button>
+                <button class="btn flow-reset-btn">Restart</button>
+                <span class="flow-progress"></span>
+              </div>
+            </div>
+
+            <div class="callout callout-info">
+              <div class="callout-icon">结</div>
+              <div class="callout-content">
+                <span class="callout-title">准确目标</span>
+                <p>FriClaw 追求的不是“永远保留一个不退出的进程”，而是：原上下文可复用时保持连续性，不可复用时通过摘要续接把工作平滑转移到新的执行上下文里。</p>
+              </div>
+            </div>
+          </section>
+
+          <section class="screen animate-in">
+            <h2 class="screen-heading">FriClaw 的记忆系统，不等于把聊天记录全量拼回去</h2>
+            <p>在很多聊天产品里，上下文基本等于历史消息拼接。但对 FriClaw 这种长期工作的系统来说，这种做法不够，因为系统还需要记住一些更长期、更稳定、对未来仍然有价值的东西。</p>
+
+            <div class="icon-rows">
+              <div class="icon-row">
+                <div class="icon-circle" style="background: var(--color-accent-light)">🪪</div>
+                <div><strong>Identity（SOUL.md）</strong>
+                  <p>定义系统身份、角色、行为边界和长期稳定的工作基线，保证它不是每轮都临时即兴决定自己是谁。</p>
+                </div>
+              </div>
+              <div class="icon-row">
+                <div class="icon-circle" style="background: var(--color-info-light)">📚</div>
+                <div><strong>Knowledge</strong>
+                  <p>沉淀用户偏好、联系人、项目背景等长期有效事实，让系统不只记住“这次说了什么”，还记住“以后还会有用什么”。</p>
+                </div>
+              </div>
+              <div class="icon-row">
+                <div class="icon-circle" style="background: var(--color-success-light)">🎞️</div>
+                <div><strong>Episode</strong>
+                  <p>保存历史会话的阶段性摘要与经验沉淀，不让历史无限膨胀，同时保留任务结果和关键结论。</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="translation-english">
+              <span class="translation-label">PLAIN ENGLISH</span>
+              <div class="translation-lines">
+                <p class="tl">Identity 定义长期稳定的助手行为基线。</p>
+                <p class="tl">Knowledge 沉淀用户和任务相关的长期事实。</p>
+                <p class="tl">Episode 压缩和回收历史会话经验。</p>
+                <p class="tl">真正值钱的不是“记得更多”，而是“记得更有结构”。</p>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </section>
+
+    <section class="module" id="module-5" style="background: var(--color-bg-warm)">
+      <div class="module-content">
+        <header class="module-header animate-in">
+          <span class="module-number">05</span>
+          <h1 class="module-title">一条请求如何穿过整套架构</h1>
+          <p class="module-subtitle">把前面所有分层重新串起来，FriClaw 的重点就会从“某个模型会不会回答”转向“整套系统如何长期、稳定、可扩展地工作”。</p>
+        </header>
+
+        <div class="module-body stagger-children">
+          <section class="screen animate-in">
+            <h2 class="screen-heading">主链路不是复杂，而是边界清晰</h2>
+            <div class="flow-animation" data-steps='[
+              {"highlight":"main-actor-1","label":"用户先在外部 IM 中发来一条消息"},
+              {"highlight":"main-actor-2","label":"网关接收消息，并转换成系统统一消息结构","packet":true,"from":"actor-1","to":"actor-2"},
+              {"highlight":"main-actor-3","label":"Dispatcher 定位或创建对应会话，并投递到正确泳道","packet":true,"from":"actor-2","to":"actor-3"},
+              {"highlight":"main-actor-4","label":"SessionManager 为本轮处理提供连续会话环境","packet":true,"from":"actor-3","to":"actor-4"},
+              {"highlight":"main-actor-5","label":"Claude Code Agent 结合记忆、Skill 和 MCP 执行任务","packet":true,"from":"actor-4","to":"actor-5"},
+              {"highlight":"main-actor-6","label":"结果被翻译回平台原生形式，再返回给用户","packet":true,"from":"actor-5","to":"actor-6"}
+            ]'>
+              <div class="flow-actors">
+                <div class="flow-actor" id="flow-main-actor-1">
+                  <div class="flow-actor-icon">👤</div><span>用户 / IM</span>
+                </div>
+                <div class="flow-actor" id="flow-main-actor-2">
+                  <div class="flow-actor-icon">🌉</div><span>网关层</span>
+                </div>
+                <div class="flow-actor" id="flow-main-actor-3">
+                  <div class="flow-actor-icon">🚦</div><span>Dispatcher<br>Lane Queue</span>
+                </div>
+                <div class="flow-actor" id="flow-main-actor-4">
+                  <div class="flow-actor-icon">🗂️</div><span>SessionManager</span>
+                </div>
+                <div class="flow-actor" id="flow-main-actor-5">
+                  <div class="flow-actor-icon">🤖</div><span>Agent<br>+ Memory / Skill / MCP</span>
+                </div>
+                <div class="flow-actor" id="flow-main-actor-6">
+                  <div class="flow-actor-icon">✅</div><span>平台响应</span>
+                </div>
+              </div>
+              <div class="flow-packet" id="flow-packet"></div>
+              <div class="flow-step-label" id="flow-label">点击 Next Step 开始</div>
+              <div class="flow-controls">
+                <button class="btn flow-next-btn">Next Step</button>
+                <button class="btn flow-reset-btn">Restart</button>
+                <span class="flow-progress"></span>
+              </div>
+            </div>
+          </section>
+
+          <section class="screen animate-in">
+            <h2 class="screen-heading">把主链路压缩成一句话</h2>
+            <div class="badge-list">
+              <div class="badge-item"><span class="badge-code">1</span><span class="badge-desc">网关负责适配平台，让消息稳定进入系统。</span></div>
+              <div class="badge-item"><span class="badge-code">2</span><span class="badge-desc">调度层负责建立秩序，让会话处理从概率正确变成机制正确。</span></div>
+              <div class="badge-item"><span class="badge-code">3</span><span class="badge-desc">会话层负责提供连续性，让系统处理单位从 message 提升为 session。</span></div>
+              <div class="badge-item"><span class="badge-code">4</span><span class="badge-desc">Agent 层负责理解与执行，让 Claude Code 成为持续运行的智能执行单元。</span></div>
+              <div class="badge-item"><span class="badge-code">5</span><span class="badge-desc">记忆层负责补充长期上下文，Skill / MCP 负责扩展外部能力边界。</span></div>
+            </div>
+          </section>
+
+          <section class="screen animate-in">
+            <h2 class="screen-heading">最终总结</h2>
+            <div class="pattern-cards">
+              <div class="pattern-card">
+                <div class="pattern-icon" style="background: var(--color-accent-light)">🏗️</div>
+                <h3 class="pattern-title">不是单点能力堆叠</h3>
+                <p class="pattern-desc">FriClaw 不是靠某一个超强模块完成全部工作，而是靠多个边界清晰的层次把一个通用模型组织成稳定系统。</p>
+              </div>
+              <div class="pattern-card">
+                <div class="pattern-icon" style="background: var(--color-info-light)">📌</div>
+                <h3 class="pattern-title">不是只解决一句话怎么回答</h3>
+                <p class="pattern-desc">它真正解决的是：一个模型如何在真实系统里长期、稳定、可扩展地工作。</p>
+              </div>
+              <div class="pattern-card">
+                <div class="pattern-icon" style="background: var(--color-success-light)">🤝</div>
+                <h3 class="pattern-title">最终形态是 co-worker</h3>
+                <p class="pattern-desc">当接入、调度、会话、执行、记忆和扩展能力被组织起来之后，系统才更接近一个真正进入团队日常工作的 co-worker。</p>
+              </div>
+            </div>
+
+            <div class="callout callout-accent">
+              <div class="callout-icon">一句话</div>
+              <div class="callout-content">
+                <span class="callout-title">FriClaw 的架构总结</span>
+                <p>它真正解决的，不是如何让模型回答一句话，而是如何让一个模型在真实系统里长期、稳定、可扩展地工作。</p>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+
+</html>
