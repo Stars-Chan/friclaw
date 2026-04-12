@@ -25,12 +25,28 @@
     "level": "info",
     "dir": "~/.friclaw/logs"
   },
+  "daemon": {
+    "enabled": true,
+    "pidFile": "~/.friclaw/friclaw.pid",
+    "takeover": true,
+    "disableInContainer": true
+  },
   "gateways": {
     "feishu": {
-      "enabled": false
+      "enabled": false,
+      "appId": "",
+      "appSecret": "",
+      "encryptKey": "",
+      "verificationToken": ""
     },
     "wecom": {
-      "enabled": false
+      "enabled": false,
+      "botId": "",
+      "secret": ""
+    },
+    "weixin": {
+      "enabled": false,
+      "token": ""
     }
   }
 }

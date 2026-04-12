@@ -37,6 +37,13 @@ const LoggingSchema = z.object({
   dir: z.string().default(join(homedir(), '.friclaw', 'logs')),
 }).default({})
 
+const DaemonSchema = z.object({
+  enabled: z.boolean().default(true),
+  pidFile: z.string().default(join(homedir(), '.friclaw', 'friclaw.pid')),
+  takeover: z.boolean().default(true),
+  disableInContainer: z.boolean().default(true),
+}).default({})
+
 const GatewaysSchema = z.object({
   feishu: z.object({
     enabled: z.boolean().default(false),
@@ -64,6 +71,7 @@ export const ConfigSchema = z.object({
   workspaces: WorkspacesSchema,
   dashboard: DashboardSchema,
   logging: LoggingSchema,
+  daemon: DaemonSchema,
   gateways: GatewaysSchema,
 })
 
@@ -76,6 +84,20 @@ function buildEnvOverrides(): Record<string, unknown> {
     },
     logging: {
       level: process.env.LOG_LEVEL,
+    },
+    daemon: {
+      enabled: process.env.FRICLAW_DAEMON_ENABLED !== undefined
+        ? process.env.FRICLAW_DAEMON_ENABLED === 'true'
+        : process.env.FRICLAW_DISABLE_DAEMON !== undefined
+          ? process.env.FRICLAW_DISABLE_DAEMON !== 'true'
+          : undefined,
+      pidFile: process.env.FRICLAW_PID_FILE,
+      takeover: process.env.FRICLAW_DAEMON_TAKEOVER !== undefined
+        ? process.env.FRICLAW_DAEMON_TAKEOVER === 'true'
+        : undefined,
+      disableInContainer: process.env.FRICLAW_DAEMON_DISABLE_IN_CONTAINER !== undefined
+        ? process.env.FRICLAW_DAEMON_DISABLE_IN_CONTAINER === 'true'
+        : undefined,
     },
     memory: {
       vectorEnabled: process.env.FRICLAW_VECTOR_ENABLED !== undefined

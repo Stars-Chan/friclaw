@@ -8,8 +8,19 @@ import { ClaudeCodeAgent } from './agent/claude-code'
 import { Dispatcher } from './dispatcher'
 import { CronScheduler } from './cron/scheduler'
 import { startDashboard } from './dashboard/api'
-import { registerShutdownHandlers } from './daemon'
-import { logger, initFileLogs } from './utils/logger'
+import {
+  createPidRecord,
+  daemonEnv,
+  getDaemonStatus,
+  registerShutdownHandlers,
+  shouldDaemonize,
+  spawnDaemonChild,
+  stopManagedInstance,
+  takeoverExistingProcess,
+  writePidRecord,
+  removePidRecord,
+} from './daemon'
+import { logger, initFileLogs, setLogLevel } from './utils/logger'
 import { runOnboard } from './onboard'
 import { FeishuGateway } from './gateway/feishu'
 import { WecomGateway } from './gateway/wecom'
@@ -18,6 +29,14 @@ import { loginWithQR } from './gateway/weixin-login'
 import type { Gateway } from './gateway/types'
 
 const command = process.argv[2] ?? 'start'
+
+function createLifecycleTarget(config: Awaited<ReturnType<typeof loadConfig>>) {
+  return {
+    dashboardEnabled: config.dashboard.enabled,
+    pidFile: config.daemon.pidFile,
+    port: config.dashboard.port,
+  }
+}
 
 async function main(): Promise<void> {
   switch (command) {
@@ -52,22 +71,133 @@ async function main(): Promise<void> {
       process.exit(0)
     }
 
+    case 'stop': {
+      await stopCommand()
+      break
+    }
+
+    case 'status': {
+      await statusCommand()
+      break
+    }
+
+    case 'restart': {
+      await restartCommand()
+      break
+    }
+
     case 'start':
     default: {
-      await startDaemon()
+      await startCommand()
       break
     }
   }
 }
 
-async function startDaemon(): Promise<void> {
-  const logsDir = join(homedir(), '.friclaw', 'logs')
-  initFileLogs(logsDir)
+async function stopCommand(): Promise<void> {
+  const config = await loadConfig()
+  const target = createLifecycleTarget(config)
+  const pid = await stopManagedInstance(target)
 
-  const log = logger('main')
-  log.info('FriClaw starting...')
+  if (pid !== null) {
+    console.log(`FriClaw stopped (pid=${pid}).`)
+    return
+  }
+
+  const status = await getDaemonStatus(target)
+  if (status.mode === 'port') {
+    if (status.owner === 'other') {
+      console.log(`FriClaw is not running. Port ${target.port} is occupied by another process.`)
+      return
+    }
+    if (status.stalePid) {
+      console.log(`FriClaw is not running. Found stale auxiliary pid file for port ${target.port}.`)
+      return
+    }
+    console.log(`FriClaw is not running on port ${target.port}.`)
+    return
+  }
+
+  if (status.stalePid && status.pid !== null) {
+    console.log(`FriClaw is not running. Found stale pid file (pid=${status.pid}).`)
+    return
+  }
+
+  console.log('FriClaw is not running.')
+}
+
+async function restartCommand(): Promise<void> {
+  const config = await loadConfig()
+  const target = createLifecycleTarget(config)
+  await stopManagedInstance(target)
+  const childPid = spawnDaemonChild()
+  console.log(`FriClaw restarted in background (pid=${childPid}). Logs: ${config.logging.dir}`)
+}
+
+async function statusCommand(): Promise<void> {
+  const config = await loadConfig()
+  const target = createLifecycleTarget(config)
+  const status = await getDaemonStatus(target)
+
+  if (status.mode === 'port') {
+    if (status.owner === 'friclaw' && status.pid !== null) {
+      console.log(`FriClaw is running on port ${target.port} (pid=${status.pid}).`)
+      return
+    }
+    if (status.owner === 'other') {
+      console.log(`FriClaw is not running. Port ${target.port} is occupied by another process.`)
+      return
+    }
+    if (status.stalePid && status.pid !== null) {
+      console.log(`FriClaw is not running. Found stale auxiliary pid file (pid=${status.pid}) for port ${target.port}.`)
+      return
+    }
+    console.log(`FriClaw is not running on port ${target.port}.`)
+    return
+  }
+
+  if (status.pid === null) {
+    console.log('FriClaw is not running. Dashboard is disabled, so status is using pid-only fallback.')
+    return
+  }
+
+  if (status.running) {
+    console.log(`FriClaw is running (pid=${status.pid}). Dashboard is disabled, so status is using pid-only fallback.`)
+    return
+  }
+
+  console.log(`FriClaw is not running. Found stale pid file (pid=${status.pid}). Dashboard is disabled, so status is using pid-only fallback.`)
+}
+
+async function startCommand(): Promise<void> {
+  const bootstrapLogsDir = join(homedir(), '.friclaw', 'logs')
+  initFileLogs(bootstrapLogsDir)
 
   const config = await loadConfig()
+  initFileLogs(config.logging.dir)
+  setLogLevel(config.logging.level as 'debug' | 'info' | 'warn' | 'error')
+
+  const log = logger('main')
+  const daemonDecision = shouldDaemonize({
+    command,
+    daemon: config.daemon,
+    env: process.env,
+  })
+
+  if (daemonDecision.shouldDaemonize) {
+    await takeoverExistingProcess(createLifecycleTarget(config), config.daemon.takeover)
+    const childPid = spawnDaemonChild()
+    log.info({ childPid, pidFile: config.daemon.pidFile }, 'FriClaw daemon started in background')
+    console.log(`FriClaw daemon started in background. Logs: ${config.logging.dir}`)
+    process.exit(0)
+  }
+
+  await runServer(config)
+}
+
+async function runServer(config: Awaited<ReturnType<typeof loadConfig>>): Promise<void> {
+  const log = logger('main')
+  log.info('FriClaw starting...')
   log.info({ model: config.agent.model }, 'Config loaded')
 
   const memory = new MemoryManager(config.memory, {
@@ -104,7 +234,6 @@ async function startDaemon(): Promise<void> {
     })
   }
 
-  // 注入 MemoryManager 以支持会话摘要
   dispatcher.setMemoryManager(memory)
 
   const gateways: Gateway[] = []
@@ -128,11 +257,9 @@ async function startDaemon(): Promise<void> {
     gateways.push(new WeixinGateway({ baseUrl, cdnBaseUrl, token }))
   }
 
-  // 启动定时任务调度器
   const dbPath = join(config.workspaces.dir, 'cron.db')
   const cronScheduler = new CronScheduler(dbPath)
 
-  // 监听任务执行事件（必须在 start() 之前注册）
   cronScheduler.on('job:execute', (event) => {
     log.info({ jobId: event.jobId, platform: event.job.platform, chatId: event.job.chatId }, 'Cron job executing')
 
@@ -151,7 +278,6 @@ async function startDaemon(): Promise<void> {
       onError: (error: any) => log.error({ err: error, jobId }, 'Cron job failed'),
     })
 
-    // Dashboard 平台使用推送函数
     if (event.job.platform === 'dashboard') {
       if (!dashboardPush) {
         log.error('Dashboard push function not available')
@@ -183,13 +309,26 @@ async function startDaemon(): Promise<void> {
   log.info('Cron scheduler started')
 
   if (config.dashboard.enabled) {
-    dashboardPush = await startDashboard(config.dashboard.port, dispatcher, config.workspaces.dir, cronScheduler, memory)
+    dashboardPush = await startDashboard(
+      config.dashboard.port,
+      dispatcher,
+      config.workspaces.dir,
+      cronScheduler,
+      memory,
+      { startFrontendDevServer: process.env[daemonEnv.DAEMON_CHILD_ENV] !== '1' },
+    )
   }
 
   await Promise.all(gateways.map(g => g.start(dispatcher)))
   log.info({ gateways: gateways.map(g => g.kind) }, '网关已启动')
 
-  registerShutdownHandlers(dispatcher)
+  if (process.env[daemonEnv.DAEMON_CHILD_ENV] === '1') {
+    writePidRecord(config.daemon.pidFile, createPidRecord())
+  }
+
+  registerShutdownHandlers(dispatcher, async () => {
+    removePidRecord(config.daemon.pidFile)
+  })
 
   log.info('FriClaw ready')
 }

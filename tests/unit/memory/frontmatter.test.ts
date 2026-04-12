@@ -4,7 +4,7 @@ import { parseFrontmatter, serializeFrontmatter } from '../../../src/memory/fron
 describe('frontmatter helpers', () => {
   it('parses legacy frontmatter', () => {
     const input = `---\ntitle: preferences\ndate: 2026-04-12\ntags: [user, prefs]\n---\n\nlikes Bun`
-    const result = parseFrontmatter(input)
+    const result = parseFrontmatter<{ title?: string; tags?: string[] }>(input)
     expect(result.metadata.title).toBe('preferences')
     expect(result.metadata.tags).toEqual(['user', 'prefs'])
     expect(result.body).toBe('likes Bun')

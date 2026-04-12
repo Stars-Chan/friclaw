@@ -1,20 +1,20 @@
 # FriClaw
 
-Friday + Claw —— 致力于让每个人都能拥有《钢铁侠》里的 AI 管家 F.R.I.D.A.Y.
+Friday + Claw —— 致力于让每个人都能拥有《钢铁侠》里的 AI 管家 F.R.I.D.A.Y. 🤖
 
-FriClaw基于 Claude Code 构建，在其上补齐了多平台消息接入、会话调度、长期记忆、线程续接、Dashboard 管理和定时任务能力。
+FriClaw 基于 Claude Code 构建，在其上补齐了多平台消息接入、会话调度、长期记忆、线程续接、Dashboard 管理和定时任务能力。✨
 
-## 核心能力
+## 核心能力 🚀
 
-- 多平台接入：支持飞书、企业微信、微信和本地 Dashboard
-- 会话级执行：同一会话尽量复用同一执行上下文，保持连续性
-- 串行调度：同一会话严格串行，不同会话并行执行
-- 三层记忆：Identity / Knowledge / Episode 分层管理上下文
-- 线程续接：支持会话摘要、上下文压缩后的恢复与继续工作
-- Dashboard：提供 Web 管理界面、会话查看、记忆查看、配置管理
-- 定时任务：内置 CronScheduler，可将任务定时投递回指定会话
+- 🌐 多平台接入：支持飞书、企业微信、微信和本地 Dashboard
+- 🔁 会话级执行：同一会话尽量复用同一执行上下文，保持连续性
+- 🚦 串行调度：同一会话严格串行，不同会话并行执行
+- 🧠 三层记忆：Identity / Knowledge / Episode 分层管理上下文
+- 🪡 线程续接：支持会话摘要、上下文压缩后的恢复与继续工作
+- 🖥️ Dashboard：提供 Web 管理界面、会话查看、记忆查看、配置管理
+- ⏰ 定时任务：内置 CronScheduler，可将任务定时投递回指定会话
 
-## 整体架构
+## 整体架构 🏗️
 
 FriClaw 的主链路如下：
 
@@ -44,11 +44,11 @@ FriClaw 的主链路如下：
 - Memory：提供三层记忆与运行时上下文拼装
 - Dashboard：提供可视化管理、会话查看和配置入口
 
-## 三层记忆设计
+## 三层记忆设计 🧠
 
 FriClaw 将长期上下文拆成三层：
 
-### 1. Identity
+### 1. Identity 🪪
 
 定义系统长期稳定的行为基线，通常通过 `SOUL.md` 常驻注入。
 
@@ -58,7 +58,7 @@ FriClaw 将长期上下文拆成三层：
 - 我应该怎么协作
 - 我在风险和边界问题上怎么判断
 
-### 2. Knowledge
+### 2. Knowledge 📚
 
 沉淀用户、项目、偏好、约束等长期稳定事实。
 
@@ -67,7 +67,7 @@ FriClaw 将长期上下文拆成三层：
 - 我对用户和其现实世界知道什么
 - 哪些稳定事实会影响后续决策
 
-### 3. Episode
+### 3. Episode 🧩
 
 保存线程级阶段摘要，用于中断后恢复、跨会话续接和上下文压缩后继续工作。
 
@@ -79,7 +79,7 @@ FriClaw 将长期上下文拆成三层：
 
 这三层组合起来，让 FriClaw 不只是“记住聊天记录”，而是能在长期运行中持续供给正确上下文。
 
-## 目录结构
+## 目录结构 📁
 
 ```text
 src/
@@ -98,7 +98,7 @@ docs/
   三层记忆方案详解.md      # 三层记忆详细设计
 ```
 
-## 环境要求
+## 环境要求 🧰
 
 - Bun
 - Claude Code 可用运行环境
@@ -121,13 +121,13 @@ npm install -g bun
 
 ## 快速开始 ⚡
 
-### 1. 安装依赖
+### 1. 安装依赖 📦
 
 ```bash
 bun install
 ```
 
-### 2. 初始化配置
+### 2. 初始化配置 🛠️
 
 ```bash
 bun run init
@@ -140,7 +140,7 @@ bun run init
 - `workspaces/`：会话工作空间
 - `logs/`：日志目录
 
-### 3. 平台接入配置
+### 3. 平台接入配置 🔌
 
 编辑 `~/.friclaw/config.json`，按需开启：
 
@@ -217,15 +217,38 @@ bun run weixin-login
 - `WEIXIN_CDN_BASE_URL`
 - `WEIXIN_TOKEN`
 
-### 4. 启动 FriClaw
+### 4. 启动 FriClaw ▶️
 
 ```bash
-bun run start
+bun start
+```
+
+默认情况下，`bun start` 会在普通宿主机环境下自动转为后台守护进程并持续运行，生命周期命令会优先把配置中的 Dashboard API 端口当作实例唯一标识，而 PID 文件只作为辅助元数据。
+
+- 启动：`bun start`
+- 停止：`bun stop`
+- 重启：`bun restart`
+- 状态：`bun status`
+- 生命周期命令默认以 `dashboard.port`（可被 `PORT` 环境变量覆盖）作为主实例标识
+- PID 文件默认路径：`~/.friclaw/friclaw.pid`
+- PID 文件仅用于辅助诊断、清理和 `dashboard.enabled=false` 时的回退模式
+- 日志目录默认路径：`~/.friclaw/logs/`
+- 如果检测到 Docker / 容器环境，则不会自动后台化
+
+- `bun stop` / `bun restart` / `bun status` 会优先探测 `http://127.0.0.1:<dashboard.port>/health` 来确认当前监听者是否真的是 FriClaw
+- 即使 PID 文件丢失，只要 `/health` 可达且返回 FriClaw 指纹，`bun status` 仍会正确报告运行中
+- 如果端口被其他进程占用，FriClaw 会拒绝接管或停止该进程，避免误杀无关服务
+- 当 `dashboard.enabled=false` 时，生命周期命令会明确退回到基于 PID 文件的模式
+
+如果你希望以前台方式直接运行，便于调试：
+
+```bash
+FRICLAW_FOREGROUND=1 bun start
 ```
 
 如果未传入命令，默认也是 `start`。
 
-### 5. 打开 Dashboard
+### 5. 打开 Dashboard 🖥️
 
 默认情况下：
 
@@ -233,7 +256,23 @@ bun run start
 - Dashboard API：`http://localhost:3000`
 - WebSocket：`ws://localhost:3000/ws`
 
-## 配置说明
+### 6. 查看运行日志 🪵
+
+FriClaw 的运行日志默认保存在 `~/.friclaw/logs/` 目录下，按日期分文件，便于排查问题和观察运行状态。
+
+例如查看 2026-04-10 这一天的日志，并持续跟随新输出：
+
+```bash
+tail -f ~/.friclaw/logs/2026-04-10.log
+```
+
+适合用于：
+
+- 实时观察消息接入、调度和执行过程
+- 排查网关配置或启动异常
+- 跟踪 Claude Code Agent 的运行输出
+
+## 配置说明 ⚙️
 
 配置文件默认路径：
 
@@ -241,9 +280,9 @@ bun run start
 ~/.friclaw/config.json
 ```
 
-## 运行机制
+## 运行机制 🔄
 
-### 会话与调度
+### 会话与调度 🧭
 
 - 外部消息先进入 Gateway
 - Dispatcher 根据消息归属定位或创建会话
@@ -251,13 +290,13 @@ bun run start
 - Claude Code Agent 在该会话上下文中执行任务
 - 执行结果通过原网关返回到用户
 
-### 上下文续接
+### 上下文续接 🔗
 
 FriClaw 会尽量复用同一会话的执行上下文。
 
 当上下文过大、会话过期或进程重启时，系统会先生成工作续接摘要，再基于摘要恢复到新的执行上下文中，避免任务中断。
 
-### Dashboard
+### Dashboard 📊
 
 Dashboard 提供以下能力：
 
@@ -268,7 +307,7 @@ Dashboard 提供以下能力：
 - 管理网关配置
 - 查看 token 统计
 
-## 向量检索（可选）
+## 向量检索（可选） 🔍
 
 如果希望增强记忆召回能力，可以启用向量检索。
 
@@ -289,17 +328,17 @@ docker run -p 6333:6333 qdrant/qdrant
 }
 ```
 
-## 相关文档
+## 相关文档 📘
 
 - [三层记忆方案详解](docs/三层记忆方案详解.md)
 
-## 参考资源
+## 参考资源 🙌
 
 感谢以下项目带来的启发：
 
 - [NeoClaw 项目](https://github.com/amszuidas/neoclaw)
 - [OpenClaw 项目](https://github.com/openclaw/openclaw)
 
-## 许可证
+## 许可证 📄
 
 Apache License 2.0

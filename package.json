@@ -4,6 +4,9 @@
   "private": true,
   "scripts": {
     "start": "bun run src/index.ts",
+    "restart": "bun run src/index.ts restart",
+    "stop": "bun run src/index.ts stop",
+    "status": "bun run src/index.ts status",
     "dev": "bun --watch src/index.ts",
     "init": "bun run src/index.ts onboard",
     "weixin-login": "bun run src/index.ts weixin-login",

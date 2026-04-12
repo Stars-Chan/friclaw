@@ -27,6 +27,7 @@ interface ServerWebSocket {
 }
 
 const startTime = Date.now()
+const startedAt = new Date(startTime).toISOString()
 const WEB_DIR = join(process.cwd(), 'src/web')
 
 export interface DashboardPushFn {
@@ -150,13 +151,14 @@ export async function startDashboard(
   workspacesDir: string,
   cronScheduler: CronScheduler,
   memoryManager?: any,
+  options: { startFrontendDevServer?: boolean } = {},
 ): Promise<DashboardPushFn> {
   const sessionManager = new DashboardSessionManager(workspacesDir)
   const tokenStats = new TokenStatsManager(workspacesDir)
   const clients = new Map<string, ServerWebSocket>()
 
   let frontendProcess: ReturnType<typeof spawn> | null = null
-  if (existsSync(WEB_DIR)) {
+  if (options.startFrontendDevServer !== false && existsSync(WEB_DIR)) {
     log.info('Starting frontend dev server...')
     frontendProcess = spawn('bun', ['run', 'dev'], {
       cwd: WEB_DIR,
@@ -201,6 +203,11 @@ export async function startDashboard(
 
       if (url.pathname === '/health') {
         return Response.json({
+          service: 'friclaw',
+          kind: 'dashboard-api',
+          pid: process.pid,
+          port,
+          startedAt,
           status: 'ok',
           uptime: Math.floor((Date.now() - startTime) / 1000),
           sessions: sessionManager.listAll().length,
