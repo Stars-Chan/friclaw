@@ -11,12 +11,16 @@ let sessionManager: SessionManager
 
 const makeAgent = () => {
   const calls: Array<{ sessionId: string; content: string; threadId?: string }> = []
+  const disposed: string[] = []
   return {
     calls,
+    disposed,
     handle: async (session: { id: string; threadId?: string }, msg: Message) => {
       calls.push({ sessionId: session.id, content: msg.content, threadId: session.threadId })
     },
-    dispose: async () => {},
+    dispose: async (sessionId: string) => {
+      disposed.push(sessionId)
+    },
   }
 }
 
@@ -87,6 +91,7 @@ describe('Dispatcher', () => {
     await dispatcher.dispatch(msg({ type: 'command', content: '/clear' }))
     expect(paused).toContain('feishu:ou_abc:thread-1')
     expect(summarized[0][2].status).toBe('paused')
+    expect(agent.disposed).toContain('feishu:ou_abc')
 
     await dispatcher.dispatch(msg())
     const secondSession = sessionManager.get('feishu:ou_abc')!
@@ -97,5 +102,7 @@ describe('Dispatcher', () => {
     await dispatcher.dispatch(msg({ type: 'command', content: '/new' }))
     expect(closed.length).toBeGreaterThan(0)
     expect(summarized.some(call => call[2]?.status === 'closed')).toBe(true)
+    expect(agent.disposed.filter(id => id === 'feishu:ou_abc').length).toBeGreaterThanOrEqual(2)
   })
-})
+}
+)

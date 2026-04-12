@@ -165,6 +165,7 @@ export class Dispatcher {
             }
           }
         }
+        await this.agent.dispose(sessionId)
         this.sessionManager.clearSession(sessionId)
         log.info({ sessionId }, 'Session cleared via /clear')
         await reply?.('会话已清除')
@@ -186,6 +187,7 @@ export class Dispatcher {
             }
           }
         }
+        await this.agent.dispose(sessionId)
         const newSession = this.sessionManager.newSession(message.platform, message.chatId, message.userId)
         this.ensureSessionThread(newSession)
         log.info({ sessionId }, 'New session created via /new')

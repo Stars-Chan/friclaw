@@ -92,6 +92,18 @@ async function startDaemon(): Promise<void> {
     await memory.shutdown()
   })
 
+  sessionManager.onSessionCleared = (id) => {
+    agent.dispose(id).catch((error) => {
+      log.warn({ sessionId: id, error }, 'Failed to dispose agent after session clear')
+    })
+  }
+
+  sessionManager.onSessionExpired = (id) => {
+    agent.dispose(id).catch((error) => {
+      log.warn({ sessionId: id, error }, 'Failed to dispose agent after session expiry')
+    })
+  }
+
   // 注入 MemoryManager 以支持会话摘要
   dispatcher.setMemoryManager(memory)
 
