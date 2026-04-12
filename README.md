@@ -105,7 +105,21 @@ docs/
 - 可选：Qdrant（用于向量检索）
 - 至少配置一种消息网关，或仅使用本地 Dashboard
 
-## 快速开始
+如果本机尚未安装 Bun，推荐先执行官方安装脚本：
+
+```bash
+curl -fsSL https://bun.sh/install | bash
+```
+
+也可以使用 npm 安装：
+
+```bash
+npm install -g bun
+```
+
+如果前面方法都不行或者太慢，可以参考手动安装方法：[GitHub 手动安装 Bun 指南](./docs/GitHub手动安装Bun指南.md)
+
+## 快速开始 ⚡
 
 ### 1. 安装依赖
 
@@ -277,7 +291,6 @@ docker run -p 6333:6333 qdrant/qdrant
 
 ## 相关文档
 
-- [架构探索分享](docs/Friclaw探索分享/FriClaw探索分享.md)
 - [三层记忆方案详解](docs/三层记忆方案详解.md)
 
 ## 参考资源
