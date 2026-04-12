@@ -6,8 +6,8 @@ import type { Session, SessionStats } from './types'
 
 interface SessionManagerOptions {
   workspacesDir: string
-  timeoutMs?: number          // default 3600_000 (1h)
-  cleanupIntervalMs?: number  // default 60_000 (1min)
+  timeoutMs?: number
+  cleanupIntervalMs?: number
 }
 
 export class SessionManager {
@@ -38,14 +38,12 @@ export class SessionManager {
     return session
   }
 
-  /** /new: clear old session, create new workspace with timestamp suffix */
   newSession(platform: string, chatId: string, userId: string): Session {
     const id = `${platform}:${chatId}`
     this.sessions.delete(id)
     return this.createSession(id, platform, chatId, userId, Date.now())
   }
 
-  /** /clear: remove session from memory, trigger summary callback */
   clearSession(id: string): void {
     this.sessions.delete(id)
     this.onSessionCleared?.(id)
@@ -57,6 +55,14 @@ export class SessionManager {
 
   clear(id: string): void {
     this.sessions.delete(id)
+  }
+
+  attachThread(id: string, threadId: string, openedAt = Date.now()): void {
+    const session = this.sessions.get(id)
+    if (!session) return
+    session.threadId = threadId
+    session.threadOpenedAt = openedAt
+    session.lastActiveAt = Date.now()
   }
 
   stats(): SessionStats {
@@ -91,9 +97,8 @@ export class SessionManager {
     const dirName = `${id.replace(':', '_')}${suffix}`
     const workspaceDir = join(this.workspacesDir, dirName)
     mkdirSync(join(workspaceDir, '.claude'), { recursive: true })
-    mkdirSync(join(workspaceDir, '.firclaw', '.history'), { recursive: true })
+    mkdirSync(join(workspaceDir, '.friclaw', '.history'), { recursive: true })
 
-    // 注入 MCP 配置
     writeMcpConfig(workspaceDir, {
       'friclaw-memory': {
         type: 'stdio',
@@ -107,6 +112,7 @@ export class SessionManager {
       },
     })
 
+    const createdAt = Date.now()
     const session: Session = {
       id,
       userId,
@@ -114,8 +120,8 @@ export class SessionManager {
       platform: platform as Session['platform'],
       chatType: chatId.startsWith('oc_') ? 'group' : 'private',
       workspaceDir,
-      createdAt: Date.now(),
-      lastActiveAt: Date.now(),
+      createdAt,
+      lastActiveAt: createdAt,
     }
     this.sessions.set(id, session)
     return session

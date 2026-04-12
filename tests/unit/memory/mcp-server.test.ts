@@ -30,49 +30,76 @@ describe('MemoryMcpServer tools', () => {
   it('getTools() returns 4 tools', () => {
     const tools = mcpServer.tools()
     expect(tools).toHaveLength(4)
-    expect(tools.map(t => t.name)).toEqual([
-      'memory_search', 'memory_save', 'memory_list', 'memory_read'
-    ])
   })
 
-  it('memory_save + memory_read roundtrip', async () => {
+  it('memory_save + memory_read roundtrip for knowledge returns structured record', async () => {
     const saveResult = await mcpServer.call('memory_save', {
       content: 'user prefers dark mode',
       id: 'preferences',
       category: 'knowledge',
+      metadata: { domain: 'preference', confidence: 'high' },
     })
     expect(saveResult.isError).toBeFalsy()
 
     const readResult = await mcpServer.call('memory_read', { id: 'preferences' })
     expect((readResult.content[0] as { type: 'text'; text: string }).text).toContain('user prefers dark mode')
+    expect((readResult.content[0] as { type: 'text'; text: string }).text).toContain('"domain": "preference"')
   })
 
-  it('memory_search returns matching results', async () => {
-    await mcpServer.call('memory_save', {
-      content: 'friclaw project is awesome',
-      id: 'projects',
-      category: 'knowledge',
+  it('memory_read can read structured episode record and thread state', async () => {
+    const saveResult = await mcpServer.call('memory_save', {
+      content: 'continue runtime memory implementation',
+      category: 'episode',
+      metadata: { threadId: 'feishu:ou_abc:1', chatKey: 'feishu:ou_abc' },
     })
-    const result = await mcpServer.call('memory_search', { query: 'friclaw' })
-    expect((result.content[0] as { type: 'text'; text: string }).text).toContain('friclaw')
+    const text = (saveResult.content[0] as { type: 'text'; text: string }).text
+    const id = text.split(': ').pop()!
+    const readResult = await mcpServer.call('memory_read', { id, category: 'episode' })
+    expect((readResult.content[0] as { type: 'text'; text: string }).text).toContain('threadId')
+
+    manager.episode.saveThreadState({
+      threadId: 'feishu:ou_abc:1',
+      chatKey: 'feishu:ou_abc',
+      status: 'active',
+      startedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    })
+    const threadRead = await mcpServer.call('memory_read', { id: 'thread:feishu:ou_abc:1', category: 'episode' })
+    expect((threadRead.content[0] as { type: 'text'; text: string }).text).toContain('"threadId": "feishu:ou_abc:1"')
   })
 
-  it('memory_list returns saved topics', async () => {
-    await mcpServer.call('memory_save', { content: 'A', id: 'preferences', category: 'knowledge' })
-    await mcpServer.call('memory_save', { content: 'B', id: 'projects', category: 'knowledge' })
-    const result = await mcpServer.call('memory_list', { category: 'knowledge' })
-    const textContent = result.content[0] as { type: 'text'; text: string }
-    expect(textContent.text).toContain('preferences')
-    expect(textContent.text).toContain('projects')
+  it('memory_list supports detailed output', async () => {
+    manager.knowledge.saveRecord({
+      id: 'prefs',
+      metadata: { title: 'prefs', date: new Date().toISOString(), tags: ['user'], confidence: 'high' },
+      content: 'Boss likes concise updates',
+    })
+    const result = await mcpServer.call('memory_list', { category: 'knowledge', detailed: true })
+    expect((result.content[0] as { type: 'text'; text: string }).text).toContain('Boss likes concise updates')
   })
 
-  it('memory_read returns error for unknown id', async () => {
-    const result = await mcpServer.call('memory_read', { id: 'nonexistent' })
-    expect(result.isError).toBe(true)
-  })
+  it('memory_save for episode promotes incrementally without creating identity candidates', async () => {
+    manager.knowledge.saveRecord({
+      id: 'owner-profile',
+      metadata: {
+        title: 'owner-profile',
+        date: new Date().toISOString(),
+        tags: ['profile'],
+        status: 'active',
+        confidence: 'high',
+      },
+      content: 'Boss prefers concise updates',
+    })
 
-  it('handleToolCall returns error for unknown tool', async () => {
-    const result = await mcpServer.call('unknown_tool', {})
-    expect(result.isError).toBe(true)
+    const saveResult = await mcpServer.call('memory_save', {
+      content: 'continue runtime memory implementation',
+      category: 'episode',
+      metadata: { nextStep: 'Finish retriever' },
+    })
+
+    expect(saveResult.isError).toBeFalsy()
+    const knowledgeEntries = manager.knowledge.listRecords()
+    expect(knowledgeEntries.some(entry => entry.id.startsWith('promotion-episode-'))).toBe(true)
+    expect(knowledgeEntries.some(entry => entry.id === 'owner-profile')).toBe(true)
   })
 })

@@ -32,7 +32,7 @@ export class Dispatcher {
 
   setMemoryManager(memoryManager: MemoryManager): void {
     this.memoryManager = memoryManager
-    log.info('Memory manager set for session summarization')
+    log.info('Memory manager set for session summarization and runtime context')
   }
 
   async dispatch(
@@ -59,7 +59,6 @@ export class Dispatcher {
         await this.handleCommand(message, reply)
         return
       }
-      // 其他 / 开头的命令作为普通消息传给 agent 处理（支持 Claude skills）
     }
 
     const session = this.sessionManager.getOrCreate(
@@ -68,18 +67,20 @@ export class Dispatcher {
       message.userId,
     )
 
+    this.ensureSessionThread(session)
+
     log.debug({
       sessionId: session.id,
-      workspaceDir: session.workspaceDir
+      workspaceDir: session.workspaceDir,
+      threadId: session.threadId,
     }, 'Dispatcher routing to agent')
 
     await this.laneQueue.enqueue(session.id, async () => {
-      // 记录用户消息
       this.appendHistory(session.id, session.workspaceDir, 'user', message.content)
 
+      const enhancedMessage = this.enhanceMessageWithMemory(message, session)
       let responseText = ''
 
-      // 如果有 streamHandler，包装它来捕获响应文本
       if (streamHandler) {
         const originalStreamHandler = streamHandler
         const captureStreamHandler: StreamHandler = async (stream) => {
@@ -96,18 +97,16 @@ export class Dispatcher {
           })()
           await originalStreamHandler(capturedStream)
         }
-        await this.agent.handle(session, message, reply, captureStreamHandler)
+        await this.agent.handle(session, enhancedMessage, reply, captureStreamHandler)
       } else {
-        // 非流式模式，通过 reply 捕获响应
         const originalReply = reply
         const captureReply = async (content: string) => {
           responseText = content
           return originalReply ? originalReply(content) : content
         }
-        await this.agent.handle(session, message, captureReply, undefined)
+        await this.agent.handle(session, enhancedMessage, captureReply, undefined)
       }
 
-      // 记录助手回复
       if (responseText) {
         log.debug({ sessionId: session.id, responseLength: responseText.length }, 'Recording assistant response to history')
         this.appendHistory(session.id, session.workspaceDir, 'assistant', responseText)
@@ -123,8 +122,6 @@ export class Dispatcher {
   }
 
   async drainQueues(): Promise<void> {
-    // Poll until all lanes are drained. LaneQueue deletes lane entries on completion,
-    // so activeLanes() reaching 0 is correct termination condition.
     while (this.laneQueue.activeLanes() > 0) {
       await new Promise(r => setTimeout(r, 10))
     }
@@ -152,49 +149,100 @@ export class Dispatcher {
   ): Promise<void> {
     const sessionId = `${message.platform}:${message.chatId}`
     switch (message.content) {
-      case '/clear':
-        // 生成摘要（最佳努力，失败不阻塞）
+      case '/clear': {
         if (this.memoryManager) {
           const session = this.sessionManager.get(sessionId)
           if (session) {
             await this.memoryManager
-              .summarizeSession(sessionId, session.workspaceDir)
+              .summarizeSession(sessionId, session.workspaceDir, {
+                threadId: session.threadId,
+                chatKey: `${session.platform}:${session.chatId}`,
+                status: 'paused',
+              })
               .catch(err => log.warn({ sessionId, error: err }, 'Failed to summarize session'))
+            if (session.threadId) {
+              this.memoryManager.pauseThread(session.threadId)
+            }
           }
         }
         this.sessionManager.clearSession(sessionId)
         log.info({ sessionId }, 'Session cleared via /clear')
         await reply?.('会话已清除')
         break
-      case '/new':
-        // 生成摘要（最佳努力，失败不阻塞）
+      }
+      case '/new': {
         if (this.memoryManager) {
           const session = this.sessionManager.get(sessionId)
           if (session) {
             await this.memoryManager
-              .summarizeSession(sessionId, session.workspaceDir)
+              .summarizeSession(sessionId, session.workspaceDir, {
+                threadId: session.threadId,
+                chatKey: `${session.platform}:${session.chatId}`,
+                status: 'closed',
+              })
               .catch(err => log.warn({ sessionId, error: err }, 'Failed to summarize session'))
+            if (session.threadId) {
+              this.memoryManager.closeThread(session.threadId)
+            }
           }
         }
-        this.sessionManager.newSession(message.platform, message.chatId, message.userId)
+        const newSession = this.sessionManager.newSession(message.platform, message.chatId, message.userId)
+        this.ensureSessionThread(newSession)
         log.info({ sessionId }, 'New session created via /new')
         await reply?.('新会话已创建')
         break
-      case '/status':
+      }
+      case '/status': {
         const stats = this.sessionManager.stats()
         const statusText = `总会话数: ${stats.total}\n各平台: ${JSON.stringify(stats.byPlatform)}`
         log.info({ stats }, '/status requested')
         await reply?.(statusText)
         break
+      }
       default:
         log.warn({ content: message.content }, 'Unknown command, ignoring')
         await reply?.(`未知命令: ${message.content}`)
     }
   }
 
-  /**
-   * 记录对话历史到文件
-   */
+  private ensureSessionThread(session: Session): void {
+    if (!this.memoryManager || session.threadId) return
+    const threadId = this.memoryManager.ensureThread({
+      sessionId: session.id,
+      platform: session.platform,
+      chatId: session.chatId,
+      workspaceDir: session.workspaceDir,
+    })
+    this.sessionManager.attachThread(session.id, threadId)
+    session.threadId = threadId
+  }
+
+  private enhanceMessageWithMemory(message: Message, session: Session): Message {
+    if (!this.memoryManager) return message
+
+    try {
+      const context = this.memoryManager.buildRuntimeContext({
+        messageText: message.content,
+        session: {
+          sessionId: session.id,
+          platform: session.platform,
+          chatId: session.chatId,
+          workspaceDir: session.workspaceDir,
+          activeThreadId: session.threadId,
+        },
+      })
+      if (!context.promptBlock) return message
+
+      return {
+        ...message,
+        content: `${context.promptBlock}\n\n[User Request]\n${message.content}`,
+      }
+    } catch (error) {
+      log.warn({ error }, 'Failed to build runtime memory context')
+      return message
+    }
+  }
+
   private appendHistory(
     sessionId: string,
     workspaceDir: string,
@@ -202,11 +250,11 @@ export class Dispatcher {
     text: string
   ): void {
     try {
-      const historyDir = join(workspaceDir, '.firclaw', '.history')
+      const historyDir = join(workspaceDir, '.friclaw', '.history')
       if (!existsSync(historyDir)) {
         mkdirSync(historyDir, { recursive: true })
       }
-      const date = new Date().toISOString().slice(0, 10) // YYYY-MM-DD
+      const date = new Date().toISOString().slice(0, 10)
       const timestamp = new Date().toISOString()
       appendFileSync(
         join(historyDir, `${date}.txt`),

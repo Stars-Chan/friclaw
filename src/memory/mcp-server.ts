@@ -43,6 +43,7 @@ export class MemoryMcpServer extends BaseMcpServer {
               default: 'knowledge',
             },
             tags: { type: 'array', items: { type: 'string' } },
+            metadata: { type: 'object' },
           },
           required: ['content'],
         },
@@ -54,6 +55,7 @@ export class MemoryMcpServer extends BaseMcpServer {
           type: 'object',
           properties: {
             category: { type: 'string', enum: ['identity', 'knowledge', 'episode'] },
+            detailed: { type: 'boolean' },
           },
         },
       },
@@ -64,6 +66,7 @@ export class MemoryMcpServer extends BaseMcpServer {
           type: 'object',
           properties: {
             id: { type: 'string', description: 'knowledge topic 名称，或 "SOUL" 读取 identity' },
+            category: { type: 'string', enum: ['identity', 'knowledge', 'episode'] },
           },
           required: ['id'],
         },
@@ -93,36 +96,54 @@ export class MemoryMcpServer extends BaseMcpServer {
         }
 
         case 'memory_save': {
-          const { content, id, category = 'knowledge', tags } = args as {
+          const { content, id, category = 'knowledge', tags, metadata } = args as {
             content: string
             id?: string
             category?: 'identity' | 'knowledge' | 'episode'
             tags?: string[]
+            metadata?: Record<string, unknown>
           }
           if (category === 'identity') {
             this.manager.identity.update(content)
             return this.ok('Identity (SOUL.md) updated.')
           }
           if (category === 'episode') {
-            const episodeId = this.manager.episode.save(content, tags)
+            const episodeId = this.manager.episode.save(content, tags, metadata as any)
+            const candidates = this.manager.collectPromotionCandidates([episodeId])
+            this.manager.applyPromotionCandidates(candidates)
             return this.ok(`Episode saved: ${episodeId}`)
           }
           const topic = id ?? 'notes'
-          this.manager.knowledge.save(topic, content, tags)
+          this.manager.knowledge.saveRecord({
+            id: topic,
+            metadata: {
+              ...(metadata ?? {}),
+              tags: tags ?? (Array.isArray((metadata ?? {}).tags) ? (metadata as any).tags : []),
+            } as any,
+            content,
+          })
           return this.ok(`Knowledge saved: ${topic}`)
         }
 
         case 'memory_list': {
-          const { category } = args as { category?: 'identity' | 'knowledge' | 'episode' }
+          const { category, detailed } = args as { category?: 'identity' | 'knowledge' | 'episode'; detailed?: boolean }
           if (!category || category === 'knowledge') {
-            const topics = this.manager.knowledge.list()
-            return this.ok(topics.length ? topics.join('\n') : 'No knowledge entries.')
+            const topics = this.manager.knowledge.listRecords()
+            return this.ok(
+              topics.length
+                ? topics.map(topic => detailed
+                  ? JSON.stringify(topic, null, 2)
+                  : `${topic.id} [${topic.metadata.tags.join(', ')}]`).join('\n')
+                : 'No knowledge entries.'
+            )
           }
           if (category === 'episode') {
             const episodes = this.manager.episode.recent(20)
             return this.ok(
               episodes.length
-                ? episodes.map(e => `${e.id} [${e.tags.join(', ')}]`).join('\n')
+                ? episodes.map(e => detailed
+                  ? JSON.stringify(e, null, 2)
+                  : `${e.id} [${e.tags.join(', ')}]${e.threadId ? ` thread=${e.threadId}` : ''}`).join('\n')
                 : 'No episodes.'
             )
           }
@@ -130,13 +151,23 @@ export class MemoryMcpServer extends BaseMcpServer {
         }
 
         case 'memory_read': {
-          const { id } = args as { id: string }
-          if (id === 'SOUL' || id === 'identity') {
+          const { id, category } = args as { id: string; category?: 'identity' | 'knowledge' | 'episode' }
+          if (id === 'SOUL' || id === 'identity' || category === 'identity') {
             return this.ok(this.manager.identity.read())
           }
-          const content = this.manager.knowledge.read(id)
-          if (!content) return this.err(`Not found: ${id}`)
-          return this.ok(content)
+          if (category === 'episode') {
+            if (id.startsWith('thread:')) {
+              const thread = this.manager.episode.readThreadState(id.slice('thread:'.length))
+              if (!thread) return this.err(`Not found: ${id}`)
+              return this.ok(JSON.stringify(thread, null, 2))
+            }
+            const record = this.manager.episode.readRecord(id)
+            if (!record) return this.err(`Not found: ${id}`)
+            return this.ok(JSON.stringify(record, null, 2))
+          }
+          const record = this.manager.knowledge.readRecord(id)
+          if (!record) return this.err(`Not found: ${id}`)
+          return this.ok(JSON.stringify(record, null, 2))
         }
 
         default:

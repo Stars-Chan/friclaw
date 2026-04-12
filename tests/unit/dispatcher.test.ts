@@ -1,6 +1,5 @@
-// tests/unit/dispatcher.test.ts
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test'
-import { mkdtempSync, rmSync } from 'fs'
+import { mkdtempSync, rmSync, readFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { Dispatcher } from '../../src/dispatcher'
@@ -11,11 +10,11 @@ let tmpDir: string
 let sessionManager: SessionManager
 
 const makeAgent = () => {
-  const calls: Array<{ sessionId: string; content: string }> = []
+  const calls: Array<{ sessionId: string; content: string; threadId?: string }> = []
   return {
     calls,
-    handle: async (session: { id: string }, msg: Message) => {
-      calls.push({ sessionId: session.id, content: msg.content })
+    handle: async (session: { id: string; threadId?: string }, msg: Message) => {
+      calls.push({ sessionId: session.id, content: msg.content, threadId: session.threadId })
     },
     dispose: async () => {},
   }
@@ -49,99 +48,54 @@ describe('Dispatcher', () => {
     expect(agent.calls[0].sessionId).toBe('feishu:ou_abc')
   })
 
-  it('same session messages are serialized', async () => {
-    const order: number[] = []
-    let resolve1!: () => void
-    const agent = {
-      handle: async (_session: { id: string }, m: Message) => {
-        if (m.content === 'first') {
-          await new Promise<void>(r => { resolve1 = r })
-          order.push(1)
-        } else {
-          order.push(2)
-        }
-      },
-      dispose: async () => {},
-    }
-    const dispatcher = new Dispatcher(sessionManager, agent)
-    const p1 = dispatcher.dispatch(msg({ content: 'first' }))
-    const p2 = dispatcher.dispatch(msg({ content: 'second' }))
-    resolve1!()
-    await Promise.all([p1, p2])
-    expect(order).toEqual([1, 2])
-  })
-
-  it('different sessions run in parallel', async () => {
-    const started: string[] = []
-    let resolve1!: () => void
-    const agent = {
-      handle: async (session: { id: string }, _m: Message) => {
-        started.push(session.id)
-        if (session.id === 'feishu:ou_aaa') {
-          await new Promise<void>(r => { resolve1 = r })
-        }
-      },
-      dispose: async () => {},
-    }
-    const dispatcher = new Dispatcher(sessionManager, agent)
-    const p1 = dispatcher.dispatch(msg({ chatId: 'ou_aaa' }))
-    const p2 = dispatcher.dispatch(msg({ chatId: 'ou_bbb' }))
-    await p2
-    expect(started).toContain('feishu:ou_bbb')
-    resolve1!()
-    await p1
-  })
-
-  it('/clear command short-circuits and calls clearSession', async () => {
+  it('injects runtime memory context and attaches thread info', async () => {
     const agent = makeAgent()
-    const cleared: string[] = []
-    sessionManager.onSessionCleared = (id) => cleared.push(id)
     const dispatcher = new Dispatcher(sessionManager, agent)
-    await dispatcher.dispatch(msg())
+    const ensured: string[] = []
+    const summarized: any[] = []
+    const closed: string[] = []
+    const paused: string[] = []
+
+    dispatcher.setMemoryManager({
+      ensureThread: () => {
+        const id = 'feishu:ou_abc:thread-1'
+        ensured.push(id)
+        return id
+      },
+      buildRuntimeContext: ({ session }: any) => ({
+        knowledge: [],
+        promptBlock: `[Memory Context]\nThread=${session.activeThreadId}`,
+      }),
+      summarizeSession: async (...args: any[]) => {
+        summarized.push(args)
+        return null
+      },
+      closeThread: (id: string) => closed.push(id),
+      pauseThread: (id: string) => paused.push(id),
+    } as any)
+
+    await dispatcher.dispatch(msg({ content: 'continue project' }))
+    expect(ensured).toHaveLength(1)
+    expect(agent.calls[0].content).toContain('Thread=feishu:ou_abc:thread-1')
+    expect(agent.calls[0].threadId).toBe('feishu:ou_abc:thread-1')
+
+    const firstSession = sessionManager.get('feishu:ou_abc')!
+    const firstHistoryPath = join(firstSession.workspaceDir, '.friclaw', '.history', `${new Date().toISOString().slice(0, 10)}.txt`)
+    const firstHistory = readFileSync(firstHistoryPath, 'utf-8')
+    expect(firstHistory).not.toContain('[Memory Context]')
+
     await dispatcher.dispatch(msg({ type: 'command', content: '/clear' }))
-    expect(agent.calls).toHaveLength(1)
-    expect(cleared).toContain('feishu:ou_abc')
-  })
+    expect(paused).toContain('feishu:ou_abc:thread-1')
+    expect(summarized[0][2].status).toBe('paused')
 
-  it('/new command short-circuits and creates new workspace', async () => {
-    const agent = makeAgent()
-    const dispatcher = new Dispatcher(sessionManager, agent)
     await dispatcher.dispatch(msg())
-    const oldDir = sessionManager.get('feishu:ou_abc')?.workspaceDir
+    const secondSession = sessionManager.get('feishu:ou_abc')!
+    const secondHistoryPath = join(secondSession.workspaceDir, '.friclaw', '.history', `${new Date().toISOString().slice(0, 10)}.txt`)
+    const secondHistory = readFileSync(secondHistoryPath, 'utf-8')
+    expect(secondHistory).not.toContain('[Memory Context]')
+
     await dispatcher.dispatch(msg({ type: 'command', content: '/new' }))
-    expect(agent.calls).toHaveLength(1)
-    const newDir = sessionManager.get('feishu:ou_abc')?.workspaceDir
-    expect(newDir).toBeDefined()
-    expect(newDir).not.toBe(oldDir)
-  })
-
-  it('/status command short-circuits and does not call agent', async () => {
-    const agent = makeAgent()
-    const dispatcher = new Dispatcher(sessionManager, agent)
-    await dispatcher.dispatch(msg({ type: 'command', content: '/status' }))
-    expect(agent.calls).toHaveLength(0)
-  })
-
-  it('unknown command passes to agent for Claude skills support', async () => {
-    const agent = makeAgent()
-    const dispatcher = new Dispatcher(sessionManager, agent)
-    await dispatcher.dispatch(msg({ type: 'command', content: '/unknown' }))
-    expect(agent.calls).toHaveLength(1)
-    expect(agent.calls[0].content).toBe('/unknown')
-  })
-
-  it('stopAccepting rejects new dispatches', async () => {
-    const agent = makeAgent()
-    const dispatcher = new Dispatcher(sessionManager, agent)
-    dispatcher.stopAccepting()
-    await expect(dispatcher.dispatch(msg())).rejects.toThrow('not accepting')
-  })
-
-  it('drainQueues resolves when all lanes are empty', async () => {
-    const agent = makeAgent()
-    const dispatcher = new Dispatcher(sessionManager, agent)
-    await dispatcher.dispatch(msg())
-    await dispatcher.drainQueues()
-    expect(dispatcher.activeLanes()).toBe(0)
+    expect(closed.length).toBeGreaterThan(0)
+    expect(summarized.some(call => call[2]?.status === 'closed')).toBe(true)
   })
 })

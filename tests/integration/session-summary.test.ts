@@ -29,7 +29,8 @@ describe('Session Summarization Integration', () => {
   test.skip('should create history files and generate summary (requires Claude CLI)', async () => {
     const conversationId = 'test:chat123'
     const sanitized = conversationId.replace(/:/g, '_')
-    const historyDir = join(workspacesDir, sanitized, '.firclaw', '.history')
+    const workspaceDir = join(workspacesDir, sanitized)
+    const historyDir = join(workspaceDir, '.friclaw', '.history')
 
     // 创建历史目录
     mkdirSync(historyDir, { recursive: true })
@@ -59,7 +60,7 @@ describe('Session Summarization Integration', () => {
     // 生成摘要（使用较短的超时时间进行测试）
     const summaryId = await episode.summarizeSession(
       conversationId,
-      workspacesDir,
+      workspaceDir,
       'claude-haiku-4-5',
       30000 // 30秒超时
     )
@@ -80,7 +81,8 @@ describe('Session Summarization Integration', () => {
   test('should skip summarization for short transcripts', async () => {
     const conversationId = 'test:chat456'
     const sanitized = conversationId.replace(/:/g, '_')
-    const historyDir = join(workspacesDir, sanitized, '.firclaw', '.history')
+    const workspaceDir = join(workspacesDir, sanitized)
+    const historyDir = join(workspaceDir, '.friclaw', '.history')
 
     mkdirSync(historyDir, { recursive: true })
 
@@ -90,7 +92,7 @@ describe('Session Summarization Integration', () => {
 
     const summaryId = await episode.summarizeSession(
       conversationId,
-      workspacesDir,
+      workspaceDir,
       'claude-haiku-4-5',
       30000
     )
@@ -101,10 +103,11 @@ describe('Session Summarization Integration', () => {
 
   test('should handle missing history directory gracefully', async () => {
     const conversationId = 'test:nonexistent'
+    const workspaceDir = join(workspacesDir, conversationId.replace(/:/g, '_'))
 
     const summaryId = await episode.summarizeSession(
       conversationId,
-      workspacesDir,
+      workspaceDir,
       'claude-haiku-4-5',
       30000
     )

@@ -5,7 +5,7 @@
   "scripts": {
     "start": "bun run src/index.ts",
     "dev": "bun --watch src/index.ts",
-    "onboard": "bun run src/index.ts onboard",
+    "init": "bun run src/index.ts onboard",
     "weixin-login": "bun run src/index.ts weixin-login",
     "mcp:cron": "bun run src/mcp/cron-entry.ts",
     "test": "bun test",

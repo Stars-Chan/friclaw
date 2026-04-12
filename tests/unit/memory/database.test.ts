@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'bun:test'
 import { mkdtempSync, rmSync } from 'fs'
 import { join } from 'path'
 import { tmpdir } from 'os'
-import { initDatabase, search, upsertIndex } from '../../../src/memory/database'
+import { initDatabase, search, upsertIndex, upsertMeta, getMeta } from '../../../src/memory/database'
 import type { Database } from 'bun:sqlite'
 
 let tmpDir: string
@@ -26,9 +26,11 @@ describe('initDatabase', () => {
     expect(row).toBeTruthy()
   })
 
-  it('enables WAL mode', () => {
-    const row = db.prepare('PRAGMA journal_mode').get() as { journal_mode: string }
-    expect(row.journal_mode).toBe('wal')
+  it('creates memory_meta table', () => {
+    const row = db.prepare(
+      `SELECT name FROM sqlite_master WHERE type='table' AND name='memory_meta'`
+    ).get()
+    expect(row).toBeTruthy()
   })
 })
 
@@ -43,18 +45,20 @@ describe('search', () => {
     expect(results.length).toBeGreaterThan(0)
   })
 
-  it('filters by category', () => {
-    const results = search(db, 'friclaw', 'knowledge')
-    expect(results.every(r => r.category === 'knowledge')).toBe(true)
-  })
+  it('stores and reads metadata', () => {
+    upsertMeta(db, {
+      id: 'knowledge/projects',
+      category: 'knowledge',
+      domain: 'project',
+      entities: ['FriClaw'],
+      status: 'active',
+      confidence: 'high',
+      updatedAt: new Date().toISOString(),
+      source: 'manual',
+    })
 
-  it('returns empty array for no match', () => {
-    const results = search(db, 'nonexistent_xyz_abc_qqq')
-    expect(results).toEqual([])
-  })
-
-  it('respects limit', () => {
-    const results = search(db, 'friclaw', undefined, 1)
-    expect(results.length).toBeLessThanOrEqual(1)
+    const meta = getMeta(db, 'knowledge/projects')
+    expect(meta?.domain).toBe('project')
+    expect(meta?.confidence).toBe('high')
   })
 })

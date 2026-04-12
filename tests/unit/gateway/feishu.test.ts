@@ -28,7 +28,6 @@ mock.module('@larksuiteoapi/node-sdk', () => {
   const mockMessageUpdate = mock(async () => {})
   const mockMessageResourceGet = mock(async () => 'fake_image_buffer')
 
-  // CardKit API mocks
   const mockCardCreate = mock(async () => ({
     code: 0,
     data: { card_id: 'card_001' },
@@ -64,11 +63,17 @@ mock.module('@larksuiteoapi/node-sdk', () => {
       },
     }
   }
-  return { default: { Client, WSClient, EventDispatcher } }
+  return {
+    Client,
+    WSClient,
+    EventDispatcher,
+    default: { Client, WSClient, EventDispatcher },
+  }
 })
 
-import { FeishuGateway } from '../../../src/gateway/feishu'
 import type { Message } from '../../../src/types/message'
+
+const loadFeishuGateway = async () => (await import('../../../src/gateway/feishu')).FeishuGateway
 
 const makeConfig = () => ({
   appId: 'app_001',
@@ -112,12 +117,14 @@ describe('FeishuGateway', () => {
   })
 
   it('start() connects WSClient', async () => {
+    const FeishuGateway = await loadFeishuGateway()
     const gw = new FeishuGateway(makeConfig())
     await gw.start(makeDispatcher() as never)
     expect(mockWSClientStart).toHaveBeenCalledTimes(1)
   })
 
   it('private message dispatched correctly', async () => {
+    const FeishuGateway = await loadFeishuGateway()
     const dispatcher = makeDispatcher()
     const gw = new FeishuGateway(makeConfig())
     await gw.start(dispatcher as never)
@@ -133,6 +140,7 @@ describe('FeishuGateway', () => {
   })
 
   it('group message without @mention is ignored', async () => {
+    const FeishuGateway = await loadFeishuGateway()
     const dispatcher = makeDispatcher()
     const gw = new FeishuGateway(makeConfig())
     await gw.start(dispatcher as never)
@@ -144,6 +152,7 @@ describe('FeishuGateway', () => {
   })
 
   it('group message with @mention is dispatched', async () => {
+    const FeishuGateway = await loadFeishuGateway()
     const dispatcher = makeDispatcher()
     const gw = new FeishuGateway(makeConfig())
     await gw.start(dispatcher as never)
@@ -157,6 +166,7 @@ describe('FeishuGateway', () => {
   })
 
   it('thread message uses chatId:rootId as chatId', async () => {
+    const FeishuGateway = await loadFeishuGateway()
     const dispatcher = makeDispatcher()
     const gw = new FeishuGateway(makeConfig())
     await gw.start(dispatcher as never)
@@ -165,6 +175,7 @@ describe('FeishuGateway', () => {
   })
 
   it('non-text message type is ignored', async () => {
+    const FeishuGateway = await loadFeishuGateway()
     const dispatcher = makeDispatcher()
     const gw = new FeishuGateway(makeConfig())
     await gw.start(dispatcher as never)
@@ -173,6 +184,7 @@ describe('FeishuGateway', () => {
   })
 
   it('/command content sets message type to command', async () => {
+    const FeishuGateway = await loadFeishuGateway()
     const dispatcher = makeDispatcher()
     const gw = new FeishuGateway(makeConfig())
     await gw.start(dispatcher as never)
@@ -182,6 +194,7 @@ describe('FeishuGateway', () => {
   })
 
   it('image message is dispatched with correct type', async () => {
+    const FeishuGateway = await loadFeishuGateway()
     const dispatcher = makeDispatcher()
     const gw = new FeishuGateway(makeConfig())
     await gw.start(dispatcher as never)
@@ -208,6 +221,7 @@ describe('FeishuGateway', () => {
   })
 
   it('send() creates message', async () => {
+    const FeishuGateway = await loadFeishuGateway()
     const gw = new FeishuGateway(makeConfig())
     await gw.start(makeDispatcher() as never)
     const messageId = await gw.send('oc_room1', 'Hello')
@@ -215,20 +229,18 @@ describe('FeishuGateway', () => {
   })
 
   it('duplicate message_id is deduplicated', async () => {
+    const FeishuGateway = await loadFeishuGateway()
     const dispatcher = makeDispatcher()
     const gw = new FeishuGateway(makeConfig())
     await gw.start(dispatcher as never)
 
-    // 发送第一条消息
     await capturedEventHandler!(makeEvent({ message_id: 'msg_001' }))
     expect(dispatcher.dispatched).toHaveLength(1)
 
-    // 发送相同message_id的消息，应该被去重
     await capturedEventHandler!(makeEvent({ message_id: 'msg_001' }))
-    expect(dispatcher.dispatched).toHaveLength(1) // 长度仍为1，说明第二条被去重
+    expect(dispatcher.dispatched).toHaveLength(1)
 
-    // 发送不同message_id的消息，应该正常处理
     await capturedEventHandler!(makeEvent({ message_id: 'msg_002' }))
-    expect(dispatcher.dispatched).toHaveLength(2) // 长度为2，说明新消息被处理
+    expect(dispatcher.dispatched).toHaveLength(2)
   })
 })

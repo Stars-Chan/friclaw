@@ -29,12 +29,12 @@ export type WSMessage =
   | { type: 'message'; sessionId: string; content: string };
 
 export type WSServerMessage =
-  | { type: 'response'; data: { text: string } }
-  | { type: 'stream_start'; data: Record<string, never> }
-  | { type: 'stream_delta'; data: { text: string; isThinking?: boolean } }
-  | { type: 'stream_end'; data: Record<string, never> }
-  | { type: 'stream_stats'; data: MessageStats }
-  | { type: 'error'; data: { message: string } }
-  | { type: 'sessions_update'; data: { sessions: Session[] } }
-  | { type: 'history'; data: { messages: Message[] } }
-  | { type: 'switch_session'; data: { newSessionId: string } };
+  | { type: 'response'; sessionId: string; data: { text: string } }
+  | { type: 'stream_start'; sessionId: string; data: Record<string, never> }
+  | { type: 'stream_delta'; sessionId: string; data: { text: string; isThinking?: boolean } }
+  | { type: 'stream_end'; sessionId: string; data: Record<string, never> }
+  | { type: 'stream_stats'; sessionId: string; data: MessageStats }
+  | { type: 'error'; sessionId: string; data: { message: string } }
+  | { type: 'sessions_update'; sessionId: string; data: { sessions: Session[] } }
+  | { type: 'history'; sessionId: string; data: { messages: Message[] } }
+  | { type: 'switch_session'; sessionId: string; data: { newSessionId: string } };

@@ -15,7 +15,7 @@ export class MessageHistory {
   private historyDir: string
 
   constructor(workspaceDir: string) {
-    this.historyDir = join(workspaceDir, '.firclaw', '.history')
+    this.historyDir = join(workspaceDir, '.friclaw', '.history')
     this.historyFile = join(this.historyDir, 'messages.jsonl')
     this.ensureDir()
   }

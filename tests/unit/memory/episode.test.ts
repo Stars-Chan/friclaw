@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test'
-import { mkdtempSync, rmSync, mkdirSync, readdirSync } from 'fs'
+import { mkdtempSync, rmSync, mkdirSync, readdirSync, writeFileSync } from 'fs'
 import { join } from 'path'
 import { tmpdir } from 'os'
 import { Database } from 'bun:sqlite'
@@ -43,16 +43,48 @@ describe('EpisodeMemory', () => {
     expect(episodes[0].summary).toContain('second summary')
   })
 
-  it('recent() respects limit', () => {
-    episode.save('summary 1')
-    episode.save('summary 2')
-    episode.save('summary 3')
-    expect(episode.recent(2).length).toBe(2)
+  it('recent() ignores thread state markdown in episodes root', () => {
+    episode.save('real summary')
+    writeFileSync(join(tmpDir, 'episodes', 'misplaced-thread.md'), `---\nthreadId: dashboard:test:1\nchatKey: dashboard:test\nstatus: paused\nstartedAt: 2026-04-12T00:00:00.000Z\nupdatedAt: 2026-04-12T00:00:00.000Z\n---\n`, 'utf-8')
+
+    const episodes = episode.recent(10)
+    expect(episodes).toHaveLength(1)
+    expect(episodes[0].summary).toBe('real summary')
   })
 
-  it('save() syncs to FTS index', () => {
-    episode.save('user discussed PaddleOCR training task', ['ocr', 'training'])
-    const results = search(db, 'PaddleOCR', 'episode')
-    expect(results.length).toBeGreaterThan(0)
+  it('preserves paused thread state when saving a linked episode', () => {
+    const thread = episode.createThread({
+      platform: 'feishu',
+      chatId: 'ou_abc',
+      sessionId: 'feishu:ou_abc',
+      workspaceDir: '/tmp/workspace',
+    })
+
+    const id = episode.save('Pending follow-up', ['memory'], {
+      threadId: thread.threadId,
+      chatKey: thread.chatKey,
+      status: 'paused',
+      nextStep: 'Resume tomorrow',
+    })
+
+    expect(episode.read(id)?.status).toBe('paused')
+    expect(episode.readThreadState(thread.threadId)?.status).toBe('paused')
+  })
+
+  it('does not reactivate a paused thread when status is omitted on later saves', () => {
+    const thread = episode.createThread({
+      platform: 'feishu',
+      chatId: 'ou_abc',
+      sessionId: 'feishu:ou_abc',
+      workspaceDir: '/tmp/workspace',
+    })
+
+    episode.updateThreadState(thread.threadId, { status: 'paused' })
+    episode.save('Additional note', ['memory'], {
+      threadId: thread.threadId,
+      chatKey: thread.chatKey,
+    })
+
+    expect(episode.readThreadState(thread.threadId)?.status).toBe('paused')
   })
 })

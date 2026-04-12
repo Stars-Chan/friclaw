@@ -9,6 +9,8 @@ export interface Session {
   createdAt: number
   lastActiveAt: number
   agentSessionId?: string
+  threadId?: string
+  threadOpenedAt?: number
 }
 
 export interface SessionStats {

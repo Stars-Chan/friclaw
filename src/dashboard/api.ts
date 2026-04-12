@@ -1,14 +1,17 @@
 // src/dashboard/api.ts
-import type { Dispatcher } from '../dispatcher'
+import type { Dispatcher, StreamHandler } from '../dispatcher'
 import { logger } from '../utils/logger'
 import { DashboardSessionManager } from './session-manager.js'
-import type { ServerMessage } from './types.js'
+import type { ClientMessage, ServerMessage } from './types.js'
 import type { Message } from '../types/message.js'
 import type { CronScheduler } from '../cron/scheduler'
 import { TokenStatsManager } from './token-stats.js'
 import { spawn } from 'child_process'
-import { existsSync } from 'fs'
+import { existsSync, readdirSync } from 'fs'
 import { join } from 'path'
+import { parseFrontmatter, normalizeStringArray, serializeFrontmatter } from '../memory/frontmatter'
+import { isEpisodeRecord } from '../memory/episode'
+import type { EpisodeMetadata, KnowledgeMetadata } from '../memory/types'
 
 const log = logger('dashboard')
 
@@ -30,6 +33,117 @@ export interface DashboardPushFn {
   (sessionId: string, content: string): Promise<void>
 }
 
+function listThreadFiles(memoryDir: string): string[] {
+  try {
+    return readdirSync(join(memoryDir, 'episodes', 'threads'))
+      .filter((f: string) => f.endsWith('.md'))
+      .sort()
+      .reverse()
+  } catch {
+    return []
+  }
+}
+
+function parseKnowledgeSummary(id: string, raw: string) {
+  const parsed = parseFrontmatter<KnowledgeMetadata>(raw)
+  return {
+    id,
+    title: parsed.metadata.title ?? id,
+    tags: normalizeStringArray(parsed.metadata.tags),
+    domain: typeof parsed.metadata.domain === 'string' ? parsed.metadata.domain : '',
+    status: typeof parsed.metadata.status === 'string' ? parsed.metadata.status : '',
+    confidence: typeof parsed.metadata.confidence === 'string' ? parsed.metadata.confidence : '',
+    updatedAt: typeof parsed.metadata.updatedAt === 'string' ? parsed.metadata.updatedAt : '',
+  }
+}
+
+function parseEpisodeSummary(id: string, raw: string) {
+  if (!isEpisodeRecord(raw)) return null
+  const parsed = parseFrontmatter<EpisodeMetadata>(raw)
+  return {
+    id,
+    date: parsed.metadata.date ?? '',
+    tags: normalizeStringArray(parsed.metadata.tags),
+    summary: parsed.body,
+    threadId: typeof parsed.metadata.threadId === 'string' ? parsed.metadata.threadId : '',
+    status: typeof parsed.metadata.status === 'string' ? parsed.metadata.status : '',
+    nextStep: typeof parsed.metadata.nextStep === 'string' ? parsed.metadata.nextStep : '',
+    blockers: normalizeStringArray(parsed.metadata.blockers),
+  }
+}
+
+function sendToClient(ws: ServerWebSocket, message: ServerMessage): void {
+  if (ws.readyState === 1) {
+    ws.send(JSON.stringify(message))
+  }
+}
+
+function sendHistory(ws: ServerWebSocket, sessionId: string, messages: Awaited<ReturnType<DashboardSessionManager['loadHistory']>>): void {
+  sendToClient(ws, {
+    type: 'history',
+    sessionId,
+    data: { messages },
+  })
+}
+
+function sendSessionsUpdate(ws: ServerWebSocket, sessionId: string, sessionManager: DashboardSessionManager): void {
+  sendToClient(ws, {
+    type: 'sessions_update',
+    sessionId,
+    data: { sessions: sessionManager.listAll() },
+  })
+}
+
+function toInternalMessage(sessionId: string, content: string): Message {
+  const trimmed = content.trim()
+  return {
+    platform: 'dashboard',
+    chatId: sessionId,
+    userId: 'dashboard_user',
+    type: trimmed.startsWith('/') ? 'command' : 'text',
+    content,
+    messageId: `dashboard_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+    attachments: [],
+  }
+}
+
+function updateFrontmatterContent<T extends object>(content: string, defaults: Partial<T> = {}): string {
+  const parsed = parseFrontmatter<T>(content)
+  const now = new Date().toISOString()
+  const date = typeof (parsed.metadata as Record<string, unknown>).date === 'string'
+    ? (parsed.metadata as Record<string, unknown>).date as string
+    : now.slice(0, 10)
+
+  return serializeFrontmatter({
+    ...defaults,
+    ...parsed.metadata,
+    date,
+    updatedAt: now,
+  }, parsed.body)
+}
+
+function toKnowledgeRecord(topic: string, content: string) {
+  const parsed = parseFrontmatter<KnowledgeMetadata>(content)
+  const now = new Date().toISOString()
+  const metadata = parsed.metadata
+
+  return {
+    id: topic,
+    metadata: {
+      title: typeof metadata.title === 'string' ? metadata.title : topic,
+      date: typeof metadata.date === 'string' ? metadata.date : now,
+      updatedAt: now,
+      tags: normalizeStringArray(metadata.tags),
+      domain: typeof metadata.domain === 'string' ? metadata.domain : undefined,
+      entities: normalizeStringArray(metadata.entities),
+      status: typeof metadata.status === 'string' ? metadata.status : undefined,
+      confidence: typeof metadata.confidence === 'string' ? metadata.confidence : undefined,
+      source: typeof metadata.source === 'string' ? metadata.source : undefined,
+    },
+    content: parsed.body,
+  }
+}
+
 export async function startDashboard(
   port: number,
   dispatcher: Dispatcher,
@@ -39,9 +153,8 @@ export async function startDashboard(
 ): Promise<DashboardPushFn> {
   const sessionManager = new DashboardSessionManager(workspacesDir)
   const tokenStats = new TokenStatsManager(workspacesDir)
-  const clients = new Map<string, ServerWebSocket>() // sessionId -> WebSocket
+  const clients = new Map<string, ServerWebSocket>()
 
-  // Start frontend dev server if web directory exists
   let frontendProcess: ReturnType<typeof spawn> | null = null
   if (existsSync(WEB_DIR)) {
     log.info('Starting frontend dev server...')
@@ -68,16 +181,14 @@ export async function startDashboard(
     async fetch(req, server) {
       const url = new URL(req.url)
 
-      // Upgrade WebSocket connection
       if (url.pathname === '/ws') {
         const upgraded = server.upgrade(req)
         if (upgraded) {
-          return undefined // Connection upgraded successfully
+          return undefined
         }
         return new Response('WebSocket upgrade failed', { status: 400 })
       }
 
-      // CORS headers
       const corsHeaders = {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
@@ -88,7 +199,6 @@ export async function startDashboard(
         return new Response(null, { headers: corsHeaders })
       }
 
-      // Health check endpoint
       if (url.pathname === '/health') {
         return Response.json({
           status: 'ok',
@@ -97,22 +207,20 @@ export async function startDashboard(
         }, { headers: corsHeaders })
       }
 
-      // List sessions endpoint
       if (url.pathname === '/api/sessions') {
         return Response.json({
           sessions: sessionManager.listAll(),
         }, { headers: corsHeaders })
       }
 
-      // Get session history endpoint
       if (url.pathname.startsWith('/api/sessions/') && url.pathname.endsWith('/history')) {
         const sessionId = url.pathname.split('/')[3]
+        const messages = await sessionManager.loadHistory(sessionId)
         return Response.json({
-          messages: sessionManager.loadHistory(sessionId),
+          messages,
         }, { headers: corsHeaders })
       }
 
-      // Config endpoint
       if (url.pathname === '/api/config') {
         const settingsPath = join(process.env.HOME || '', '.claude', 'settings.json')
 
@@ -144,7 +252,6 @@ export async function startDashboard(
         }
       }
 
-      // Saved configs endpoint
       if (url.pathname === '/api/config/saved') {
         const savedConfigsPath = join(process.env.HOME || '', '.claude', 'saved-configs.json')
 
@@ -159,14 +266,12 @@ export async function startDashboard(
         }
       }
 
-      // Token stats endpoint
       if (url.pathname === '/api/stats/tokens') {
         const days = parseInt(url.searchParams.get('days') || '7')
         const stats = await tokenStats.getStats(days)
         return Response.json({ stats }, { headers: corsHeaders })
       }
 
-      // Memory endpoints
       if (url.pathname === '/api/memory/identity') {
         const memoryDir = join(process.env.HOME || '', '.friclaw', 'memory')
         const soulPath = join(memoryDir, 'SOUL.md')
@@ -175,17 +280,20 @@ export async function startDashboard(
           try {
             const file = Bun.file(soulPath)
             const content = await file.exists() ? await file.text() : ''
-            return Response.json({ content }, { headers: corsHeaders })
+            return Response.json({ content, threadFiles: listThreadFiles(memoryDir) }, { headers: corsHeaders })
           } catch {
-            return Response.json({ content: '' }, { headers: corsHeaders })
+            return Response.json({ content: '', threadFiles: [] }, { headers: corsHeaders })
           }
         }
         if (req.method === 'POST') {
           try {
             const { content } = await req.json()
-            const today = new Date().toISOString().slice(0, 10)
-            const updatedContent = content.replace(/^date:\s*.+$/m, `date: ${today}`)
-            await Bun.write(soulPath, updatedContent)
+            const updatedContent = updateFrontmatterContent(content, { title: 'FriClaw Identity' })
+            if (memoryManager?.identity) {
+              memoryManager.identity.update(updatedContent)
+            } else {
+              await Bun.write(soulPath, updatedContent)
+            }
             return Response.json({ success: true }, { headers: corsHeaders })
           } catch {
             return Response.json({ success: false }, { status: 500, headers: corsHeaders })
@@ -199,13 +307,10 @@ export async function startDashboard(
 
         if (req.method === 'GET') {
           try {
-            const { readdirSync, existsSync } = await import('fs')
-            if (!existsSync(knowledgeDir)) {
-              return Response.json({ list: [] }, { headers: corsHeaders })
-            }
+            const { readdirSync, readFileSync } = await import('fs')
             const list = readdirSync(knowledgeDir)
               .filter(f => f.endsWith('.md'))
-              .map(f => f.replace('.md', ''))
+              .map(f => parseKnowledgeSummary(f.replace('.md', ''), readFileSync(join(knowledgeDir, f), 'utf-8')))
             return Response.json({ list }, { headers: corsHeaders })
           } catch {
             return Response.json({ list: [] }, { headers: corsHeaders })
@@ -231,9 +336,12 @@ export async function startDashboard(
         if (req.method === 'POST') {
           try {
             const { content } = await req.json()
-            const today = new Date().toISOString().slice(0, 10)
-            const updatedContent = content.replace(/^date:\s*.+$/m, `date: ${today}`)
-            await Bun.write(filePath, updatedContent)
+            const updatedContent = updateFrontmatterContent<KnowledgeMetadata>(content)
+            if (memoryManager?.knowledge) {
+              memoryManager.knowledge.saveRecord(toKnowledgeRecord(topic, updatedContent))
+            } else {
+              await Bun.write(filePath, updatedContent)
+            }
             return Response.json({ success: true }, { headers: corsHeaders })
           } catch {
             return Response.json({ success: false }, { status: 500, headers: corsHeaders })
@@ -246,29 +354,17 @@ export async function startDashboard(
         const episodesDir = join(memoryDir, 'episodes')
 
         try {
-          const { readdirSync, readFileSync, existsSync } = await import('fs')
-          if (!existsSync(episodesDir)) {
-            return Response.json({ episodes: [] }, { headers: corsHeaders })
-          }
-
+          const { readdirSync, readFileSync } = await import('fs')
           const episodes = readdirSync(episodesDir)
             .filter(f => f.endsWith('.md'))
             .sort()
             .reverse()
-            .slice(0, 50)
-            .map(f => {
+            .flatMap((f) => {
               const raw = readFileSync(join(episodesDir, f), 'utf-8')
-              const id = f.replace('.md', '')
-              const dateMatch = raw.match(/^date:\s*(.+)$/m)
-              const tagsMatch = raw.match(/^tags:\s*\[(.*)]/m)
-              const summary = raw.replace(/^---[\s\S]*?---\n\n/, '')
-              return {
-                id,
-                date: dateMatch?.[1]?.trim() ?? '',
-                tags: tagsMatch?.[1] ? tagsMatch[1].split(',').map(t => t.trim()).filter(Boolean) : [],
-                summary,
-              }
+              const parsed = parseEpisodeSummary(f.replace('.md', ''), raw)
+              return parsed ? [parsed] : []
             })
+            .slice(0, 50)
 
           return Response.json({ episodes }, { headers: corsHeaders })
         } catch {
@@ -276,7 +372,6 @@ export async function startDashboard(
         }
       }
 
-      // Cron jobs endpoints
       if (url.pathname === '/api/cron/jobs') {
         if (req.method === 'GET') {
           return Response.json({ jobs: cronScheduler.list() }, { headers: corsHeaders })
@@ -292,7 +387,6 @@ export async function startDashboard(
         }
       }
 
-      // Get platform targets (chatId/userId options)
       if (url.pathname === '/api/cron/targets') {
         const platform = url.searchParams.get('platform') || 'dashboard'
         const targets: Array<{ chatId: string; userId: string; label: string }> = []
@@ -334,7 +428,6 @@ export async function startDashboard(
         }
       }
 
-      // Gateways config endpoint
       if (url.pathname === '/api/gateways') {
         const friclawConfigPath = join(process.env.HOME || '', '.friclaw', 'config.json')
 
@@ -362,7 +455,6 @@ export async function startDashboard(
         }
       }
 
-      // 404 for other endpoints (frontend dev server handles UI)
       return new Response('Not Found', { status: 404, headers: corsHeaders })
     },
     websocket: {
@@ -379,7 +471,6 @@ export async function startDashboard(
         const sessionId = serverWs.data?.sessionId
         log.debug(`WebSocket client disconnected: ${clientId}`)
 
-        // Remove client from map
         if (sessionId) {
           clients.delete(sessionId)
           sessionManager.disconnect(sessionId)
@@ -388,7 +479,6 @@ export async function startDashboard(
     },
   })
 
-  // Log access URLs
   log.info(``)
   log.info(`🚀 FriClaw Dashboard is ready!`)
   log.info(``)
@@ -399,24 +489,15 @@ export async function startDashboard(
   log.info(`   Press Ctrl+C to stop`)
   log.info(``)
 
-  // Cleanup on exit
-  process.on('SIGINT', () => {
-    if (frontendProcess) {
-      frontendProcess.kill('SIGTERM')
-    }
-    process.exit(0)
-  })
-
-  // Return push function for cron jobs
   return async (sessionId: string, content: string) => {
     const ws = clients.get(sessionId)
-    if (ws) {
+    if (ws && ws.readyState === 1) {
       sendToClient(ws, {
         type: 'response',
         sessionId,
         data: { text: content },
       })
-      await sessionManager.saveMessage(sessionId, {
+      sessionManager.saveMessageSync(sessionId, {
         role: 'assistant',
         content,
         timestamp: Date.now(),
@@ -427,239 +508,158 @@ export async function startDashboard(
 
 async function handleWebSocketMessage(
   ws: ServerWebSocket,
-  message: string | Buffer,
+  data: string | Buffer,
   dispatcher: Dispatcher,
   sessionManager: DashboardSessionManager,
   clients: Map<string, ServerWebSocket>,
   tokenStats: TokenStatsManager,
 ): Promise<void> {
   try {
-    const data = JSON.parse(message.toString())
-    const clientId = ws.data?.clientId
+    const message = JSON.parse(data.toString()) as ClientMessage
+    const sessionId = message.sessionId || 'default'
 
-    if (data.type === 'register') {
-      // Session registration
-      const sessionId = data.sessionId || 'default'
-      log.debug(`Registering session: ${sessionId}, connection: ${clientId}`)
+    ws.data.sessionId = sessionId
+    clients.set(sessionId, ws)
 
-      // Store WebSocket for this session
-      clients.set(sessionId, ws)
-      ws.data.sessionId = sessionId
-
-      // Send current sessions list
-      sendToClient(ws, {
-        type: 'sessions_update',
-        sessionId,
-        data: { sessions: sessionManager.listAll() },
-      })
-
-      // Send history messages if session exists
+    if (message.type === 'register') {
+      sendSessionsUpdate(ws, sessionId, sessionManager)
       const history = await sessionManager.loadHistory(sessionId)
-      if (history.length > 0) {
-        sendToClient(ws, {
-          type: 'history',
-          sessionId,
-          data: { messages: history },
-        })
-      }
-    } else if (data.type === 'message') {
-      const sessionId = data.sessionId || 'default'
-      const content = data.content || ''
+      sendHistory(ws, sessionId, history)
+      return
+    }
 
-      if (!content) {
-        sendToClient(ws, {
-          type: 'error',
-          sessionId,
-          data: { message: 'Message content is required' },
-        })
-        return
-      }
+    const content = message.content || ''
+    if (!content) {
+      sendToClient(ws, {
+        type: 'error',
+        sessionId,
+        data: { message: 'Message content is required' },
+      })
+      return
+    }
 
-      // Store WebSocket for this session
-      clients.set(sessionId, ws)
-      ws.data.sessionId = sessionId
+    if (content === '/new') {
+      const newSessionId = `session_${Date.now()}`
+      sessionManager.createOrUpdate(newSessionId, 'New session')
+      clients.set(newSessionId, ws)
+      ws.data.sessionId = newSessionId
+      sendSessionsUpdate(ws, newSessionId, sessionManager)
+      sendToClient(ws, {
+        type: 'switch_session',
+        sessionId,
+        data: { newSessionId },
+      })
+      sendHistory(ws, newSessionId, [])
+      return
+    }
 
-      log.info(`[Dashboard] Session ${sessionId}: ${content.slice(0, 50)}...`)
+    sessionManager.createOrUpdate(sessionId, content)
+    sessionManager.saveMessageSync(sessionId, {
+      role: 'user',
+      content,
+      timestamp: Date.now(),
+    })
+    sendSessionsUpdate(ws, sessionId, sessionManager)
 
-      // Handle built-in commands
-      if (content === '/new') {
-        const newSessionId = `session_${Date.now()}`
-        sessionManager.createOrUpdate(newSessionId, 'New session')
+    let textContent = ''
+    let thinkingContent = ''
 
-        // Broadcast sessions update FIRST so frontend knows about new session
-        broadcastSessionsUpdate(sessionManager, clients)
-
-        // Switch client to new session
-        clients.set(newSessionId, ws)
-        ws.data.sessionId = newSessionId
-
-        // Send switch session command
-        sendToClient(ws, {
-          type: 'switch_session',
-          sessionId,
-          data: { newSessionId },
-        })
-
-        // Send empty history for new session
-        sendToClient(ws, {
-          type: 'history',
-          sessionId: newSessionId,
-          data: { messages: [] },
-        })
-        return
-      }
-
-      if (content === '/clear') {
-        await sessionManager.clearHistory(sessionId)
-
-        // Clear Claude conversation context
-        const conversationId = `dashboard:${sessionId}`
-        dispatcher.clearSession(conversationId)
-
-        sendToClient(ws, {
-          type: 'response',
-          sessionId,
-          data: { text: '✓ Session history cleared.' },
-        })
-        sendToClient(ws, {
-          type: 'history',
-          sessionId,
-          data: { messages: [] },
-        })
-        return
-      }
-
-      // Update or create session for normal messages
-      sessionManager.createOrUpdate(sessionId, content)
-
-      // Save user message to history
-      await sessionManager.saveMessage(sessionId, {
-        role: 'user',
-        content,
+    const reply = async (replyContent: string) => {
+      textContent = replyContent
+      sessionManager.saveMessageSync(sessionId, {
+        role: 'assistant',
+        content: replyContent,
         timestamp: Date.now(),
       })
+      sendToClient(ws, {
+        type: 'response',
+        sessionId,
+        data: { text: replyContent },
+      })
+      return replyContent
+    }
 
-      // Broadcast sessions update
-      broadcastSessionsUpdate(sessionManager, clients)
+    const streamHandler: StreamHandler = async (stream) => {
+      sendToClient(ws, {
+        type: 'stream_start',
+        sessionId,
+        data: {},
+      })
 
-      // Process message through dispatcher
-      let assistantResponse = ''
-      const replyFn = async (responseContent: string) => {
-        assistantResponse = responseContent
-        sendToClient(ws, {
-          type: 'response',
-          sessionId,
-          data: { text: responseContent },
-        })
-        return responseContent
-      }
-
-      const streamFn = async (stream: AsyncGenerator<{ type: string; [key: string]: unknown }>) => {
-        sendToClient(ws, {
-          type: 'stream_start',
-          sessionId,
-          data: {},
-        })
-
-        let thinkingContent = ''
-        let textContent = ''
-
-        for await (const event of stream) {
-          if (event.type === 'text_delta' || event.type === 'thinking_delta') {
-            const text = String(event.text || '')
-            const isThinking = event.type === 'thinking_delta'
-
-            if (isThinking) {
-              thinkingContent += text
-            } else {
-              textContent += text
-              assistantResponse += text
-            }
-
-            sendToClient(ws, {
-              type: 'stream_delta',
-              sessionId,
-              data: { text, isThinking } as any,
-            })
-          } else if (event.type === 'done') {
-            const response = event.response as any
-            sendToClient(ws, {
-              type: 'stream_stats',
-              sessionId,
-              data: response,
-            })
-
-            // Record token usage
-            if (response?.inputTokens && response?.outputTokens) {
-              await tokenStats.record({
-                timestamp: Date.now(),
-                sessionId,
-                inputTokens: response.inputTokens,
-                outputTokens: response.outputTokens,
-                model: response.model || 'unknown',
-                costCny: response.costCny,
-              })
-            }
+      for await (const event of stream) {
+        if ((event.type === 'text_delta' || event.type === 'thinking_delta') && typeof event.text === 'string') {
+          if (event.type === 'thinking_delta') {
+            thinkingContent += event.text
+          } else {
+            textContent += event.text
           }
+          sendToClient(ws, {
+            type: 'stream_delta',
+            sessionId,
+            data: {
+              text: event.text,
+              ...(event.type === 'thinking_delta' ? { isThinking: true } : {}),
+            },
+          })
+          continue
         }
 
-        sendToClient(ws, {
-          type: 'stream_end',
-          sessionId,
-          data: {},
-        })
-
-        // Save assistant response to history (without thinking content)
-        if (textContent) {
-          await sessionManager.saveMessage(sessionId, {
-            role: 'assistant',
-            content: textContent,
-            timestamp: Date.now(),
-            thinkingContent: thinkingContent || undefined,
+        if (event.type === 'done') {
+          const response = event.response as {
+            model?: string
+            inputTokens?: number
+            outputTokens?: number
+            costCny?: number
+            elapsedMs?: number
+          }
+          if (response.inputTokens !== undefined && response.outputTokens !== undefined) {
+            await tokenStats.record({
+              timestamp: Date.now(),
+              sessionId,
+              inputTokens: response.inputTokens,
+              outputTokens: response.outputTokens,
+              model: response.model || 'unknown',
+              costCny: response.costCny,
+            })
+          }
+          sendToClient(ws, {
+            type: 'stream_stats',
+            sessionId,
+            data: {
+              model: response.model,
+              inputTokens: response.inputTokens,
+              outputTokens: response.outputTokens,
+              costCny: response.costCny,
+              elapsedMs: response.elapsedMs,
+            },
           })
         }
       }
 
-      // Create proper Message object
-      const msg: Message = {
-        platform: 'dashboard',
-        chatId: sessionId,
-        userId: 'dashboard_user',
-        type: 'text',
-        content: content,
-        messageId: `dashboard_${Date.now()}_${Math.random().toString(36).slice(2)}`,
-        attachments: [],
-      }
+      sendToClient(ws, {
+        type: 'stream_end',
+        sessionId,
+        data: {},
+      })
 
-      await dispatcher.dispatch(msg, replyFn, streamFn)
+      if (textContent) {
+        sessionManager.saveMessageSync(sessionId, {
+          role: 'assistant',
+          content: textContent,
+          timestamp: Date.now(),
+          thinkingContent: thinkingContent || undefined,
+        })
+      }
     }
-  } catch (error) {
-    log.error({ err: error }, 'Error handling WebSocket message')
+
+    await dispatcher.dispatch(toInternalMessage(sessionId, content), reply, streamHandler)
+  } catch (err) {
+    log.error({ error: err }, 'Failed to handle WebSocket message')
+    const sessionId = ws.data?.sessionId || 'unknown'
     sendToClient(ws, {
       type: 'error',
-      sessionId: ws.data?.sessionId || 'unknown',
-      data: { message: 'Failed to process message' },
+      sessionId,
+      data: { message: '消息处理失败' },
     })
-  }
-}
-
-function sendToClient(ws: ServerWebSocket, message: ServerMessage): void {
-  if (ws.readyState === 1) { // OPEN
-    ws.send(JSON.stringify(message))
-  }
-}
-
-function broadcastSessionsUpdate(sessionManager: DashboardSessionManager, clients: Map<string, ServerWebSocket>): void {
-  const message: ServerMessage = {
-    type: 'sessions_update',
-    sessionId: 'broadcast',
-    data: { sessions: sessionManager.listAll() },
-  }
-
-  // Send to all connected clients
-  for (const ws of clients.values()) {
-    if (ws.readyState === 1) {
-      ws.send(JSON.stringify(message))
-    }
   }
 }

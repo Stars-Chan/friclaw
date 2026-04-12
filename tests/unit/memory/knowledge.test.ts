@@ -48,10 +48,49 @@ describe('KnowledgeMemory', () => {
     expect(results.length).toBeGreaterThan(0)
   })
 
-  it('save() overwrites existing topic', () => {
-    knowledge.save('preferences', 'old content')
-    knowledge.save('preferences', 'new content')
-    expect(knowledge.read('preferences')).toContain('new content')
-    expect(knowledge.read('preferences')).not.toContain('old content')
+  it('saveRecord() stores structured metadata', () => {
+    knowledge.saveRecord({
+      id: 'memory-system',
+      metadata: {
+        title: 'memory-system',
+        date: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        tags: ['memory'],
+        domain: 'project',
+        entities: ['FriClaw', 'MemoryManager'],
+        status: 'active',
+        confidence: 'high',
+        source: 'manual_edit',
+      },
+      content: 'Runtime memory system background',
+    })
+
+    const record = knowledge.readRecord('memory-system')
+    expect(record?.metadata.domain).toBe('project')
+    expect(record?.metadata.entities).toContain('FriClaw')
+    expect(record?.metadata.confidence).toBe('high')
+  })
+
+  it('savePromotion() is source-aware and idempotent', () => {
+    const firstId = knowledge.savePromotion({
+      title: 'same title',
+      content: 'content A',
+      source: 'promotion:episode/ep-1',
+    })
+    const secondId = knowledge.savePromotion({
+      title: 'same title',
+      content: 'content B',
+      source: 'promotion:episode/ep-2',
+    })
+    const repeatId = knowledge.savePromotion({
+      title: 'same title',
+      content: 'content C',
+      source: 'promotion:episode/ep-1',
+    })
+
+    expect(firstId).not.toBe(secondId)
+    expect(repeatId).toBe(firstId)
+    expect(knowledge.read(firstId)).toContain('content C')
+    expect(knowledge.read(secondId)).toContain('content B')
   })
 })

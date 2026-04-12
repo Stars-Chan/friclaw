@@ -27,7 +27,7 @@ export class DashboardSessionManager {
 
       const sessionId = dir.replace('dashboard_', '')
       const workspaceDir = join(this._workspacesDir, dir)
-      const historyFile = join(workspaceDir, '.firclaw', '.history', 'messages.jsonl')
+      const historyFile = join(workspaceDir, '.friclaw', '.history', 'messages.jsonl')
 
       if (!existsSync(historyFile)) continue
 

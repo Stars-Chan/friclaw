@@ -26,6 +26,7 @@ export interface MessageData {
   content: string;
   timestamp: number;
   stats?: MessageStats;
+  thinkingContent?: string;
 }
 
 /**
