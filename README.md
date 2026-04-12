@@ -137,10 +137,8 @@ bun run init
 各平台接入所需配置如下：
 
 - 飞书：需要配置 `appId`、`appSecret`，如需事件加密与校验，还需要配置 `encryptKey`、`verificationToken`
-- 企业微信：需要配置 `botId`、`secret`
-- 微信：需要先登录获取 `token`
-
-如果使用微信，执行下面命令后扫码登录，会自动获取 token 写入到配置项：
+- 企业微信：需要配置 `botId`、`secret`，[企业微信配置指南](./docs/企业微信配置指南.md)
+- 微信：执行下面命令后扫码登录，会自动获取 token 写入到配置项：
 
 ```bash
 bun run weixin-login
