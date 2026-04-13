@@ -130,7 +130,8 @@ async function restartCommand(): Promise<void> {
   const config = await loadConfig()
   const target = createLifecycleTarget(config)
   await stopManagedInstance(target)
-  const childPid = spawnDaemonChild()
+  const startArgv = [...process.argv.slice(0, 2), 'start']
+  const childPid = spawnDaemonChild({ argv: startArgv })
   console.log(`FriClaw restarted in background (pid=${childPid}). Logs: ${config.logging.dir}`)
 }
 
@@ -331,6 +332,7 @@ async function runServer(config: Awaited<ReturnType<typeof loadConfig>>): Promis
   })
 
   log.info('FriClaw ready')
+  await new Promise<void>(() => {})
 }
 
 main().catch((err) => {
