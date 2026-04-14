@@ -188,9 +188,9 @@ describe('FeishuGateway', () => {
     const dispatcher = makeDispatcher()
     const gw = new FeishuGateway(makeConfig())
     await gw.start(dispatcher as never)
-    await capturedEventHandler!(makeEvent({ content: JSON.stringify({ text: '/clear' }) }))
+    await capturedEventHandler!(makeEvent({ content: JSON.stringify({ text: '/new' }) }))
     expect(dispatcher.dispatched[0].type).toBe('command')
-    expect(dispatcher.dispatched[0].content).toBe('/clear')
+    expect(dispatcher.dispatched[0].content).toBe('/new')
   })
 
   it('image message is dispatched with correct type', async () => {

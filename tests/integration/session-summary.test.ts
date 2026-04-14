@@ -48,7 +48,7 @@ describe('Session Summarization Integration', () => {
 
 [2024-01-01T10:01:00Z] [user] 会话摘要是如何工作的？
 
-[2024-01-01T10:01:10Z] [assistant] 会话摘要功能会在你执行 /clear 或 /new 命令时自动触发：
+[2024-01-01T10:01:10Z] [assistant] 会话摘要功能会在你执行 /new 命令时自动触发：
 1. 读取历史对话记录
 2. 使用 Claude 生成结构化摘要
 3. 保存到 episodes 目录

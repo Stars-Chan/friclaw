@@ -54,7 +54,7 @@ export class Dispatcher {
     }, 'Dispatcher received message')
 
     if (message.type === 'command') {
-      const isBuiltinCommand = ['/clear', '/new', '/status'].includes(message.content)
+      const isBuiltinCommand = ['/new', '/status'].includes(message.content)
       if (isBuiltinCommand) {
         await this.handleCommand(message, reply)
         return
@@ -149,28 +149,6 @@ export class Dispatcher {
   ): Promise<void> {
     const sessionId = `${message.platform}:${message.chatId}`
     switch (message.content) {
-      case '/clear': {
-        if (this.memoryManager) {
-          const session = this.sessionManager.get(sessionId)
-          if (session) {
-            await this.memoryManager
-              .summarizeSession(sessionId, session.workspaceDir, {
-                threadId: session.threadId,
-                chatKey: `${session.platform}:${session.chatId}`,
-                status: 'paused',
-              })
-              .catch(err => log.warn({ sessionId, error: err }, 'Failed to summarize session'))
-            if (session.threadId) {
-              this.memoryManager.pauseThread(session.threadId)
-            }
-          }
-        }
-        await this.agent.dispose(sessionId)
-        this.sessionManager.clearSession(sessionId)
-        log.info({ sessionId }, 'Session cleared via /clear')
-        await reply?.('会话已清除')
-        break
-      }
       case '/new': {
         if (this.memoryManager) {
           const session = this.sessionManager.get(sessionId)

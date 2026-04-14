@@ -53,13 +53,12 @@ describe('Dispatcher', () => {
     expect(agent.calls[0].sessionId).toBe('feishu:ou_abc')
   })
 
-  it('injects runtime memory context and attaches thread info', async () => {
+  it('injects runtime memory context and handles /new thread closure', async () => {
     const agent = makeAgent()
     const dispatcher = new Dispatcher(sessionManager, agent)
     const ensured: string[] = []
     const summarized: any[] = []
     const closed: string[] = []
-    const paused: string[] = []
 
     dispatcher.setMemoryManager({
       ensureThread: () => {
@@ -76,7 +75,7 @@ describe('Dispatcher', () => {
         return null
       },
       closeThread: (id: string) => closed.push(id),
-      pauseThread: (id: string) => paused.push(id),
+      pauseThread: () => {},
     } as any)
 
     await dispatcher.dispatch(msg({ content: 'continue project' }))
@@ -89,21 +88,10 @@ describe('Dispatcher', () => {
     const firstHistory = readFileSync(firstHistoryPath, 'utf-8')
     expect(firstHistory).not.toContain('[Memory Context]')
 
-    await dispatcher.dispatch(msg({ type: 'command', content: '/clear' }))
-    expect(paused).toContain('feishu:ou_abc:thread-1')
-    expect(summarized[0][2].status).toBe('paused')
-    expect(agent.disposed).toContain('feishu:ou_abc')
-
-    await dispatcher.dispatch(msg())
-    const secondSession = sessionManager.get('feishu:ou_abc')!
-    const secondHistoryPath = getWorkspaceDailyHistoryFile(secondSession.workspaceDir, new Date().toISOString().slice(0, 10))
-    const secondHistory = readFileSync(secondHistoryPath, 'utf-8')
-    expect(secondHistory).not.toContain('[Memory Context]')
-
     await dispatcher.dispatch(msg({ type: 'command', content: '/new' }))
-    expect(closed.length).toBeGreaterThan(0)
+    expect(closed).toContain('feishu:ou_abc:thread-1')
     expect(summarized.some(call => call[2]?.status === 'closed')).toBe(true)
-    expect(agent.disposed.filter(id => id === 'feishu:ou_abc').length).toBeGreaterThanOrEqual(2)
+    expect(agent.disposed).toContain('feishu:ou_abc')
   })
 }
 )

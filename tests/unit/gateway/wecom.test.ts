@@ -141,7 +141,7 @@ describe('WecomGateway', () => {
 
     // Simulate receiving a command message
     const messageData = JSON.parse(makeTextEvent({
-      text: { content: '/clear' },
+      text: { content: '/new' },
     }))
     // @ts-ignore - accessing private property for testing
     gw._client.emit('message', {
@@ -158,7 +158,7 @@ describe('WecomGateway', () => {
     await new Promise(resolve => setTimeout(resolve, 10))
 
     expect(dispatcher.dispatched[0].type).toBe('command')
-    expect(dispatcher.dispatched[0].content).toBe('/clear')
+    expect(dispatcher.dispatched[0].content).toBe('/new')
   })
 
   it('non-text message type is ignored', async () => {
