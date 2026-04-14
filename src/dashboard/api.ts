@@ -465,7 +465,16 @@ export async function startDashboard(
       return new Response('Not Found', { status: 404, headers: corsHeaders })
     },
     websocket: {
-      message: (ws, message) => handleWebSocketMessage(ws as unknown as ServerWebSocket, message, dispatcher, sessionManager, clients, tokenStats),
+      message: (ws, message) => handleWebSocketMessage(
+        ws as unknown as ServerWebSocket,
+        message,
+        dispatcher,
+        sessionManager,
+        clients,
+        tokenStats,
+        workspacesDir,
+        memoryManager,
+      ),
       open: (ws) => {
         const wsClientId = Math.random().toString(36).slice(2)
         const serverWs = ws as unknown as ServerWebSocket
@@ -520,6 +529,8 @@ async function handleWebSocketMessage(
   sessionManager: DashboardSessionManager,
   clients: Map<string, ServerWebSocket>,
   tokenStats: TokenStatsManager,
+  workspacesDir: string,
+  memoryManager?: any,
 ): Promise<void> {
   try {
     const message = JSON.parse(data.toString()) as ClientMessage
@@ -546,8 +557,37 @@ async function handleWebSocketMessage(
     }
 
     if (content === '/new') {
+      if (memoryManager?.summarizeSession && memoryManager?.ensureThread) {
+        const previousThreadId = memoryManager.ensureThread({
+          sessionId: `dashboard:${sessionId}`,
+          platform: 'dashboard',
+          chatId: sessionId,
+          workspaceDir: join(workspacesDir, `dashboard_${sessionId}`),
+        })
+
+        await memoryManager
+          .summarizeSession(`dashboard:${sessionId}`, join(workspacesDir, `dashboard_${sessionId}`), {
+            threadId: previousThreadId,
+            chatKey: `dashboard:${sessionId}`,
+            status: 'closed',
+          })
+          .catch((err: unknown) => log.warn({ sessionId, error: err }, 'Failed to summarize dashboard session'))
+
+        memoryManager.closeThread?.(previousThreadId)
+      }
+
       const newSessionId = `session_${Date.now()}`
       sessionManager.createOrUpdate(newSessionId, 'New session')
+
+      if (memoryManager?.ensureThread) {
+        memoryManager.ensureThread({
+          sessionId: `dashboard:${newSessionId}`,
+          platform: 'dashboard',
+          chatId: newSessionId,
+          workspaceDir: join(workspacesDir, `dashboard_${newSessionId}`),
+        })
+      }
+
       clients.set(newSessionId, ws)
       ws.data.sessionId = newSessionId
       sendSessionsUpdate(ws, newSessionId, sessionManager)
