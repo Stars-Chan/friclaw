@@ -4,6 +4,7 @@ import { join } from 'path'
 import { tmpdir } from 'os'
 import { EpisodeMemory } from '../../src/memory/episode'
 import { initDatabase } from '../../src/memory/database'
+import { getWorkspaceDailyHistoryFile, getWorkspaceHistoryDir, getWorkspaceHistoryFile } from '../../src/session/history-paths'
 
 describe('Session Summarization Integration', () => {
   const testDir = join(tmpdir(), `friclaw-test-${Date.now()}`)
@@ -30,7 +31,7 @@ describe('Session Summarization Integration', () => {
     const conversationId = 'test:chat123'
     const sanitized = conversationId.replace(/:/g, '_')
     const workspaceDir = join(workspacesDir, sanitized)
-    const historyDir = join(workspaceDir, '.friclaw', '.history')
+    const historyDir = getWorkspaceHistoryDir(workspaceDir)
 
     // 创建历史目录
     mkdirSync(historyDir, { recursive: true })
@@ -55,7 +56,7 @@ describe('Session Summarization Integration', () => {
 
 这样可以帮助你回顾之前的对话内容。`
 
-    writeFileSync(join(historyDir, `${date}.txt`), historyContent, 'utf-8')
+    writeFileSync(getWorkspaceDailyHistoryFile(workspaceDir, date), historyContent, 'utf-8')
 
     // 生成摘要（使用较短的超时时间进行测试）
     const summaryId = await episode.summarizeSession(
@@ -69,7 +70,7 @@ describe('Session Summarization Integration', () => {
     expect(summaryId).toBeTruthy()
 
     // 验证偏移标记文件已创建
-    const markerPath = join(historyDir, '.last-summarized-offset')
+    const markerPath = getWorkspaceHistoryFile(workspaceDir, '.last-summarized-offset')
     expect(existsSync(markerPath)).toBe(true)
 
     // 验证摘要文件已创建
@@ -82,13 +83,13 @@ describe('Session Summarization Integration', () => {
     const conversationId = 'test:chat456'
     const sanitized = conversationId.replace(/:/g, '_')
     const workspaceDir = join(workspacesDir, sanitized)
-    const historyDir = join(workspaceDir, '.friclaw', '.history')
+    const historyDir = getWorkspaceHistoryDir(workspaceDir)
 
     mkdirSync(historyDir, { recursive: true })
 
     // 写入很短的历史
     const date = new Date().toISOString().slice(0, 10)
-    writeFileSync(join(historyDir, `${date}.txt`), '[user] hi\n[assistant] hello', 'utf-8')
+    writeFileSync(getWorkspaceDailyHistoryFile(workspaceDir, date), '[user] hi\n[assistant] hello', 'utf-8')
 
     const summaryId = await episode.summarizeSession(
       conversationId,

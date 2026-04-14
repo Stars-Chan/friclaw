@@ -5,6 +5,7 @@ import { getMeta, getMetaByThread, upsertIndex, upsertMeta } from './database'
 import { parseFrontmatter, normalizeStringArray, serializeFrontmatter } from './frontmatter'
 import { summarizeTranscript } from './summarizer'
 import { logger } from '../utils/logger'
+import { getWorkspaceHistoryDir, getWorkspaceHistoryFile } from '../session/history-paths'
 import type { EpisodeMetadata, EpisodeRecord, EpisodeThreadState } from './types'
 
 const log = logger('episode')
@@ -157,7 +158,7 @@ export class EpisodeMemory {
       blockers?: string[]
     }
   ): Promise<string | null> {
-    const historyDir = join(workspaceDir, '.friclaw', '.history')
+    const historyDir = getWorkspaceHistoryDir(workspaceDir)
 
     let files: string[]
     try {
@@ -178,7 +179,7 @@ export class EpisodeMemory {
       return null
     }
 
-    const markerPath = join(historyDir, '.last-summarized-offset')
+    const markerPath = getWorkspaceHistoryFile(workspaceDir, '.last-summarized-offset')
     let offsets: Record<string, number> = {}
     try {
       const marker = readTextOrNull(markerPath)

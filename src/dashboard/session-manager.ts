@@ -2,6 +2,7 @@
 
 import { mkdirSync, readdirSync, existsSync, statSync } from 'fs'
 import { join } from 'path'
+import { getWorkspaceHistoryFile } from '../session/history-paths'
 import type { SessionInfo } from './types.js'
 import { MessageHistory, type ChatMessage } from './message-history.js'
 
@@ -27,7 +28,7 @@ export class DashboardSessionManager {
 
       const sessionId = dir.replace('dashboard_', '')
       const workspaceDir = join(this._workspacesDir, dir)
-      const historyFile = join(workspaceDir, '.friclaw', '.history', 'messages.jsonl')
+      const historyFile = getWorkspaceHistoryFile(workspaceDir, 'messages.jsonl')
 
       if (!existsSync(historyFile)) continue
 

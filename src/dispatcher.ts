@@ -1,7 +1,7 @@
 // src/dispatcher.ts
 import { appendFileSync, existsSync, mkdirSync } from 'fs'
-import { join } from 'path'
 import { LaneQueue } from './utils/lane-queue'
+import { getWorkspaceDailyHistoryFile, getWorkspaceHistoryDir } from './session/history-paths'
 import { logger } from './utils/logger'
 import type { SessionManager } from './session/manager'
 import type { Session } from './session/types'
@@ -252,14 +252,14 @@ export class Dispatcher {
     text: string
   ): void {
     try {
-      const historyDir = join(workspaceDir, '.friclaw', '.history')
+      const historyDir = getWorkspaceHistoryDir(workspaceDir)
       if (!existsSync(historyDir)) {
         mkdirSync(historyDir, { recursive: true })
       }
       const date = new Date().toISOString().slice(0, 10)
       const timestamp = new Date().toISOString()
       appendFileSync(
-        join(historyDir, `${date}.txt`),
+        getWorkspaceDailyHistoryFile(workspaceDir, date),
         `[${timestamp}] [${role}] ${text}\n\n`,
         'utf-8'
       )

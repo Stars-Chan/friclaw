@@ -2,6 +2,7 @@
 import { mkdirSync } from 'fs'
 import { join } from 'path'
 import { writeMcpConfig } from '../mcp/config-writer'
+import { getWorkspaceHistoryDir } from './history-paths'
 import type { Session, SessionStats } from './types'
 
 interface SessionManagerOptions {
@@ -97,7 +98,7 @@ export class SessionManager {
     const dirName = `${id.replace(':', '_')}${suffix}`
     const workspaceDir = join(this.workspacesDir, dirName)
     mkdirSync(join(workspaceDir, '.claude'), { recursive: true })
-    mkdirSync(join(workspaceDir, '.friclaw', '.history'), { recursive: true })
+    mkdirSync(getWorkspaceHistoryDir(workspaceDir), { recursive: true })
 
     writeMcpConfig(workspaceDir, {
       'friclaw-memory': {

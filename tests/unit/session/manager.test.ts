@@ -4,6 +4,7 @@ import { mkdtempSync, rmSync, existsSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { SessionManager } from '../../../src/session/manager'
+import { getWorkspaceHistoryDir } from '../../../src/session/history-paths'
 
 let tmpDir: string
 let manager: SessionManager
@@ -31,7 +32,7 @@ describe('SessionManager', () => {
   it('workspace scaffold is created on session init', () => {
     const s = manager.getOrCreate('feishu', 'ou_abc', 'user1')
     expect(existsSync(join(s.workspaceDir, '.claude'))).toBe(true)
-    expect(existsSync(join(s.workspaceDir, '.friclaw', '.history'))).toBe(true)
+    expect(existsSync(getWorkspaceHistoryDir(s.workspaceDir))).toBe(true)
   })
 
   it('getOrCreate reuses existing session', () => {

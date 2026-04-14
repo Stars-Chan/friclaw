@@ -1,7 +1,7 @@
 // src/dashboard/message-history.ts
 import { appendFile, readFile, access, mkdir, writeFile } from 'fs/promises'
-import { join } from 'path'
 import { existsSync } from 'fs'
+import { getWorkspaceHistoryDir, getWorkspaceHistoryFile } from '../session/history-paths'
 
 export interface ChatMessage {
   role: 'user' | 'assistant'
@@ -15,8 +15,8 @@ export class MessageHistory {
   private historyDir: string
 
   constructor(workspaceDir: string) {
-    this.historyDir = join(workspaceDir, '.friclaw', '.history')
-    this.historyFile = join(this.historyDir, 'messages.jsonl')
+    this.historyDir = getWorkspaceHistoryDir(workspaceDir)
+    this.historyFile = getWorkspaceHistoryFile(workspaceDir, 'messages.jsonl')
     this.ensureDir()
   }
 

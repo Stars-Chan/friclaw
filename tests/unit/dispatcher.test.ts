@@ -4,6 +4,7 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 import { Dispatcher } from '../../src/dispatcher'
 import { SessionManager } from '../../src/session/manager'
+import { getWorkspaceDailyHistoryFile } from '../../src/session/history-paths'
 import type { Message } from '../../src/types/message'
 
 let tmpDir: string
@@ -84,7 +85,7 @@ describe('Dispatcher', () => {
     expect(agent.calls[0].threadId).toBe('feishu:ou_abc:thread-1')
 
     const firstSession = sessionManager.get('feishu:ou_abc')!
-    const firstHistoryPath = join(firstSession.workspaceDir, '.friclaw', '.history', `${new Date().toISOString().slice(0, 10)}.txt`)
+    const firstHistoryPath = getWorkspaceDailyHistoryFile(firstSession.workspaceDir, new Date().toISOString().slice(0, 10))
     const firstHistory = readFileSync(firstHistoryPath, 'utf-8')
     expect(firstHistory).not.toContain('[Memory Context]')
 
@@ -95,7 +96,7 @@ describe('Dispatcher', () => {
 
     await dispatcher.dispatch(msg())
     const secondSession = sessionManager.get('feishu:ou_abc')!
-    const secondHistoryPath = join(secondSession.workspaceDir, '.friclaw', '.history', `${new Date().toISOString().slice(0, 10)}.txt`)
+    const secondHistoryPath = getWorkspaceDailyHistoryFile(secondSession.workspaceDir, new Date().toISOString().slice(0, 10))
     const secondHistory = readFileSync(secondHistoryPath, 'utf-8')
     expect(secondHistory).not.toContain('[Memory Context]')
 
