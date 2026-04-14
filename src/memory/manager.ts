@@ -12,7 +12,7 @@ import { retrieveKnowledge } from './runtime/knowledge-retriever'
 import { retrieveEpisode } from './runtime/episode-retriever'
 import { assembleMemoryContext } from './runtime/context-assembler'
 import type { MemoryContextBundle, RuntimeSessionContext } from './runtime/types'
-import type { PromotionCandidate, EpisodeThreadStatus } from './types'
+import type { PromotionCandidate, EpisodeThreadStatus, EpisodeSummaryMode } from './types'
 
 const log = logger('memory')
 
@@ -22,6 +22,11 @@ interface ThreadSummaryOptions {
   status?: EpisodeThreadStatus
   nextStep?: string
   blockers?: string[]
+}
+
+export interface ThreadSummaryResult {
+  id: string
+  mode: EpisodeSummaryMode
 }
 
 export class MemoryManager {
@@ -153,8 +158,8 @@ export class MemoryManager {
     conversationId: string,
     workspaceDir: string,
     options?: ThreadSummaryOptions
-  ): Promise<string | null> {
-    const id = await this.episode.summarizeSession(
+  ): Promise<ThreadSummaryResult | null> {
+    const result = await this.episode.summarizeSession(
       conversationId,
       workspaceDir,
       this.summaryModel,
@@ -162,11 +167,11 @@ export class MemoryManager {
       options,
     )
 
-    if (id) {
-      this.applyPromotionCandidates(this.collectPromotionCandidates([id]))
+    if (result?.mode === 'summary') {
+      this.applyPromotionCandidates(this.collectPromotionCandidates([result.id]))
     }
 
-    return id
+    return result
   }
 
   private updateThreadStatus(status: EpisodeThreadStatus, threadId: string, patch?: { nextStep?: string; blockers?: string[] }): void {

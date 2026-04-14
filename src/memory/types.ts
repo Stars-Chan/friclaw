@@ -2,7 +2,8 @@ export type MemoryCategory = 'identity' | 'knowledge' | 'episode'
 
 export type KnowledgeStatus = 'draft' | 'active' | 'deprecated'
 export type MemoryConfidence = 'low' | 'medium' | 'high'
-export type EpisodeThreadStatus = 'active' | 'paused' | 'closed'
+export type EpisodeThreadStatus = 'active' | 'paused' | 'closed' | 'summary_failed'
+export type EpisodeSummaryMode = 'summary' | 'fallback'
 
 export interface KnowledgeMetadata {
   title: string

@@ -153,14 +153,17 @@ export class Dispatcher {
         if (this.memoryManager) {
           const session = this.sessionManager.get(sessionId)
           if (session) {
-            await this.memoryManager
+            const result = await this.memoryManager
               .summarizeSession(sessionId, session.workspaceDir, {
                 threadId: session.threadId,
                 chatKey: `${session.platform}:${session.chatId}`,
                 status: 'closed',
               })
-              .catch(err => log.warn({ sessionId, error: err }, 'Failed to summarize session'))
-            if (session.threadId) {
+              .catch(err => {
+                log.warn({ sessionId, error: err }, 'Failed to summarize session')
+                return null
+              })
+            if (session.threadId && result?.mode === 'summary') {
               this.memoryManager.closeThread(session.threadId)
             }
           }

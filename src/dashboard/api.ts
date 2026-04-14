@@ -565,15 +565,20 @@ async function handleWebSocketMessage(
           workspaceDir: join(workspacesDir, `dashboard_${sessionId}`),
         })
 
-        await memoryManager
+        const result = await memoryManager
           .summarizeSession(`dashboard:${sessionId}`, join(workspacesDir, `dashboard_${sessionId}`), {
             threadId: previousThreadId,
             chatKey: `dashboard:${sessionId}`,
             status: 'closed',
           })
-          .catch((err: unknown) => log.warn({ sessionId, error: err }, 'Failed to summarize dashboard session'))
+          .catch((err: unknown) => {
+            log.warn({ sessionId, error: err }, 'Failed to summarize dashboard session')
+            return null
+          })
 
-        memoryManager.closeThread?.(previousThreadId)
+        if (result?.mode === 'summary') {
+          memoryManager.closeThread?.(previousThreadId)
+        }
       }
 
       const newSessionId = `session_${Date.now()}`

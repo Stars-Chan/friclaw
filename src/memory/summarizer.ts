@@ -1,8 +1,28 @@
 // src/memory/summarizer.ts
-import Anthropic from '@anthropic-ai/sdk'
+import { mkdtempSync, rmSync } from 'fs'
+import { tmpdir } from 'os'
+import { join } from 'path'
+import { runClaudeCodePrompt } from '../agent/claude-code'
 import { logger } from '../utils/logger'
 
 const log = logger('summarizer')
+
+function describeError(error: unknown) {
+  if (error instanceof Error) {
+    return {
+      name: error.name,
+      message: error.message,
+      stack: error.stack,
+      cause: error.cause instanceof Error
+        ? { name: error.cause.name, message: error.cause.message, stack: error.cause.stack }
+        : error.cause,
+    }
+  }
+
+  return {
+    message: typeof error === 'string' ? error : JSON.stringify(error),
+  }
+}
 
 const SUMMARIZE_PROMPT = `你是一个对话摘要助手。分析以下对话记录并生成结构化摘要。
 
@@ -30,45 +50,43 @@ tags: [<逗号分隔的相关标签>]
 对话记录：
 `
 
+let summarizeRunner: typeof runClaudeCodePrompt = runClaudeCodePrompt
+
+export function setSummarizeRunnerForTest(runner: typeof runClaudeCodePrompt): void {
+  summarizeRunner = runner
+}
+
+export function resetSummarizeRunnerForTest(): void {
+  summarizeRunner = runClaudeCodePrompt
+}
+
 export async function summarizeTranscript(
   transcript: string,
-  model = 'claude-haiku-4-5-20241022',
+  model = 'claude-haiku-4-5',
   timeoutMs = 300_000
 ): Promise<string> {
   const prompt = SUMMARIZE_PROMPT + transcript
+  const workspaceDir = mkdtempSync(join(tmpdir(), 'friclaw-summary-'))
 
   log.info({ transcriptLength: transcript.length, model, timeoutMs }, 'Generating session summary')
 
   try {
-    // 使用 Anthropic SDK 直接调用 API
-    const apiKey = process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN
-    if (!apiKey) {
-      throw new Error('ANTHROPIC_API_KEY or ANTHROPIC_AUTH_TOKEN not found in environment')
-    }
-
-    const baseURL = process.env.ANTHROPIC_BASE_URL
-    const client = new Anthropic({
-      apiKey,
-      baseURL,
-      timeout: timeoutMs,
-    })
-
-    const message = await client.messages.create({
+    const result = await summarizeRunner({
+      conversationId: `summary:${Date.now()}`,
+      workspaceDir,
+      text: prompt,
+    }, {
       model,
-      max_tokens: 2048,
-      messages: [{ role: 'user', content: prompt }],
+      timeoutMs,
     })
 
-    const summary = message.content
-      .filter(block => block.type === 'text')
-      .map(block => (block as { type: 'text'; text: string }).text)
-      .join('\n')
-      .trim()
-
-    log.info({ summaryLength: summary.length }, 'Session summary generated')
+    const summary = result.text.trim()
+    log.info({ summaryLength: summary.length, model: result.model }, 'Session summary generated')
     return summary
   } catch (error) {
-    log.error({ error, transcriptLength: transcript.length }, 'Failed to generate summary')
+    log.error({ error: describeError(error), transcriptLength: transcript.length }, 'Failed to generate summary')
     throw error
+  } finally {
+    rmSync(workspaceDir, { recursive: true, force: true })
   }
 }

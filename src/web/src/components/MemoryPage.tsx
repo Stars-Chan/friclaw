@@ -3,10 +3,20 @@ import { Brain, FileText, Clock, Save } from 'lucide-react';
 
 type MemoryType = 'identity' | 'knowledge' | 'episodes';
 
+type KnowledgeSummary = {
+  id: string;
+  title: string;
+  tags: string[];
+  domain: string;
+  status: string;
+  confidence: string;
+  updatedAt: string;
+};
+
 export function MemoryPage() {
   const [activeType, setActiveType] = useState<MemoryType>('identity');
   const [identityContent, setIdentityContent] = useState('');
-  const [knowledgeList, setKnowledgeList] = useState<string[]>([]);
+  const [knowledgeList, setKnowledgeList] = useState<KnowledgeSummary[]>([]);
   const [selectedKnowledge, setSelectedKnowledge] = useState('');
   const [knowledgeContent, setKnowledgeContent] = useState('');
   const [episodes, setEpisodes] = useState<any[]>([]);
@@ -21,7 +31,17 @@ export function MemoryPage() {
     } else if (activeType === 'knowledge') {
       fetch('/api/memory/knowledge')
         .then(res => res.json())
-        .then(data => setKnowledgeList(data.list || []));
+        .then(data => {
+          const list = data.list || [];
+          setKnowledgeList(list);
+          setSelectedKnowledge((current) => {
+            if (current && list.some((item: KnowledgeSummary) => item.id === current)) {
+              return current;
+            }
+            setKnowledgeContent('');
+            return '';
+          });
+        });
     } else if (activeType === 'episodes') {
       fetch('/api/memory/episodes')
         .then(res => res.json())
@@ -34,6 +54,8 @@ export function MemoryPage() {
       fetch(`/api/memory/knowledge/${encodeURIComponent(selectedKnowledge)}`)
         .then(res => res.json())
         .then(data => setKnowledgeContent(data.content || ''));
+    } else {
+      setKnowledgeContent('');
     }
   }, [selectedKnowledge]);
 
@@ -126,15 +148,16 @@ export function MemoryPage() {
           <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
             <h4 className="text-sm font-medium text-gray-200 mb-2">知识列表</h4>
             <div className="space-y-1">
-              {knowledgeList.map(topic => (
+              {knowledgeList.map((topic) => (
                 <div
-                  key={topic}
-                  onClick={() => setSelectedKnowledge(topic)}
-                  className={`px-2 py-1 rounded cursor-pointer text-sm ${
-                    selectedKnowledge === topic ? 'bg-blue-600 text-white' : 'hover:bg-gray-700 text-gray-300'
+                  key={topic.id}
+                  onClick={() => setSelectedKnowledge(topic.id)}
+                  className={`px-2 py-2 rounded cursor-pointer text-sm ${
+                    selectedKnowledge === topic.id ? 'bg-blue-600 text-white' : 'hover:bg-gray-700 text-gray-300'
                   }`}
                 >
-                  {topic}
+                  <div className="font-medium">{topic.title || topic.id}</div>
+                  <div className="text-xs opacity-70">{topic.id}.md</div>
                 </div>
               ))}
             </div>

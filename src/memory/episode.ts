@@ -6,7 +6,7 @@ import { parseFrontmatter, normalizeStringArray, serializeFrontmatter } from './
 import { summarizeTranscript } from './summarizer'
 import { logger } from '../utils/logger'
 import { getWorkspaceHistoryDir, getWorkspaceHistoryFile } from '../session/history-paths'
-import type { EpisodeMetadata, EpisodeRecord, EpisodeThreadState } from './types'
+import type { EpisodeMetadata, EpisodeRecord, EpisodeThreadState, EpisodeSummaryMode, EpisodeThreadStatus } from './types'
 
 const log = logger('episode')
 
@@ -73,6 +73,21 @@ function buildEpisodeMetadata(id: string, tags: string[] = [], metadata: Partial
     nextStep: metadata.nextStep,
     blockers: metadata.blockers,
   }
+}
+
+function buildFallbackSummary(transcript: string, metadata: Partial<EpisodeMetadata>): string {
+  const lines = transcript
+    .split('\n')
+    .map(line => line.trim())
+    .filter(Boolean)
+    .slice(-12)
+
+  return `## 摘要\n自动摘要失败，已保存 fallback 归档，供后续恢复与排查使用。\n\n## 关键话题\n- thread: ${metadata.threadId ?? 'unknown'}\n- chat: ${metadata.chatKey ?? 'unknown'}\n\n## 决策与结果\n- 本次会话存在可归档 transcript\n- AI 摘要未成功生成，已回退为本地归档\n\n## 重要信息\n${lines.map(line => `- ${line}`).join('\n')}`
+}
+
+export interface SummarizeSessionResult {
+  id: string
+  mode: EpisodeSummaryMode
 }
 
 export class EpisodeMemory {
@@ -153,11 +168,11 @@ export class EpisodeMemory {
     options?: {
       threadId?: string
       chatKey?: string
-      status?: 'active' | 'paused' | 'closed'
+      status?: EpisodeThreadStatus
       nextStep?: string
       blockers?: string[]
     }
-  ): Promise<string | null> {
+  ): Promise<SummarizeSessionResult | null> {
     const historyDir = getWorkspaceHistoryDir(workspaceDir)
 
     let files: string[]
@@ -245,10 +260,31 @@ export class EpisodeMemory {
       const id = this.save(summary, metadata.tags, metadata)
       writeFileSync(markerPath, JSON.stringify(newOffsets, null, 2), 'utf-8')
       log.info({ conversationId, id }, 'Session summary saved')
-      return id
+      return { id, mode: 'summary' }
     } catch (err) {
-      log.warn({ conversationId, error: err }, 'Failed to summarize session')
-      return null
+      log.warn({
+        conversationId,
+        error: err instanceof Error
+          ? { name: err.name, message: err.message, stack: err.stack, cause: err.cause }
+          : err,
+      }, 'Failed to summarize session')
+
+      const fallbackStatus: EpisodeThreadStatus = 'summary_failed'
+      const fallbackMetadata = buildEpisodeMetadata(createEpisodeId(), ['fallback', 'summary-failed'], {
+        title: options?.threadId ? `fallback-${options.threadId}` : undefined,
+        threadId: options?.threadId,
+        chatKey: options?.chatKey,
+        status: fallbackStatus,
+        sourceSessionId: conversationId,
+        sourceWorkspaceDir: workspaceDir,
+        nextStep: options?.nextStep,
+        blockers: options?.blockers,
+      })
+      const fallbackSummary = buildFallbackSummary(truncated, fallbackMetadata)
+      const id = this.save(fallbackSummary, fallbackMetadata.tags, fallbackMetadata)
+      writeFileSync(markerPath, JSON.stringify(newOffsets, null, 2), 'utf-8')
+      log.warn({ conversationId, id }, 'Fallback session summary saved')
+      return { id, mode: 'fallback' }
     }
   }
 

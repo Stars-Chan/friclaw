@@ -3,7 +3,7 @@ import { logger } from '../utils/logger'
 import type { Agent, StreamHandler } from '../dispatcher'
 import type { Session } from '../session/types'
 import type { Message } from '../types/message'
-import type { AgentStreamEvent, RunRequest } from './types'
+import type { AgentStreamEvent, RunRequest, RunResponseStats } from './types'
 import { readLines, buildContent } from './utils'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
@@ -39,6 +39,158 @@ interface ProcessState {
   lastUsedAt: number
   isHealthy: boolean
   sessionContext?: { chatId?: string; platform?: string; userId?: string; chatType?: 'private' | 'group' }
+}
+
+function buildClaudeArgs(options: {
+  allowedTools?: string[]
+  soulContent?: string
+  resumeId?: string
+} = {}): string[] {
+  const args = [
+    'claude',
+    '--input-format', 'stream-json',
+    '--output-format', 'stream-json',
+    '--verbose',
+  ]
+
+  if (options.allowedTools && options.allowedTools.length > 0) {
+    args.push('--allowedTools', options.allowedTools.join(','))
+  } else {
+    args.push('--allow-dangerously-skip-permissions')
+    args.push('--dangerously-skip-permissions')
+  }
+
+  args.push('--disallowedTools', 'CronCreate,CronDelete,CronList')
+
+  if (options.resumeId) args.push('--resume', options.resumeId)
+  if (options.soulContent) args.push('--system-prompt', options.soulContent)
+  return args
+}
+
+function buildClaudeEnv(context?: Pick<RunRequest, 'chatId' | 'platform' | 'userId' | 'chatType'>): NodeJS.ProcessEnv {
+  const env = { ...process.env }
+  delete env.CLAUDECODE
+
+  const skillsEnvPath = join(homedir(), '.claude', 'skills', '.env')
+  if (existsSync(skillsEnvPath)) {
+    try {
+      const envContent = readFileSync(skillsEnvPath, 'utf-8')
+      for (const line of envContent.split('\n')) {
+        const trimmed = line.trim()
+        if (!trimmed || trimmed.startsWith('#')) continue
+        const idx = trimmed.indexOf('=')
+        if (idx > 0) {
+          const key = trimmed.slice(0, idx).trim()
+          let value = trimmed.slice(idx + 1).trim()
+          if ((value.startsWith('"') && value.endsWith('"')) ||
+              (value.startsWith("'") && value.endsWith("'"))) {
+            value = value.slice(1, -1)
+          }
+          env[key] = value
+        }
+      }
+      log.debug({ path: skillsEnvPath }, 'Loaded env from skills/.env')
+    } catch (error) {
+      log.warn({ error, path: skillsEnvPath }, 'Failed to load skills/.env')
+    }
+  }
+
+  if (context?.chatId) env.FRICLAW_CHAT_ID = context.chatId
+  if (context?.platform) env.FRICLAW_PLATFORM = context.platform
+  if (context?.userId) env.FRICLAW_USER_ID = context.userId
+  if (context?.chatType) env.FRICLAW_CHAT_TYPE = context.chatType
+  env.FRICLAW_WORKDIR = process.cwd()
+
+  return env
+}
+
+export async function runClaudeCodePrompt(
+  request: RunRequest,
+  options: {
+    spawnFn?: SpawnFn
+    soulContent?: string
+    model?: string
+    allowedTools?: string[]
+    timeoutMs?: number
+  } = {},
+): Promise<RunResponseStats> {
+  const spawnFn = options.spawnFn ?? ((args, opts) => Bun.spawn(args, opts))
+  const startTime = Date.now()
+  const args = buildClaudeArgs({
+    allowedTools: options.allowedTools,
+    soulContent: options.soulContent,
+  })
+
+  const proc = spawnFn(args, {
+    cwd: request.workspaceDir,
+    stdin: 'pipe',
+    stdout: 'pipe',
+    stderr: 'pipe',
+    env: buildClaudeEnv(request),
+  })
+
+  const timeout = options.timeoutMs
+    ? setTimeout(() => proc.kill(), options.timeoutMs)
+    : null
+
+  ;(async () => {
+    try {
+      for await (const line of readLines(proc.stderr as ReadableStream<Uint8Array>)) {
+        if (line.trim()) log.warn({ conversationId: request.conversationId, line }, 'claude stderr')
+      }
+    } catch (error) {
+      log.error({ conversationId: request.conversationId, error }, 'Error reading stderr')
+    }
+  })()
+
+  try {
+    const stdin = proc.stdin
+    if (!stdin || typeof stdin === 'number') {
+      throw new Error('Process stdin is not available')
+    }
+
+    const payload = JSON.stringify({
+      type: 'user',
+      message: { role: 'user', content: buildContent(request) },
+    }) + '\n'
+    stdin.write(payload)
+    if ('flush' in stdin) (stdin as { flush(): void }).flush()
+
+    for await (const line of readLines(proc.stdout as ReadableStream<Uint8Array>)) {
+      if (!line.trim()) continue
+      let event: Record<string, unknown>
+      try {
+        event = JSON.parse(line)
+      } catch {
+        continue
+      }
+
+      if (event.type === 'result') {
+        const usage = event.usage as { input_tokens?: number; output_tokens?: number } | undefined
+        const resultEvt = event as { session_id?: string; cost_usd?: number; model?: string }
+        const inputTokens = usage?.input_tokens ?? 0
+        const outputTokens = usage?.output_tokens ?? 0
+        const costCny = resultEvt.cost_usd
+          ? resultEvt.cost_usd * 7.2
+          : calculateCost(inputTokens, outputTokens)
+        return {
+          text: typeof event.result === 'string' ? event.result : '',
+          sessionId: resultEvt.session_id ?? '',
+          model: resultEvt.model ?? options.model,
+          elapsedMs: Date.now() - startTime,
+          inputTokens,
+          outputTokens,
+          costCny,
+        }
+      }
+    }
+
+    throw new Error('Claude Code stream ended without result event')
+  } finally {
+    if (timeout) clearTimeout(timeout)
+    proc.kill()
+    await proc.exited.catch(() => {})
+  }
 }
 
 export class ClaudeCodeAgent implements Agent {

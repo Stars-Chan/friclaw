@@ -5,6 +5,7 @@ import { tmpdir } from 'os'
 import { EpisodeMemory } from '../../src/memory/episode'
 import { initDatabase } from '../../src/memory/database'
 import { getWorkspaceDailyHistoryFile, getWorkspaceHistoryDir, getWorkspaceHistoryFile } from '../../src/session/history-paths'
+import * as summarizer from '../../src/memory/summarizer'
 
 describe('Session Summarization Integration', () => {
   const testDir = join(tmpdir(), `friclaw-test-${Date.now()}`)
@@ -102,17 +103,51 @@ describe('Session Summarization Integration', () => {
     expect(summaryId).toBeNull()
   })
 
-  test('should handle missing history directory gracefully', async () => {
-    const conversationId = 'test:nonexistent'
+  test('should save fallback episode when summarization fails', async () => {
+    const conversationId = 'test:fallback'
     const workspaceDir = join(workspacesDir, conversationId.replace(/:/g, '_'))
+    const historyDir = getWorkspaceHistoryDir(workspaceDir)
+    mkdirSync(historyDir, { recursive: true })
 
-    const summaryId = await episode.summarizeSession(
-      conversationId,
-      workspaceDir,
-      'claude-haiku-4-5',
-      30000
+    const date = new Date().toISOString().slice(0, 10)
+    writeFileSync(
+      getWorkspaceDailyHistoryFile(workspaceDir, date),
+      `[user] 我习惯用 TypeScript 开发，后续如果没有特别说明，希望默认使用 TS 和 TSX 来写代码与示例。\n[assistant] 好的，我记住了，后续会优先使用 TypeScript 风格。\n[user] 请继续记录这个偏好，后续实现默认 TypeScript，并在需要时补充类型定义与接口设计，避免再回到纯 JavaScript 风格。`,
+      'utf-8',
     )
 
-    expect(summaryId).toBeNull()
+    summarizer.setSummarizeRunnerForTest(async () => {
+      throw new Error('summary failed')
+    })
+
+    try {
+      const result = await episode.summarizeSession(
+        conversationId,
+        workspaceDir,
+        'claude-haiku-4-5',
+        30000,
+        {
+          threadId: 'test:fallback:thread-1',
+          chatKey: 'test:fallback',
+          status: 'closed',
+        },
+      )
+
+      expect(result).toBeTruthy()
+      expect(result?.mode).toBe('fallback')
+
+      const markerPath = getWorkspaceHistoryFile(workspaceDir, '.last-summarized-offset')
+      expect(existsSync(markerPath)).toBe(true)
+
+      const record = episode.readRecord(result!.id)
+      expect(record?.metadata.status).toBe('summary_failed')
+      expect(record?.summary).toContain('自动摘要失败')
+
+      const thread = episode.readThreadState('test:fallback:thread-1')
+      expect(thread?.status).toBe('summary_failed')
+      expect(thread?.lastSummaryId).toBe(result!.id)
+    } finally {
+      summarizer.resetSummarizeRunnerForTest()
+    }
   })
 })

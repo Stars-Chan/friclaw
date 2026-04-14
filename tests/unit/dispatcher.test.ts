@@ -53,7 +53,7 @@ describe('Dispatcher', () => {
     expect(agent.calls[0].sessionId).toBe('feishu:ou_abc')
   })
 
-  it('injects runtime memory context and handles /new thread closure', async () => {
+  it('injects runtime memory context and closes thread only after successful summary', async () => {
     const agent = makeAgent()
     const dispatcher = new Dispatcher(sessionManager, agent)
     const ensured: string[] = []
@@ -72,7 +72,7 @@ describe('Dispatcher', () => {
       }),
       summarizeSession: async (...args: any[]) => {
         summarized.push(args)
-        return null
+        return { id: 'ep-1', mode: 'summary' }
       },
       closeThread: (id: string) => closed.push(id),
       pauseThread: () => {},
@@ -91,6 +91,25 @@ describe('Dispatcher', () => {
     await dispatcher.dispatch(msg({ type: 'command', content: '/new' }))
     expect(closed).toContain('feishu:ou_abc:thread-1')
     expect(summarized.some(call => call[2]?.status === 'closed')).toBe(true)
+    expect(agent.disposed).toContain('feishu:ou_abc')
+  })
+
+  it('preserves failed summary thread state on /new fallback', async () => {
+    const agent = makeAgent()
+    const dispatcher = new Dispatcher(sessionManager, agent)
+    const closed: string[] = []
+
+    dispatcher.setMemoryManager({
+      ensureThread: () => 'feishu:ou_abc:thread-1',
+      buildRuntimeContext: () => ({ knowledge: [], promptBlock: '' }),
+      summarizeSession: async () => ({ id: 'ep-fallback', mode: 'fallback' }),
+      closeThread: (id: string) => closed.push(id),
+      pauseThread: () => {},
+    } as any)
+
+    await dispatcher.dispatch(msg())
+    await dispatcher.dispatch(msg({ type: 'command', content: '/new' }))
+    expect(closed).toHaveLength(0)
     expect(agent.disposed).toContain('feishu:ou_abc')
   })
 }
