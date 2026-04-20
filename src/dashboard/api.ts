@@ -522,7 +522,7 @@ export async function startDashboard(
   }
 }
 
-async function handleWebSocketMessage(
+export async function handleWebSocketMessage(
   ws: ServerWebSocket,
   data: string | Buffer,
   dispatcher: Dispatcher,
@@ -557,28 +557,13 @@ async function handleWebSocketMessage(
     }
 
     if (content === '/new') {
-      if (memoryManager?.summarizeSession && memoryManager?.ensureThread) {
-        const previousThreadId = memoryManager.ensureThread({
+      const previousSession = sessionManager.get(sessionId)
+      if (previousSession && memoryManager?.startBackgroundSummary) {
+        memoryManager.startBackgroundSummary({
           sessionId: `dashboard:${sessionId}`,
-          platform: 'dashboard',
-          chatId: sessionId,
           workspaceDir: join(workspacesDir, `dashboard_${sessionId}`),
+          chatKey: `dashboard:${sessionId}`,
         })
-
-        const result = await memoryManager
-          .summarizeSession(`dashboard:${sessionId}`, join(workspacesDir, `dashboard_${sessionId}`), {
-            threadId: previousThreadId,
-            chatKey: `dashboard:${sessionId}`,
-            status: 'closed',
-          })
-          .catch((err: unknown) => {
-            log.warn({ sessionId, error: err }, 'Failed to summarize dashboard session')
-            return null
-          })
-
-        if (result?.mode === 'summary') {
-          memoryManager.closeThread?.(previousThreadId)
-        }
       }
 
       const newSessionId = `session_${Date.now()}`

@@ -3,6 +3,7 @@ import { join } from 'path'
 import type { Database } from 'bun:sqlite'
 import type { FriClawConfig } from '../config'
 import { logger } from '../utils/logger'
+import { LaneQueue } from '../utils/lane-queue'
 import { initDatabase, search, type SearchResult } from './database'
 import { IdentityMemory } from './identity'
 import { KnowledgeMemory } from './knowledge'
@@ -29,6 +30,13 @@ export interface ThreadSummaryResult {
   mode: EpisodeSummaryMode
 }
 
+export interface BackgroundSummaryInput {
+  sessionId: string
+  workspaceDir: string
+  threadId?: string
+  chatKey: string
+}
+
 export class MemoryManager {
   identity!: IdentityMemory
   knowledge!: KnowledgeMemory
@@ -36,6 +44,7 @@ export class MemoryManager {
   private db!: Database
   private summaryModel: string
   private summaryTimeout: number
+  private summaryQueue = new LaneQueue()
 
   constructor(
     private config: FriClawConfig['memory'],
@@ -172,6 +181,29 @@ export class MemoryManager {
     }
 
     return result
+  }
+
+  startBackgroundSummary(input: BackgroundSummaryInput): void {
+    const laneKey = input.threadId || input.sessionId
+    this.summaryQueue.enqueue(laneKey, async () => {
+      const result = await this.summarizeSession(input.sessionId, input.workspaceDir, {
+        threadId: input.threadId,
+        chatKey: input.chatKey,
+        status: 'closed',
+      })
+
+      if (input.threadId && result?.mode === 'summary') {
+        this.closeThread(input.threadId)
+      }
+    }).catch(error => {
+      log.warn({ sessionId: input.sessionId, threadId: input.threadId, error }, 'Failed to summarize session in background')
+    })
+  }
+
+  async drainBackgroundSummaries(): Promise<void> {
+    while (this.summaryQueue.activeLanes() > 0) {
+      await new Promise(resolve => setTimeout(resolve, 10))
+    }
   }
 
   private updateThreadStatus(status: EpisodeThreadStatus, threadId: string, patch?: { nextStep?: string; blockers?: string[] }): void {

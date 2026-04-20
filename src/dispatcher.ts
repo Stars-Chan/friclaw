@@ -150,24 +150,16 @@ export class Dispatcher {
     const sessionId = `${message.platform}:${message.chatId}`
     switch (message.content) {
       case '/new': {
-        if (this.memoryManager) {
-          const session = this.sessionManager.get(sessionId)
-          if (session) {
-            const result = await this.memoryManager
-              .summarizeSession(sessionId, session.workspaceDir, {
-                threadId: session.threadId,
-                chatKey: `${session.platform}:${session.chatId}`,
-                status: 'closed',
-              })
-              .catch(err => {
-                log.warn({ sessionId, error: err }, 'Failed to summarize session')
-                return null
-              })
-            if (session.threadId && result?.mode === 'summary') {
-              this.memoryManager.closeThread(session.threadId)
-            }
-          }
+        const session = this.sessionManager.get(sessionId)
+        if (session && this.memoryManager) {
+          this.memoryManager.startBackgroundSummary({
+            sessionId,
+            workspaceDir: session.workspaceDir,
+            threadId: session.threadId,
+            chatKey: `${session.platform}:${session.chatId}`,
+          })
         }
+
         await this.agent.dispose(sessionId)
         const newSession = this.sessionManager.newSession(message.platform, message.chatId, message.userId)
         this.ensureSessionThread(newSession)

@@ -219,6 +219,7 @@ async function runServer(config: Awaited<ReturnType<typeof loadConfig>>): Promis
   })
 
   const dispatcher = new Dispatcher(sessionManager, agent, async () => {
+    await memory.drainBackgroundSummaries()
     await agent.dispose()
     await memory.shutdown()
   })

@@ -60,7 +60,7 @@ describe('Dispatcher', () => {
     const summarized: any[] = []
     const closed: string[] = []
 
-    dispatcher.setMemoryManager({
+    const memoryManager: any = {
       ensureThread: () => {
         const id = 'feishu:ou_abc:thread-1'
         ensured.push(id)
@@ -74,9 +74,17 @@ describe('Dispatcher', () => {
         summarized.push(args)
         return { id: 'ep-1', mode: 'summary' }
       },
+      startBackgroundSummary: ({ sessionId, workspaceDir, threadId, chatKey }: any) => {
+        memoryManager.summarizeSession(sessionId, workspaceDir, { threadId, chatKey, status: 'closed' }).then((result: any) => {
+          if (threadId && result?.mode === 'summary') {
+            memoryManager.closeThread(threadId)
+          }
+        })
+      },
       closeThread: (id: string) => closed.push(id),
       pauseThread: () => {},
-    } as any)
+    }
+    dispatcher.setMemoryManager(memoryManager)
 
     await dispatcher.dispatch(msg({ content: 'continue project' }))
     expect(ensured).toHaveLength(1)
@@ -89,9 +97,55 @@ describe('Dispatcher', () => {
     expect(firstHistory).not.toContain('[Memory Context]')
 
     await dispatcher.dispatch(msg({ type: 'command', content: '/new' }))
+    await Promise.resolve()
     expect(closed).toContain('feishu:ou_abc:thread-1')
     expect(summarized.some(call => call[2]?.status === 'closed')).toBe(true)
     expect(agent.disposed).toContain('feishu:ou_abc')
+  })
+
+  it('starts session summary in background on /new', async () => {
+    const agent = makeAgent()
+    const dispatcher = new Dispatcher(sessionManager, agent)
+    const closed: string[] = []
+    let releaseSummary: (() => void) | null = null
+    const summarizeCalls: any[] = []
+
+    const memoryManager: any = {
+      ensureThread: () => 'feishu:ou_abc:thread-1',
+      buildRuntimeContext: () => ({ knowledge: [], promptBlock: '' }),
+      summarizeSession: (...args: any[]) => {
+        summarizeCalls.push(args)
+        return new Promise((resolve) => {
+          releaseSummary = () => resolve({ id: 'ep-1', mode: 'summary' })
+        })
+      },
+      startBackgroundSummary: ({ sessionId, workspaceDir, threadId, chatKey }: any) => {
+        memoryManager.summarizeSession(sessionId, workspaceDir, { threadId, chatKey, status: 'closed' }).then((result: any) => {
+          if (threadId && result?.mode === 'summary') {
+            memoryManager.closeThread(threadId)
+          }
+        })
+      },
+      closeThread: (id: string) => closed.push(id),
+      pauseThread: () => {},
+    }
+    dispatcher.setMemoryManager(memoryManager)
+
+    let replied = false
+    await dispatcher.dispatch(msg())
+    await dispatcher.dispatch(msg({ type: 'command', content: '/new' }), async (content) => {
+      replied = true
+      return content
+    })
+
+    expect(replied).toBe(true)
+    expect(agent.disposed).toContain('feishu:ou_abc')
+    expect(summarizeCalls).toHaveLength(1)
+    expect(closed).toHaveLength(0)
+
+    releaseSummary?.()
+    await dispatcher.drainQueues()
+    expect(closed).toEqual(['feishu:ou_abc:thread-1'])
   })
 
   it('preserves failed summary thread state on /new fallback', async () => {
@@ -99,16 +153,25 @@ describe('Dispatcher', () => {
     const dispatcher = new Dispatcher(sessionManager, agent)
     const closed: string[] = []
 
-    dispatcher.setMemoryManager({
+    const memoryManager: any = {
       ensureThread: () => 'feishu:ou_abc:thread-1',
       buildRuntimeContext: () => ({ knowledge: [], promptBlock: '' }),
       summarizeSession: async () => ({ id: 'ep-fallback', mode: 'fallback' }),
+      startBackgroundSummary: ({ sessionId, workspaceDir, threadId, chatKey }: any) => {
+        memoryManager.summarizeSession(sessionId, workspaceDir, { threadId, chatKey, status: 'closed' }).then((result: any) => {
+          if (threadId && result?.mode === 'summary') {
+            memoryManager.closeThread(threadId)
+          }
+        })
+      },
       closeThread: (id: string) => closed.push(id),
       pauseThread: () => {},
-    } as any)
+    }
+    dispatcher.setMemoryManager(memoryManager)
 
     await dispatcher.dispatch(msg())
     await dispatcher.dispatch(msg({ type: 'command', content: '/new' }))
+    await Promise.resolve()
     expect(closed).toHaveLength(0)
     expect(agent.disposed).toContain('feishu:ou_abc')
   })
