@@ -27,9 +27,9 @@ afterEach(async () => {
 })
 
 describe('MemoryMcpServer tools', () => {
-  it('getTools() returns 4 tools', () => {
+  it('getTools() returns 5 tools', () => {
     const tools = mcpServer.tools()
-    expect(tools).toHaveLength(4)
+    expect(tools).toHaveLength(5)
   })
 
   it('memory_save + memory_read roundtrip for knowledge returns structured record', async () => {
@@ -78,28 +78,51 @@ describe('MemoryMcpServer tools', () => {
     expect((result.content[0] as { type: 'text'; text: string }).text).toContain('Boss likes concise updates')
   })
 
-  it('memory_save for episode promotes incrementally without creating identity candidates', async () => {
-    manager.knowledge.saveRecord({
-      id: 'owner-profile',
+  it('memory_save rejects invalid knowledge metadata', async () => {
+    const result = await mcpServer.call('memory_save', {
+      content: 'bad metadata',
+      id: 'broken',
+      category: 'knowledge',
       metadata: {
-        title: 'owner-profile',
+        title: 'broken',
+        date: new Date().toISOString(),
+        tags: [],
+        status: 'broken',
+      },
+    })
+    expect(result.isError).toBeTruthy()
+  })
+
+  it('identity_candidate_review approves candidate and writes to SOUL only after review', async () => {
+    manager.knowledge.saveRecord({
+      id: 'user-style',
+      metadata: {
+        title: 'user-style',
         date: new Date().toISOString(),
         tags: ['profile'],
+        domain: 'preference',
         status: 'active',
         confidence: 'high',
       },
-      content: 'Boss prefers concise updates',
+      content: 'User prefers concise updates',
     })
+    const candidate = manager.collectPromotionCandidates().find(item => item.targetCategory === 'identity')!
 
-    const saveResult = await mcpServer.call('memory_save', {
-      content: 'continue runtime memory implementation',
-      category: 'episode',
-      metadata: { nextStep: 'Finish retriever' },
+    const before = manager.identity.read()
+    const deferred = await mcpServer.call('identity_candidate_review', {
+      id: candidate.id,
+      decision: 'defer',
+      rationale: 'wait',
     })
+    expect(deferred.isError).toBeFalsy()
+    expect(manager.identity.read()).toBe(before)
 
-    expect(saveResult.isError).toBeFalsy()
-    const knowledgeEntries = manager.knowledge.listRecords()
-    expect(knowledgeEntries.some(entry => entry.id.startsWith('promotion-episode-'))).toBe(true)
-    expect(knowledgeEntries.some(entry => entry.id === 'owner-profile')).toBe(true)
+    const approved = await mcpServer.call('identity_candidate_review', {
+      id: candidate.id,
+      decision: 'approve',
+      rationale: 'confirmed',
+    })
+    expect(approved.isError).toBeFalsy()
+    expect(manager.identity.read()).toContain('User prefers concise updates')
   })
 })

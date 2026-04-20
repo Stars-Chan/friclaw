@@ -1,5 +1,6 @@
 import { BaseMcpServer, type Tool, type CallToolResult } from '../mcp/server'
 import type { MemoryManager } from './manager'
+import { toValidatedKnowledgeRecord } from './knowledge'
 
 export class MemoryMcpServer extends BaseMcpServer {
   constructor(private manager: MemoryManager) {
@@ -71,6 +72,20 @@ export class MemoryMcpServer extends BaseMcpServer {
           required: ['id'],
         },
       },
+      {
+        name: 'identity_candidate_review',
+        description: '审批 identity promotion candidate，并在 approve 时受控写回 SOUL',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', description: 'candidate id' },
+            decision: { type: 'string', enum: ['approve', 'reject', 'defer'] },
+            reviewer: { type: 'string' },
+            rationale: { type: 'string' },
+          },
+          required: ['id', 'decision'],
+        },
+      },
     ]
   }
 
@@ -103,6 +118,7 @@ export class MemoryMcpServer extends BaseMcpServer {
             tags?: string[]
             metadata?: Record<string, unknown>
           }
+          const shared = this.manager.getSharedMemoryModels()
           if (category === 'identity') {
             this.manager.identity.update(content)
             return this.ok('Identity (SOUL.md) updated.')
@@ -114,25 +130,23 @@ export class MemoryMcpServer extends BaseMcpServer {
             return this.ok(`Episode saved: ${episodeId}`)
           }
           const topic = id ?? 'notes'
-          this.manager.knowledge.saveRecord({
-            id: topic,
-            metadata: {
-              ...(metadata ?? {}),
-              tags: tags ?? (Array.isArray((metadata ?? {}).tags) ? (metadata as any).tags : []),
-            } as any,
+          this.manager.knowledge.saveRecord(toValidatedKnowledgeRecord(topic, {
             content,
-          })
+            metadata: metadata as any,
+            tags,
+          }))
           return this.ok(`Knowledge saved: ${topic}`)
         }
 
         case 'memory_list': {
           const { category, detailed } = args as { category?: 'identity' | 'knowledge' | 'episode'; detailed?: boolean }
+          const shared = this.manager.getSharedMemoryModels()
           if (!category || category === 'knowledge') {
             const topics = this.manager.knowledge.listRecords()
             return this.ok(
               topics.length
                 ? topics.map(topic => detailed
-                  ? JSON.stringify(topic, null, 2)
+                  ? JSON.stringify({ ...topic, shared }, null, 2)
                   : `${topic.id} [${topic.metadata.tags.join(', ')}]`).join('\n')
                 : 'No knowledge entries.'
             )
@@ -142,7 +156,7 @@ export class MemoryMcpServer extends BaseMcpServer {
             return this.ok(
               episodes.length
                 ? episodes.map(e => detailed
-                  ? JSON.stringify(e, null, 2)
+                  ? JSON.stringify({ ...e, shared }, null, 2)
                   : `${e.id} [${e.tags.join(', ')}]${e.threadId ? ` thread=${e.threadId}` : ''}`).join('\n')
                 : 'No episodes.'
             )
@@ -168,6 +182,18 @@ export class MemoryMcpServer extends BaseMcpServer {
           const record = this.manager.knowledge.readRecord(id)
           if (!record) return this.err(`Not found: ${id}`)
           return this.ok(JSON.stringify(record, null, 2))
+        }
+
+        case 'identity_candidate_review': {
+          const { id, decision, reviewer, rationale } = args as {
+            id: string
+            decision: 'approve' | 'reject' | 'defer'
+            reviewer?: string
+            rationale?: string
+          }
+          const candidate = this.manager.reviewIdentityCandidate(id, { decision, reviewer, rationale })
+          if (!candidate) return this.err(`Not found: ${id}`)
+          return this.ok(JSON.stringify(candidate, null, 2))
         }
 
         default:

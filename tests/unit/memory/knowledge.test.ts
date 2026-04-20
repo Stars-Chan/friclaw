@@ -4,7 +4,7 @@ import { join } from 'path'
 import { tmpdir } from 'os'
 import { Database } from 'bun:sqlite'
 import { initDatabase, search } from '../../../src/memory/database'
-import { KnowledgeMemory } from '../../../src/memory/knowledge'
+import { KnowledgeMemory, toValidatedKnowledgeRecord } from '../../../src/memory/knowledge'
 
 let tmpDir: string
 let db: Database
@@ -92,5 +92,61 @@ describe('KnowledgeMemory', () => {
     expect(repeatId).toBe(firstId)
     expect(knowledge.read(firstId)).toContain('content C')
     expect(knowledge.read(secondId)).toContain('content B')
+  })
+
+  it('toValidatedKnowledgeRecord() accepts canonical lifecycle statuses', () => {
+    expect(toValidatedKnowledgeRecord('uncertain-note', {
+      content: 'hello',
+      metadata: {
+        title: 'uncertain-note',
+        date: new Date().toISOString(),
+        tags: [],
+        status: 'uncertain',
+      },
+    }).metadata.status).toBe('uncertain')
+
+    expect(toValidatedKnowledgeRecord('archived-note', {
+      content: 'hello',
+      metadata: {
+        title: 'archived-note',
+        date: new Date().toISOString(),
+        tags: [],
+        status: 'archived',
+      },
+    }).metadata.status).toBe('archived')
+  })
+
+  it('toValidatedKnowledgeRecord() rejects legacy statuses', () => {
+    expect(() => toValidatedKnowledgeRecord('legacy-draft', {
+      content: 'hello',
+      metadata: {
+        title: 'legacy-draft',
+        date: new Date().toISOString(),
+        tags: [],
+        status: 'draft' as any,
+      },
+    })).toThrow('Invalid knowledge status')
+
+    expect(() => toValidatedKnowledgeRecord('legacy-deprecated', {
+      content: 'hello',
+      metadata: {
+        title: 'legacy-deprecated',
+        date: new Date().toISOString(),
+        tags: [],
+        status: 'deprecated' as any,
+      },
+    })).toThrow('Invalid knowledge status')
+  })
+
+  it('saveRecord() rejects empty content', () => {
+    expect(() => knowledge.saveRecord({
+      id: 'bad',
+      metadata: {
+        title: 'bad',
+        date: new Date().toISOString(),
+        tags: [],
+      },
+      content: '   ',
+    })).toThrow('Knowledge content is required')
   })
 })

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test'
-import { mkdtempSync, rmSync, existsSync } from 'fs'
+import { mkdtempSync, rmSync, existsSync, writeFileSync } from 'fs'
 import { join } from 'path'
 import { tmpdir } from 'os'
 import { Database } from 'bun:sqlite'
@@ -41,5 +41,42 @@ describe('IdentityMemory', () => {
     identity.update('FriClaw is a smart assistant')
     const results = search(db, 'smart', 'identity')
     expect(results.length).toBeGreaterThan(0)
+  })
+
+  it('update() records before and after content in version history', () => {
+    const before = identity.read()
+    const after = `${before}\n\n## New Rule\n- Keep answers concise`
+
+    identity.update(after)
+
+    const latest = identity.listVersions()[0]
+    expect(latest?.content.trim()).toBe(before.trim())
+    expect(latest?.beforeContent?.trim()).toBe(before.trim())
+    expect(latest?.afterContent?.trim()).toBe(after.trim())
+  })
+
+  it('rollbackLatest() restores previous content using version history', () => {
+    const before = identity.read()
+    const after = `${before}\n\n## Temporary Rule\n- Mention every detail`
+
+    identity.update(after)
+    const rolledBack = identity.rollbackLatest()
+
+    expect(rolledBack?.beforeContent?.trim()).toBe(before.trim())
+    expect(identity.read().trim()).toBe(before.trim())
+  })
+
+  it('readVersion() remains compatible with legacy version files', () => {
+    const before = identity.read()
+    const versionsDir = join(tmpDir, 'identity', 'versions')
+    const versionPath = join(versionsDir, 'legacy.md')
+    const legacyContent = `---\nid: legacy\ncreatedAt: 2026-04-20T00:00:00.000Z\nsource: manual_update\n---\n${before}`
+
+    writeFileSync(versionPath, legacyContent)
+
+    const latest = identity.listVersions().find((version) => version.id === 'legacy')
+    expect(latest?.content.trim()).toBe(before.trim())
+    expect(latest?.beforeContent?.trim()).toBe(before.trim())
+    expect(latest?.afterContent).toBeUndefined()
   })
 })

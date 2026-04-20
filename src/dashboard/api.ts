@@ -11,6 +11,7 @@ import { existsSync, readdirSync } from 'fs'
 import { join } from 'path'
 import { parseFrontmatter, normalizeStringArray, serializeFrontmatter } from '../memory/frontmatter'
 import { isEpisodeRecord } from '../memory/episode'
+import { toValidatedKnowledgeRecord } from '../memory/knowledge'
 import type { EpisodeMetadata, KnowledgeMetadata } from '../memory/types'
 
 const log = logger('dashboard')
@@ -125,24 +126,10 @@ function updateFrontmatterContent<T extends object>(content: string, defaults: P
 
 function toKnowledgeRecord(topic: string, content: string) {
   const parsed = parseFrontmatter<KnowledgeMetadata>(content)
-  const now = new Date().toISOString()
-  const metadata = parsed.metadata
-
-  return {
-    id: topic,
-    metadata: {
-      title: typeof metadata.title === 'string' ? metadata.title : topic,
-      date: typeof metadata.date === 'string' ? metadata.date : now,
-      updatedAt: now,
-      tags: normalizeStringArray(metadata.tags),
-      domain: typeof metadata.domain === 'string' ? metadata.domain : undefined,
-      entities: normalizeStringArray(metadata.entities),
-      status: typeof metadata.status === 'string' ? metadata.status : undefined,
-      confidence: typeof metadata.confidence === 'string' ? metadata.confidence : undefined,
-      source: typeof metadata.source === 'string' ? metadata.source : undefined,
-    },
+  return toValidatedKnowledgeRecord(topic, {
     content: parsed.body,
-  }
+    metadata: parsed.metadata,
+  })
 }
 
 export async function startDashboard(
@@ -292,12 +279,13 @@ export async function startDashboard(
             return Response.json({ content: '', threadFiles: [] }, { headers: corsHeaders })
           }
         }
+
         if (req.method === 'POST') {
           try {
             const { content } = await req.json()
             const updatedContent = updateFrontmatterContent(content, { title: 'FriClaw Identity' })
             if (memoryManager?.identity) {
-              memoryManager.identity.update(updatedContent)
+              memoryManager.identity.update(updatedContent, { source: 'manual_update' })
             } else {
               await Bun.write(soulPath, updatedContent)
             }
@@ -305,6 +293,19 @@ export async function startDashboard(
           } catch {
             return Response.json({ success: false }, { status: 500, headers: corsHeaders })
           }
+        }
+      }
+
+      if (url.pathname === '/api/memory/identity/review' && req.method === 'POST') {
+        try {
+          const { id, decision, reviewer, rationale } = await req.json()
+          const reviewed = memoryManager?.reviewIdentityCandidate?.(id, { decision, reviewer, rationale })
+          if (!reviewed) {
+            return Response.json({ success: false }, { status: 404, headers: corsHeaders })
+          }
+          return Response.json({ success: true, candidate: reviewed }, { headers: corsHeaders })
+        } catch {
+          return Response.json({ success: false }, { status: 500, headers: corsHeaders })
         }
       }
 

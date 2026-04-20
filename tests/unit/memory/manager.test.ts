@@ -98,7 +98,15 @@ describe('MemoryManager', () => {
     })
 
     const candidates = manager.collectPromotionCandidates()
-    expect(candidates.some(candidate => candidate.targetCategory === 'identity')).toBe(true)
+    const identityCandidate = candidates.find(candidate => candidate.targetCategory === 'identity')
+    expect(identityCandidate).toBeTruthy()
+    expect(identityCandidate?.id).toBeTruthy()
+    expect(manager.knowledge.readIdentityCandidate(identityCandidate!.id!)).toMatchObject({
+      id: identityCandidate?.id,
+      sourceId: 'owner-profile',
+      targetCategory: 'identity',
+      status: 'proposed',
+    })
     expect(candidates.some(candidate => candidate.targetCategory === 'knowledge')).toBe(true)
   })
 
@@ -121,6 +129,104 @@ describe('MemoryManager', () => {
     const candidates = manager.collectPromotionCandidates([episodeId])
     expect(candidates.every(candidate => candidate.sourceCategory === 'episode')).toBe(true)
     expect(candidates.some(candidate => candidate.targetCategory === 'knowledge')).toBe(true)
+  })
+
+  it('collectPromotionCandidates() only promotes allowlisted active knowledge to identity', () => {
+    manager.knowledge.saveRecord({
+      id: 'user-style',
+      metadata: {
+        title: 'user-style',
+        date: new Date().toISOString(),
+        tags: ['profile'],
+        domain: 'preference',
+        status: 'active',
+        confidence: 'high',
+      },
+      content: 'User prefers concise updates',
+    })
+    manager.knowledge.saveRecord({
+      id: 'migration-plan',
+      metadata: {
+        title: 'migration-plan',
+        date: new Date().toISOString(),
+        tags: ['project'],
+        domain: 'project',
+        status: 'active',
+        confidence: 'high',
+      },
+      content: 'Migrate memory stack this week',
+    })
+    manager.knowledge.saveRecord({
+      id: 'uncertain-preference',
+      metadata: {
+        title: 'uncertain-preference',
+        date: new Date().toISOString(),
+        tags: ['profile'],
+        domain: 'preference',
+        status: 'uncertain',
+        confidence: 'high',
+      },
+      content: 'User might prefer shorter summaries',
+    })
+
+    const candidates = manager.collectPromotionCandidates()
+    expect(candidates.some(candidate => candidate.sourceId === 'user-style' && candidate.targetCategory === 'identity')).toBe(true)
+    expect(candidates.some(candidate => candidate.sourceId === 'migration-plan' && candidate.targetCategory === 'identity')).toBe(false)
+    expect(candidates.some(candidate => candidate.sourceId === 'uncertain-preference' && candidate.targetCategory === 'identity')).toBe(false)
+  })
+
+  it('reviewIdentityCandidate() only writes back to SOUL on approve', () => {
+    manager.knowledge.saveRecord({
+      id: 'user-style',
+      metadata: {
+        title: 'user-style',
+        date: new Date().toISOString(),
+        tags: ['profile'],
+        domain: 'preference',
+        status: 'active',
+        confidence: 'high',
+      },
+      content: 'User prefers concise updates',
+    })
+
+    const candidate = manager.collectPromotionCandidates().find(item => item.targetCategory === 'identity')!
+    const before = manager.identity.read()
+
+    const deferred = manager.reviewIdentityCandidate(candidate.id!, { decision: 'defer', rationale: 'wait for confirmation' })
+    expect(deferred?.status).toBe('deferred')
+    expect(manager.identity.read()).toBe(before)
+
+    const approved = manager.reviewIdentityCandidate(candidate.id!, { decision: 'approve', rationale: 'stable preference' })
+    expect(approved?.status).toBe('approved')
+    expect(approved?.applied).toBe(true)
+    expect(manager.identity.read()).toContain('User prefers concise updates')
+  })
+
+  it('rollbackIdentity() restores previous SOUL version and records versions', () => {
+    manager.knowledge.saveRecord({
+      id: 'user-style',
+      metadata: {
+        title: 'user-style',
+        date: new Date().toISOString(),
+        tags: ['profile'],
+        domain: 'preference',
+        status: 'active',
+        confidence: 'high',
+      },
+      content: 'User prefers concise updates',
+    })
+
+    const before = manager.identity.read()
+    const candidate = manager.collectPromotionCandidates().find(item => item.targetCategory === 'identity')!
+    manager.reviewIdentityCandidate(candidate.id!, { decision: 'approve', rationale: 'stable preference' })
+
+    const afterApprove = manager.identity.read()
+    expect(afterApprove).not.toBe(before)
+    expect(manager.identity.listVersions().length).toBeGreaterThan(0)
+
+    const rolledBack = manager.rollbackIdentity()
+    expect(rolledBack).toBeTruthy()
+    expect(manager.identity.read().trim()).toBe(before.trim())
   })
 
   it('applyPromotionCandidates() keeps same source idempotent and separates different sources', () => {

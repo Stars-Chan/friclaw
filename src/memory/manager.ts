@@ -13,7 +13,16 @@ import { retrieveKnowledge } from './runtime/knowledge-retriever'
 import { retrieveEpisode } from './runtime/episode-retriever'
 import { assembleMemoryContext } from './runtime/context-assembler'
 import type { MemoryContextBundle, RuntimeSessionContext } from './runtime/types'
-import type { PromotionCandidate, EpisodeThreadStatus, EpisodeSummaryMode } from './types'
+import type {
+  PromotionCandidate,
+  EpisodeThreadStatus,
+  EpisodeSummaryMode,
+  ThreadLifecycleState,
+  KnowledgeLifecycleState,
+  AuditRecord,
+  LineageLink,
+  PromotionCandidateStatus,
+} from './types'
 
 const log = logger('memory')
 
@@ -35,6 +44,35 @@ export interface BackgroundSummaryInput {
   workspaceDir: string
   threadId?: string
   chatKey: string
+}
+
+export interface SharedMemoryModels {
+  threadLifecycleStates: ThreadLifecycleState[]
+  knowledgeLifecycleStates: KnowledgeLifecycleState[]
+  promotionCandidateStatuses: PromotionCandidateStatus[]
+}
+
+const SHARED_MEMORY_MODELS: SharedMemoryModels = {
+  threadLifecycleStates: ['active', 'dormant', 'closed', 'archived'],
+  knowledgeLifecycleStates: ['active', 'uncertain', 'archived'],
+  promotionCandidateStatuses: ['proposed', 'approved', 'rejected', 'merged', 'applied', 'deferred'],
+}
+
+const IDENTITY_PROMOTION_ALLOWLIST = new Set(['profile', 'preference', 'personality', 'communication'])
+const IDENTITY_PROMOTION_DENYLIST = new Set(['task', 'project', 'session', 'incident', 'temporary'])
+
+function canPromoteKnowledgeToIdentity(record: { metadata: { status?: string; confidence?: string; domain?: string; tags?: string[] } }): boolean {
+  if (record.metadata.confidence !== 'high' || record.metadata.status !== 'active') return false
+
+  const tags = new Set(record.metadata.tags ?? [])
+  const domain = record.metadata.domain?.toLowerCase()
+  const matchesAllowlist = (domain && IDENTITY_PROMOTION_ALLOWLIST.has(domain))
+    || Array.from(tags).some(tag => IDENTITY_PROMOTION_ALLOWLIST.has(tag.toLowerCase()))
+  if (!matchesAllowlist) return false
+
+  const matchesDenylist = (domain && IDENTITY_PROMOTION_DENYLIST.has(domain))
+    || Array.from(tags).some(tag => IDENTITY_PROMOTION_DENYLIST.has(tag.toLowerCase()))
+  return !matchesDenylist
 }
 
 export class MemoryManager {
@@ -71,6 +109,24 @@ export class MemoryManager {
     return search(this.db, query, category, this.config.searchLimit)
   }
 
+  getSharedMemoryModels(): SharedMemoryModels {
+    return SHARED_MEMORY_MODELS
+  }
+
+  createLineageLink(input: Omit<LineageLink, 'createdAt'>): LineageLink {
+    return {
+      ...input,
+      createdAt: new Date().toISOString(),
+    }
+  }
+
+  createAuditRecord(input: Omit<AuditRecord, 'timestamp'>): AuditRecord {
+    return {
+      ...input,
+      timestamp: new Date().toISOString(),
+    }
+  }
+
   ensureThread(session: RuntimeSessionContext): string {
     if (session.activeThreadId) return session.activeThreadId
     const thread = this.episode.createThread({
@@ -102,8 +158,8 @@ export class MemoryManager {
 
     if (!recentEpisodeIds || recentEpisodeIds.length === 0) {
       for (const record of this.knowledge.listRecords()) {
-        if (record.metadata.confidence === 'high' && record.metadata.status === 'active') {
-          candidates.push({
+        if (canPromoteKnowledgeToIdentity(record)) {
+          const candidate = this.knowledge.saveIdentityCandidate({
             sourceCategory: 'knowledge',
             sourceId: record.id,
             targetCategory: 'identity',
@@ -113,7 +169,23 @@ export class MemoryManager {
             tags: record.metadata.tags,
             entities: record.metadata.entities,
             confidence: record.metadata.confidence,
+            status: 'proposed',
+            lineage: [this.createLineageLink({
+              fromLayer: 'knowledge',
+              fromId: record.id,
+              toLayer: 'identity',
+              toId: record.id,
+              relationType: 'derived_from',
+            })],
+            auditTrail: [this.createAuditRecord({
+              actionType: 'candidate_created',
+              targetLayer: 'identity',
+              targetId: record.id,
+              sourceRefs: [{ layer: 'knowledge', id: record.id }],
+              rationale: 'Generated from active high-confidence knowledge.',
+            })],
           })
+          candidates.push(candidate)
         }
       }
     }
@@ -136,6 +208,21 @@ export class MemoryManager {
             .join('\n\n'),
           tags: Array.from(new Set([...episode.tags, 'promoted-from-episode'])),
           confidence: 'medium',
+          status: 'proposed',
+          lineage: [this.createLineageLink({
+            fromLayer: 'episode',
+            fromId: episode.id,
+            toLayer: 'knowledge',
+            toId: episode.id,
+            relationType: 'promoted_from',
+          })],
+          auditTrail: [this.createAuditRecord({
+            actionType: 'candidate_created',
+            targetLayer: 'knowledge',
+            targetId: episode.id,
+            sourceRefs: [{ layer: 'episode', id: episode.id }],
+            rationale: 'Generated from episode summary with durable continuation context.',
+          })],
         })
       }
     }
@@ -161,6 +248,63 @@ export class MemoryManager {
     }
 
     return resolvedCandidates
+  }
+
+  reviewIdentityCandidate(id: string, input: {
+    decision: 'approve' | 'reject' | 'defer'
+    reviewer?: string
+    rationale?: string
+  }): PromotionCandidate | null {
+    const candidate = this.knowledge.readIdentityCandidate(id)
+    if (!candidate) return null
+
+    const auditTrail = [
+      ...(candidate.auditTrail ?? []),
+      this.createAuditRecord({
+        actionType: input.decision === 'approve' ? 'candidate_applied' : 'candidate_reviewed',
+        targetLayer: 'identity',
+        targetId: candidate.sourceId,
+        sourceRefs: [{ layer: 'knowledge', id: candidate.sourceId }],
+        decision: input.decision,
+        rationale: input.rationale,
+      }),
+    ]
+
+    const reviewed = this.knowledge.reviewIdentityCandidate(id, {
+      decision: input.decision,
+      reviewer: input.reviewer,
+      rationale: input.rationale,
+      applied: input.decision === 'approve',
+      appliedTargetId: input.decision === 'approve' ? 'SOUL' : undefined,
+      auditTrail,
+    })
+    if (!reviewed) return null
+
+    if (input.decision === 'approve') {
+      this.identity.applyCandidate(reviewed, reviewed.review, auditTrail)
+      return this.knowledge.reviewIdentityCandidate(id, {
+        decision: 'approve',
+        reviewer: input.reviewer,
+        rationale: input.rationale,
+        applied: true,
+        appliedTargetId: 'SOUL',
+        auditTrail,
+      })
+    }
+
+    return reviewed
+  }
+
+  rollbackIdentity(): ReturnType<IdentityMemory['rollbackLatest']> {
+    return this.identity.rollbackLatest([
+      this.createAuditRecord({
+        actionType: 'identity_rolled_back',
+        targetLayer: 'identity',
+        targetId: 'SOUL',
+        sourceRefs: [],
+        rationale: 'Rollback to latest stable identity version.',
+      }),
+    ])
   }
 
   async summarizeSession(
