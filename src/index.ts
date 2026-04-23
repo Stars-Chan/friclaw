@@ -27,6 +27,7 @@ import { WecomGateway } from './gateway/wecom'
 import { WeixinGateway } from './gateway/weixin'
 import { loginWithQR } from './gateway/weixin-login'
 import type { Gateway } from './gateway/types'
+import { ProactiveService } from './proactive/service'
 
 const command = process.argv[2] ?? 'start'
 
@@ -218,7 +219,10 @@ async function runServer(config: Awaited<ReturnType<typeof loadConfig>>): Promis
     soulContent: memory.identity.read(),
   })
 
+  const proactiveService = new ProactiveService(config.proactive, memory)
+
   const dispatcher = new Dispatcher(sessionManager, agent, async () => {
+    proactiveService.stop()
     await memory.drainBackgroundSummaries()
     await agent.dispose()
     await memory.shutdown()
@@ -310,14 +314,20 @@ async function runServer(config: Awaited<ReturnType<typeof loadConfig>>): Promis
   await cronScheduler.start()
   log.info('Cron scheduler started')
 
+  proactiveService.start()
+
   if (config.dashboard.enabled) {
+    const dashboardOptions = {
+      proactiveService,
+      startFrontendDevServer: process.env[daemonEnv.DAEMON_CHILD_ENV] !== '1',
+    }
     dashboardPush = await startDashboard(
       config.dashboard.port,
       dispatcher,
       config.workspaces.dir,
       cronScheduler,
       memory,
-      { startFrontendDevServer: process.env[daemonEnv.DAEMON_CHILD_ENV] !== '1' },
+      dashboardOptions,
     )
   }
 

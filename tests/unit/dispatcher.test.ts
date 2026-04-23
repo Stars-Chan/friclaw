@@ -143,7 +143,8 @@ describe('Dispatcher', () => {
     expect(summarizeCalls).toHaveLength(1)
     expect(closed).toHaveLength(0)
 
-    releaseSummary?.()
+    expect(releaseSummary).toBeTruthy()
+    ;(releaseSummary as unknown as (() => void))()
     await dispatcher.drainQueues()
     expect(closed).toEqual(['feishu:ou_abc:thread-1'])
   })

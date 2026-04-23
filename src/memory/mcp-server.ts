@@ -73,15 +73,26 @@ export class MemoryMcpServer extends BaseMcpServer {
         },
       },
       {
-        name: 'identity_candidate_review',
-        description: '审批 identity promotion candidate，并在 approve 时受控写回 SOUL',
+        name: 'memory_candidate_list',
+        description: '列出 promotion candidates',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            targetCategory: { type: 'string', enum: ['knowledge', 'identity'] },
+          },
+        },
+      },
+      {
+        name: 'memory_candidate_review',
+        description: '审批或合并 promotion candidate',
         inputSchema: {
           type: 'object',
           properties: {
             id: { type: 'string', description: 'candidate id' },
-            decision: { type: 'string', enum: ['approve', 'reject', 'defer'] },
+            decision: { type: 'string', enum: ['approve', 'reject', 'defer', 'merge'] },
             reviewer: { type: 'string' },
             rationale: { type: 'string' },
+            targetId: { type: 'string', description: 'merge target knowledge id' },
           },
           required: ['id', 'decision'],
         },
@@ -118,7 +129,6 @@ export class MemoryMcpServer extends BaseMcpServer {
             tags?: string[]
             metadata?: Record<string, unknown>
           }
-          const shared = this.manager.getSharedMemoryModels()
           if (category === 'identity') {
             this.manager.identity.update(content)
             return this.ok('Identity (SOUL.md) updated.')
@@ -182,6 +192,76 @@ export class MemoryMcpServer extends BaseMcpServer {
           const record = this.manager.knowledge.readRecord(id)
           if (!record) return this.err(`Not found: ${id}`)
           return this.ok(JSON.stringify(record, null, 2))
+        }
+
+        case 'memory_candidate_list': {
+          const { targetCategory } = args as { targetCategory?: 'knowledge' | 'identity' }
+          const candidates = this.manager.listCandidates(targetCategory)
+          return this.ok(candidates.length ? JSON.stringify(candidates, null, 2) : 'No candidates.')
+        }
+
+        case 'memory_candidate_review': {
+          const { id, decision, reviewer, rationale, targetId } = args as {
+            id: string
+            decision: 'approve' | 'reject' | 'defer' | 'merge'
+            reviewer?: string
+            rationale?: string
+            targetId?: string
+          }
+          const candidate = this.manager.listCandidates().find(item => item.id === id)
+          if (!candidate) return this.err(`Not found: ${id}`)
+
+          if (candidate.targetCategory === 'identity') {
+            if (decision === 'merge') return this.err('Identity candidate does not support merge decision')
+            const reviewed = this.manager.reviewIdentityCandidate(id, { decision, reviewer, rationale })
+            if (!reviewed) return this.err(`Not found: ${id}`)
+            return this.ok(JSON.stringify(reviewed, null, 2))
+          }
+
+          if (decision === 'merge') {
+            if (!targetId) return this.err('targetId is required for merge decision')
+            const merged = this.manager.mergeKnowledge(targetId, [candidate.sourceId])
+            if (!merged) return this.err('Merge failed')
+            const updated = this.manager.knowledge.saveIdentityCandidate({
+              ...candidate,
+              status: 'merged',
+              review: {
+                decision: 'merge',
+                reviewer,
+                rationale,
+                reviewedAt: new Date().toISOString(),
+              },
+              applied: true,
+              appliedTargetId: targetId,
+              auditTrail: [
+                ...(candidate.auditTrail ?? []),
+                ...merged.auditTrail,
+              ],
+              lineage: [
+                ...(candidate.lineage ?? []),
+                ...merged.lineage,
+              ],
+            })
+            return this.ok(JSON.stringify(updated, null, 2))
+          }
+
+          const applied = decision === 'approve'
+          if (applied) {
+            const appliedCandidates = this.manager.applyPromotionCandidates([candidate])
+            return this.ok(JSON.stringify(appliedCandidates[0], null, 2))
+          }
+
+          const updated = this.manager.knowledge.saveIdentityCandidate({
+            ...candidate,
+            status: decision === 'reject' ? 'rejected' : 'deferred',
+            review: {
+              decision,
+              reviewer,
+              rationale,
+              reviewedAt: new Date().toISOString(),
+            },
+          })
+          return this.ok(JSON.stringify(updated, null, 2))
         }
 
         case 'identity_candidate_review': {

@@ -144,7 +144,7 @@ describe('Session Summarization Integration', () => {
       expect(record?.summary).toContain('自动摘要失败')
 
       const thread = episode.readThreadState('test:fallback:thread-1')
-      expect(thread?.status).toBe('summary_failed')
+      expect(thread?.status).toBe('closed')
       expect(thread?.lastSummaryId).toBe(result!.id)
     } finally {
       summarizer.resetSummarizeRunnerForTest()

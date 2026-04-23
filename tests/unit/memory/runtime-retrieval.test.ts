@@ -9,7 +9,21 @@ let manager: MemoryManager
 
 beforeEach(async () => {
   tmpDir = mkdtempSync(join(tmpdir(), 'friclaw-runtime-memory-'))
-  manager = new MemoryManager({ dir: tmpDir, searchLimit: 10, vectorEnabled: false, vectorEndpoint: '' })
+  manager = new MemoryManager({
+    dir: tmpDir,
+    searchLimit: 10,
+    vectorEnabled: false,
+    vectorEndpoint: '',
+    retrieval: {
+      knowledgeItems: 3,
+      knowledgeChars: 320,
+      recentEpisodes: 5,
+      threadEpisodes: 3,
+      episodeChars: 700,
+      promptChars: 1800,
+      diagnosticsEnabled: true,
+    },
+  })
   await manager.init()
 })
 
@@ -38,6 +52,7 @@ describe('runtime memory retrieval', () => {
     expect(context.knowledge.length).toBeGreaterThan(0)
     expect(context.knowledge[0].domain).toBe('project')
     expect(context.promptBlock).toContain('[Relevant Knowledge]')
+    expect(context.diagnostics?.knowledge.selectedIds).toContain('knowledge/memory-system')
   })
 
   it('prefers same-thread episode for continue-like requests', () => {
@@ -71,5 +86,36 @@ describe('runtime memory retrieval', () => {
     expect(context.episode).toBeDefined()
     expect(context.episode?.threadId).toBe(threadId)
     expect(context.promptBlock).toContain('[Relevant Episode]')
+    expect(context.diagnostics?.episode.candidates[0]?.reasons.some(reason => reason.includes('same_active_thread'))).toBe(true)
+  })
+
+  it('de-ranks archived knowledge but keeps it retrievable', () => {
+    manager.knowledge.saveRecord({
+      id: 'active-memory',
+      metadata: {
+        title: 'active-memory',
+        date: new Date().toISOString(),
+        tags: ['memory'],
+        status: 'active',
+        confidence: 'high',
+      },
+      content: 'runtime memory implementation remains active',
+    })
+    manager.knowledge.saveRecord({
+      id: 'archived-memory',
+      metadata: {
+        title: 'archived-memory',
+        date: new Date().toISOString(),
+        tags: ['memory'],
+        status: 'archived',
+        confidence: 'high',
+      },
+      content: 'runtime memory implementation was archived previously',
+    })
+
+    const context = manager.buildRuntimeContext('继续 runtime memory implementation')
+
+    expect(context.knowledge.some(item => item.id === 'knowledge/archived-memory')).toBe(true)
+    expect(context.knowledge[0].id).toBe('knowledge/active-memory')
   })
 })

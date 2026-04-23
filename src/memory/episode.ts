@@ -6,7 +6,7 @@ import { parseFrontmatter, normalizeStringArray, serializeFrontmatter } from './
 import { summarizeTranscript } from './summarizer'
 import { logger } from '../utils/logger'
 import { getWorkspaceHistoryDir, getWorkspaceHistoryFile } from '../session/history-paths'
-import type { EpisodeMetadata, EpisodeRecord, EpisodeThreadState, EpisodeSummaryMode, EpisodeThreadStatus } from './types'
+import type { EpisodeMetadata, EpisodeRecord, EpisodeThreadState, EpisodeSummaryMode, EpisodeThreadStatus, ThreadPreview } from './types'
 
 const log = logger('episode')
 
@@ -75,6 +75,12 @@ function buildEpisodeMetadata(id: string, tags: string[] = [], metadata: Partial
   }
 }
 
+function normalizeThreadStatus(status?: EpisodeThreadStatus | 'paused' | 'dormant' | 'archived'): EpisodeThreadState['status'] {
+  if (status === 'paused') return 'dormant'
+  if (status === 'summary_failed') return 'closed'
+  return status ?? 'active'
+}
+
 function buildFallbackSummary(transcript: string, metadata: Partial<EpisodeMetadata>): string {
   const lines = transcript
     .split('\n')
@@ -141,7 +147,7 @@ export class EpisodeMemory {
 
     if (episodeMetadata.threadId) {
       const current = this.readThreadState(episodeMetadata.threadId)
-      const nextStatus = metadata.status ?? current?.status ?? episodeMetadata.status ?? 'active'
+      const nextStatus = normalizeThreadStatus(metadata.status ?? current?.status ?? episodeMetadata.status)
       this.saveThreadState({
         threadId: episodeMetadata.threadId,
         chatKey: episodeMetadata.chatKey ?? current?.chatKey ?? '',
@@ -349,7 +355,7 @@ export class EpisodeMemory {
     return {
       threadId: String(metadata.threadId),
       chatKey: String(metadata.chatKey),
-      status: metadata.status as EpisodeThreadState['status'],
+      status: normalizeThreadStatus(metadata.status as EpisodeThreadStatus | 'paused' | 'dormant' | 'archived' | undefined),
       startedAt: String(metadata.startedAt),
       updatedAt: String(metadata.updatedAt),
       sourceSessionId: typeof metadata.sourceSessionId === 'string' ? metadata.sourceSessionId : undefined,
@@ -359,6 +365,32 @@ export class EpisodeMemory {
       nextStep: typeof metadata.nextStep === 'string' ? metadata.nextStep : undefined,
       blockers: normalizeStringArray(metadata.blockers),
     }
+  }
+
+  listThreadPreviews(limit = 20): ThreadPreview[] {
+    return readdirSync(this.threadsDir)
+      .filter(file => file.endsWith('.md'))
+      .sort()
+      .reverse()
+      .map(file => this.readThreadState(file.replace(/\.md$/, '').replace(/_/g, ':')))
+      .filter(Boolean)
+      .slice(0, limit)
+      .map(state => {
+        const threadState = state as EpisodeThreadState
+        const summary = threadState.lastSummaryId ? this.read(threadState.lastSummaryId) : this.listThreadEpisodes(threadState.threadId, 1)[0] ?? null
+        return {
+          threadId: threadState.threadId,
+          chatKey: threadState.chatKey,
+          status: threadState.status,
+          startedAt: threadState.startedAt,
+          updatedAt: threadState.updatedAt,
+          title: threadState.title,
+          lastSummaryId: threadState.lastSummaryId,
+          nextStep: threadState.nextStep,
+          blockers: threadState.blockers,
+          summaryPreview: summary?.summary.slice(0, 200),
+        }
+      })
   }
 
   saveThreadState(state: EpisodeThreadState): void {

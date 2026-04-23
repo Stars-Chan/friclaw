@@ -16,6 +16,15 @@ beforeEach(async () => {
     searchLimit: 10,
     vectorEnabled: false,
     vectorEndpoint: '',
+    retrieval: {
+      knowledgeItems: 3,
+      knowledgeChars: 320,
+      recentEpisodes: 5,
+      threadEpisodes: 3,
+      episodeChars: 700,
+      promptChars: 1800,
+      diagnosticsEnabled: true,
+    },
   })
   await manager.init()
   mcpServer = new MemoryMcpServer(manager)
@@ -27,9 +36,9 @@ afterEach(async () => {
 })
 
 describe('MemoryMcpServer tools', () => {
-  it('getTools() returns 5 tools', () => {
+  it('getTools() returns 6 tools', () => {
     const tools = mcpServer.tools()
-    expect(tools).toHaveLength(5)
+    expect(tools).toHaveLength(6)
   })
 
   it('memory_save + memory_read roundtrip for knowledge returns structured record', async () => {
@@ -90,6 +99,61 @@ describe('MemoryMcpServer tools', () => {
         status: 'broken',
       },
     })
+    expect(result.isError).toBeTruthy()
+  })
+
+  it('memory_candidate_list and memory_candidate_review manage knowledge candidates', async () => {
+    const episodeId = manager.episode.save('Continue runtime memory implementation', ['memory'], {
+      threadId: 'feishu:ou_abc:1',
+      chatKey: 'feishu:ou_abc',
+      nextStep: 'Finish governance API',
+    })
+    manager.collectPromotionCandidates([episodeId])
+
+    const listResult = await mcpServer.call('memory_candidate_list', { targetCategory: 'knowledge' })
+    const listedText = (listResult.content[0] as { type: 'text'; text: string }).text
+    expect(listedText).toContain('Finish governance API')
+
+    const candidate = manager.listCandidates('knowledge')[0]
+    const reviewResult = await mcpServer.call('memory_candidate_review', {
+      id: candidate.id,
+      decision: 'approve',
+      rationale: 'durable next step',
+    })
+    expect(reviewResult.isError).toBeFalsy()
+    const applied = JSON.parse((reviewResult.content[0] as { type: 'text'; text: string }).text)
+    expect(applied.status).toBe('applied')
+    expect(applied.appliedTargetId).toBeTruthy()
+  })
+
+  it('memory_candidate_review supports merge for knowledge candidates', async () => {
+    manager.knowledge.saveRecord({
+      id: 'runtime-memory-primary',
+      metadata: {
+        title: 'runtime-memory',
+        date: new Date().toISOString(),
+        tags: ['memory', 'runtime'],
+        status: 'active',
+        confidence: 'high',
+      },
+      content: 'Runtime memory keeps current retrieval context stable.',
+    })
+
+    const episodeId = manager.episode.save('Runtime memory keeps current retrieval context stable.', ['memory', 'runtime'], {
+      threadId: 'feishu:ou_abc:1',
+      chatKey: 'feishu:ou_abc',
+      nextStep: 'Runtime memory keeps current retrieval context stable.',
+    })
+    manager.collectPromotionCandidates([episodeId])
+    const candidate = manager.listCandidates('knowledge')[0]
+
+    const result = await mcpServer.call('memory_candidate_review', {
+      id: candidate.id,
+      decision: 'merge',
+      targetId: 'runtime-memory-primary',
+      rationale: 'duplicate context',
+    })
+
     expect(result.isError).toBeTruthy()
   })
 

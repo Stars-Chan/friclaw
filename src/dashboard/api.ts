@@ -13,6 +13,8 @@ import { parseFrontmatter, normalizeStringArray, serializeFrontmatter } from '..
 import { isEpisodeRecord } from '../memory/episode'
 import { toValidatedKnowledgeRecord } from '../memory/knowledge'
 import type { EpisodeMetadata, KnowledgeMetadata } from '../memory/types'
+import type { ProactivePreference } from '../memory/types'
+import type { ProactiveService } from '../proactive/service'
 
 const log = logger('dashboard')
 
@@ -43,19 +45,6 @@ function listThreadFiles(memoryDir: string): string[] {
       .reverse()
   } catch {
     return []
-  }
-}
-
-function parseKnowledgeSummary(id: string, raw: string) {
-  const parsed = parseFrontmatter<KnowledgeMetadata>(raw)
-  return {
-    id,
-    title: parsed.metadata.title ?? id,
-    tags: normalizeStringArray(parsed.metadata.tags),
-    domain: typeof parsed.metadata.domain === 'string' ? parsed.metadata.domain : '',
-    status: typeof parsed.metadata.status === 'string' ? parsed.metadata.status : '',
-    confidence: typeof parsed.metadata.confidence === 'string' ? parsed.metadata.confidence : '',
-    updatedAt: typeof parsed.metadata.updatedAt === 'string' ? parsed.metadata.updatedAt : '',
   }
 }
 
@@ -138,8 +127,9 @@ export async function startDashboard(
   workspacesDir: string,
   cronScheduler: CronScheduler,
   memoryManager?: any,
-  options: { startFrontendDevServer?: boolean } = {},
+  options: { startFrontendDevServer?: boolean; proactiveService?: ProactiveService } = {},
 ): Promise<DashboardPushFn> {
+  const { proactiveService } = options
   const sessionManager = new DashboardSessionManager(workspacesDir)
   const tokenStats = new TokenStatsManager(workspacesDir)
   const clients = new Map<string, ServerWebSocket>()
@@ -310,18 +300,22 @@ export async function startDashboard(
       }
 
       if (url.pathname === '/api/memory/knowledge') {
-        const memoryDir = join(process.env.HOME || '', '.friclaw', 'memory')
-        const knowledgeDir = join(memoryDir, 'knowledge')
-
         if (req.method === 'GET') {
           try {
-            const { readdirSync, readFileSync } = await import('fs')
-            const list = readdirSync(knowledgeDir)
-              .filter(f => f.endsWith('.md'))
-              .map(f => parseKnowledgeSummary(f.replace('.md', ''), readFileSync(join(knowledgeDir, f), 'utf-8')))
+            const list = memoryManager?.listKnowledgeSummaries?.(100) ?? []
             return Response.json({ list }, { headers: corsHeaders })
           } catch {
             return Response.json({ list: [] }, { headers: corsHeaders })
+          }
+        }
+        if (req.method === 'POST') {
+          try {
+            const { id, status } = await req.json()
+            const record = memoryManager?.updateKnowledgeLifecycle?.(id, status)
+            if (!record) return Response.json({ success: false }, { status: 404, headers: corsHeaders })
+            return Response.json({ success: true, record }, { headers: corsHeaders })
+          } catch {
+            return Response.json({ success: false }, { status: 500, headers: corsHeaders })
           }
         }
       }
@@ -360,7 +354,7 @@ export async function startDashboard(
       if (url.pathname === '/api/memory/episodes') {
         const memoryDir = join(process.env.HOME || '', '.friclaw', 'memory')
         const episodesDir = join(memoryDir, 'episodes')
-
+        const previews = memoryManager?.listThreadPreviews?.(50) ?? []
         try {
           const { readdirSync, readFileSync } = await import('fs')
           const episodes = readdirSync(episodesDir)
@@ -374,9 +368,126 @@ export async function startDashboard(
             })
             .slice(0, 50)
 
-          return Response.json({ episodes }, { headers: corsHeaders })
+          return Response.json({ episodes, threads: previews }, { headers: corsHeaders })
         } catch {
-          return Response.json({ episodes: [] }, { headers: corsHeaders })
+          return Response.json({ episodes: [], threads: previews }, { headers: corsHeaders })
+        }
+      }
+
+      if (url.pathname === '/api/memory/threads' && req.method === 'GET') {
+        try {
+          const threads = memoryManager?.listThreadPreviews?.(50) ?? []
+          return Response.json({ threads }, { headers: corsHeaders })
+        } catch {
+          return Response.json({ threads: [] }, { headers: corsHeaders })
+        }
+      }
+
+      if (url.pathname.match(/^\/api\/memory\/threads\/[^/]+$/)) {
+        const threadId = decodeURIComponent(url.pathname.split('/').pop()!)
+        if (req.method === 'GET') {
+          try {
+            const data = memoryManager?.readThread?.(threadId)
+            if (!data) return Response.json({ success: false }, { status: 404, headers: corsHeaders })
+            return Response.json(data, { headers: corsHeaders })
+          } catch {
+            return Response.json({ success: false }, { status: 500, headers: corsHeaders })
+          }
+        }
+      }
+
+      if (url.pathname.match(/^\/api\/memory\/threads\/[^/]+\/state$/) && req.method === 'POST') {
+        const threadId = decodeURIComponent(url.pathname.split('/')[4])
+        try {
+          const { status, nextStep, blockers } = await req.json()
+          const thread = memoryManager?.updateThreadLifecycle?.(threadId, status, { nextStep, blockers })
+          if (!thread) return Response.json({ success: false }, { status: 404, headers: corsHeaders })
+          return Response.json({ success: true, thread }, { headers: corsHeaders })
+        } catch {
+          return Response.json({ success: false }, { status: 500, headers: corsHeaders })
+        }
+      }
+
+      if (url.pathname === '/api/memory/candidates') {
+        if (req.method === 'GET') {
+          try {
+            const targetCategory = (url.searchParams.get('targetCategory') || undefined) as 'knowledge' | 'identity' | undefined
+            const candidates = memoryManager?.listCandidates?.(targetCategory) ?? []
+            return Response.json({ candidates }, { headers: corsHeaders })
+          } catch {
+            return Response.json({ candidates: [] }, { headers: corsHeaders })
+          }
+        }
+
+        if (req.method === 'POST') {
+          try {
+            const { id, decision, reviewer, rationale } = await req.json()
+            const candidate = memoryManager?.readCandidate?.(id)
+            if (!candidate) return Response.json({ success: false }, { status: 404, headers: corsHeaders })
+
+            if (candidate.targetCategory === 'identity') {
+              const reviewed = memoryManager?.reviewIdentityCandidate?.(id, { decision, reviewer, rationale })
+              if (!reviewed) return Response.json({ success: false }, { status: 404, headers: corsHeaders })
+              return Response.json({ success: true, candidate: reviewed }, { headers: corsHeaders })
+            }
+
+            if (decision === 'approve') {
+              const reviewed = memoryManager?.applyPromotionCandidates?.([candidate])?.[0]
+              return Response.json({ success: true, candidate: reviewed }, { headers: corsHeaders })
+            }
+
+            if (decision === 'merge') {
+              return Response.json({ success: false, error: 'Merge requires MCP flow for now.' }, { status: 400, headers: corsHeaders })
+            }
+
+            const reviewed = memoryManager?.knowledge?.saveIdentityCandidate?.({
+              ...candidate,
+              status: decision === 'reject' ? 'rejected' : 'deferred',
+              review: {
+                decision,
+                reviewer,
+                rationale,
+                reviewedAt: new Date().toISOString(),
+              },
+            })
+            return Response.json({ success: true, candidate: reviewed }, { headers: corsHeaders })
+          } catch {
+            return Response.json({ success: false }, { status: 500, headers: corsHeaders })
+          }
+        }
+      }
+
+      if (url.pathname === '/api/proactive') {
+        const userId = url.searchParams.get('userId') || 'dashboard_user'
+
+        if (req.method === 'GET') {
+          const preference = proactiveService?.getPreference(userId)
+          const insights = proactiveService?.listInsights(userId) ?? []
+          return Response.json({ preference, insights }, { headers: corsHeaders })
+        }
+
+        if (req.method === 'POST') {
+          try {
+            const patch: Partial<ProactivePreference> = await req.json()
+            const previous = proactiveService?.getPreference(userId)
+            const preference = proactiveService?.updatePreference(userId, patch)
+            if (preference?.enabled && JSON.stringify(previous) !== JSON.stringify(preference)) {
+              await proactiveService?.runCycle(userId)
+            }
+            return Response.json({ success: true, preference, insights: proactiveService?.listInsights(userId) ?? [] }, { headers: corsHeaders })
+          } catch {
+            return Response.json({ success: false }, { status: 500, headers: corsHeaders })
+          }
+        }
+      }
+
+      if (url.pathname === '/api/proactive/run' && req.method === 'POST') {
+        try {
+          const { userId = 'dashboard_user' } = await req.json()
+          await proactiveService?.runCycle(userId)
+          return Response.json({ success: true, insights: proactiveService?.listInsights(userId) ?? [] }, { headers: corsHeaders })
+        } catch {
+          return Response.json({ success: false }, { status: 500, headers: corsHeaders })
         }
       }
 

@@ -162,6 +162,20 @@ export function getMetaByThread(
   ).all(threadId, category, limit) as MemoryMetaRecord[]
 }
 
+export function listMetaByCategory(
+  db: Database,
+  category: string,
+  limit = 100
+): MemoryMetaRecord[] {
+  return db.prepare(
+    `SELECT id, category, thread_id as threadId, chat_key as chatKey, domain, entities, status, confidence, updated_at as updatedAt, source
+     FROM memory_meta
+     WHERE category = ?
+     ORDER BY updated_at DESC
+     LIMIT ?`
+  ).all(category, limit) as MemoryMetaRecord[]
+}
+
 export function deleteIndex(db: Database, id: string): void {
   db.prepare(`DELETE FROM memory_fts WHERE id = ?`).run(id)
   db.prepare(`DELETE FROM memory_meta WHERE id = ?`).run(id)

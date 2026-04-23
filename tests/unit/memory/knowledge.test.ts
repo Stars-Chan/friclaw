@@ -71,27 +71,45 @@ describe('KnowledgeMemory', () => {
     expect(record?.metadata.confidence).toBe('high')
   })
 
-  it('savePromotion() is source-aware and idempotent', () => {
-    const firstId = knowledge.savePromotion({
-      title: 'same title',
-      content: 'content A',
-      source: 'promotion:episode/ep-1',
+  it('mergeRecords() merges duplicate knowledge and archives merged sources', () => {
+    knowledge.saveRecord({
+      id: 'runtime-memory-primary',
+      metadata: {
+        title: 'runtime-memory',
+        date: new Date().toISOString(),
+        tags: ['memory', 'runtime'],
+        status: 'active',
+        confidence: 'high',
+        source: 'manual:primary',
+      },
+      content: 'Runtime memory keeps current retrieval context stable.',
     })
-    const secondId = knowledge.savePromotion({
-      title: 'same title',
-      content: 'content B',
-      source: 'promotion:episode/ep-2',
-    })
-    const repeatId = knowledge.savePromotion({
-      title: 'same title',
-      content: 'content C',
-      source: 'promotion:episode/ep-1',
+    knowledge.saveRecord({
+      id: 'runtime-memory-duplicate',
+      metadata: {
+        title: 'runtime-memory',
+        date: new Date().toISOString(),
+        tags: ['memory', 'runtime'],
+        status: 'active',
+        confidence: 'medium',
+        source: 'manual:duplicate',
+      },
+      content: 'Runtime memory keeps current retrieval context stable.\n\nIt also preserves thread continuity.',
     })
 
-    expect(firstId).not.toBe(secondId)
-    expect(repeatId).toBe(firstId)
-    expect(knowledge.read(firstId)).toContain('content C')
-    expect(knowledge.read(secondId)).toContain('content B')
+    const result = knowledge.mergeRecords('runtime-memory-primary', ['runtime-memory-duplicate'])
+    const target = knowledge.readRecord('runtime-memory-primary')
+    const source = knowledge.readRecord('runtime-memory-duplicate')
+
+    expect(result).toBeTruthy()
+    expect(result?.mergedSourceIds).toEqual(['runtime-memory-duplicate'])
+    expect(result?.lineage[0]?.relationType).toBe('merged_from')
+    expect(result?.auditTrail[0]?.actionType).toBe('knowledge_merged')
+    expect(target?.content).toContain('It also preserves thread continuity.')
+    expect(target?.metadata.source).toContain('manual:primary')
+    expect(target?.metadata.source).toContain('manual:duplicate')
+    expect(source?.metadata.status).toBe('archived')
+    expect(source?.metadata.source).toBe('merged-into:runtime-memory-primary')
   })
 
   it('toValidatedKnowledgeRecord() accepts canonical lifecycle statuses', () => {

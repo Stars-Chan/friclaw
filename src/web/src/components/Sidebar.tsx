@@ -11,6 +11,7 @@ import {
   Clock,
   Brain,
   Radio,
+  Bell,
 } from "lucide-react";
 import type { Session, ConnectionStatus } from "../types";
 
@@ -23,8 +24,9 @@ interface SidebarProps {
   onSelectStats?: () => void;
   onSelectMemory?: () => void;
   onSelectGateways?: () => void;
+  onSelectProactive?: () => void;
   connectionStatus: ConnectionStatus;
-  activeView: "chat" | "config" | "cron" | "stats" | "memory" | "gateways";
+  activeView: "chat" | "config" | "cron" | "stats" | "memory" | "gateways" | "proactive";
   className?: string;
 }
 
@@ -62,6 +64,7 @@ const MODULES: Module[] = [
     items: [
       { key: "config", label: "模型", icon: Sliders },
       { key: "gateways", label: "网关", icon: Radio },
+      { key: "proactive", label: "主动服务", icon: Bell },
     ],
   },
 ];
@@ -75,6 +78,7 @@ export function Sidebar({
   onSelectStats,
   onSelectMemory,
   onSelectGateways,
+  onSelectProactive,
   connectionStatus,
   activeView,
   className,
@@ -184,6 +188,8 @@ export function Sidebar({
                             onSelectMemory();
                           if (item.key === "gateways" && onSelectGateways)
                             onSelectGateways();
+                          if (item.key === "proactive" && onSelectProactive)
+                            onSelectProactive();
                         }}
                       >
                         <ItemIcon

@@ -1,9 +1,9 @@
 import { readFileSync, writeFileSync, readdirSync, mkdirSync } from 'fs'
 import { join } from 'path'
 import type { Database } from 'bun:sqlite'
-import { getMeta, upsertIndex, upsertMeta } from './database'
+import { getMeta, listMetaByCategory, upsertIndex, upsertMeta } from './database'
 import { parseFrontmatter, normalizeStringArray, serializeFrontmatter } from './frontmatter'
-import type { KnowledgeMetadata, KnowledgeRecord, PromotionCandidate } from './types'
+import type { KnowledgeMergeResult, KnowledgeMetadata, KnowledgeRecord, KnowledgeSummary, PromotionCandidate } from './types'
 
 const KNOWLEDGE_STATUS_VALUES = new Set(['active', 'uncertain', 'archived'])
 const MEMORY_CONFIDENCE_VALUES = new Set(['low', 'medium', 'high'])
@@ -70,6 +70,13 @@ function candidateFilePath(candidatesDir: string, id: string): string {
   return join(candidatesDir, `${id}.md`)
 }
 
+function buildCandidateId(candidate: PromotionCandidate): string {
+  if (candidate.targetCategory === 'identity') {
+    return buildIdentityCandidateId(candidate.sourceId)
+  }
+  return `${candidate.targetCategory}-${slugify(`${candidate.sourceCategory}-${candidate.sourceId}`)}`
+}
+
 function buildKnowledgeMetadata(topic: string, tags: string[] = [], metadata: Partial<KnowledgeMetadata> = {}): KnowledgeMetadata {
   const now = new Date().toISOString()
   return {
@@ -83,6 +90,22 @@ function buildKnowledgeMetadata(topic: string, tags: string[] = [], metadata: Pa
     confidence: metadata.confidence ?? 'medium',
     source: metadata.source,
   }
+}
+
+function normalizeMergeText(value: string): string {
+  return value.replace(/\s+/g, ' ').trim().toLowerCase()
+}
+
+function areKnowledgeRecordsMergeable(left: KnowledgeRecord, right: KnowledgeRecord): boolean {
+  if (normalizeMergeText(left.content) === normalizeMergeText(right.content)) return true
+  if (left.metadata.title === right.metadata.title) return true
+  const leftTags = new Set(left.metadata.tags)
+  const sharedTags = right.metadata.tags.filter(tag => leftTags.has(tag))
+  return sharedTags.length >= 2
+}
+
+function mergeUnique(values: Array<string | undefined>): string[] {
+  return Array.from(new Set(values.filter((value): value is string => Boolean(value))))
 }
 
 function readTextOrNull(filePath: string): string | null {
@@ -166,14 +189,14 @@ export class KnowledgeMemory {
   }
 
   saveIdentityCandidate(candidate: PromotionCandidate): PromotionCandidate {
-    const id = candidate.id ?? buildIdentityCandidateId(candidate.sourceId)
+    const id = candidate.id ?? buildCandidateId(candidate)
     const existing = this.readIdentityCandidate(id)
     const now = new Date().toISOString()
     const nextCandidate: PromotionCandidate = {
       ...existing,
       ...candidate,
       id,
-      targetCategory: 'identity',
+      targetCategory: candidate.targetCategory,
       createdAt: existing?.createdAt ?? candidate.createdAt ?? now,
       updatedAt: now,
       status: candidate.status ?? existing?.status ?? 'proposed',
@@ -210,7 +233,7 @@ export class KnowledgeMemory {
       id: typeof metadata.id === 'string' ? metadata.id : id,
       sourceCategory: metadata.sourceCategory as PromotionCandidate['sourceCategory'],
       sourceId: String(metadata.sourceId ?? ''),
-      targetCategory: 'identity',
+      targetCategory: metadata.targetCategory as PromotionCandidate['targetCategory'] ?? 'identity',
       reason: String(metadata.reason ?? ''),
       title: String(metadata.title ?? id),
       content: body,
@@ -228,11 +251,23 @@ export class KnowledgeMemory {
     }
   }
 
+  readCandidate(id: string): PromotionCandidate | null {
+    return this.readIdentityCandidate(id)
+  }
+
   listIdentityCandidates(): PromotionCandidate[] {
     return readdirSync(this.candidatesDir)
       .filter(file => file.endsWith('.md'))
       .map(file => this.readIdentityCandidate(file.replace('.md', '')))
-      .filter(Boolean) as PromotionCandidate[]
+      .filter(candidate => candidate?.targetCategory === 'identity') as PromotionCandidate[]
+  }
+
+  listCandidates(targetCategory?: PromotionCandidate['targetCategory']): PromotionCandidate[] {
+    return readdirSync(this.candidatesDir)
+      .filter(file => file.endsWith('.md'))
+      .map(file => this.readCandidate(file.replace('.md', '')))
+      .filter(Boolean)
+      .filter(candidate => !targetCategory || candidate?.targetCategory === targetCategory) as PromotionCandidate[]
   }
 
   reviewIdentityCandidate(id: string, input: {
@@ -290,6 +325,19 @@ export class KnowledgeMemory {
     }
   }
 
+  listSummaries(limit = 100): KnowledgeSummary[] {
+    const metas = listMetaByCategory(this.db, 'knowledge', limit)
+    return metas.map(meta => ({
+      id: meta.id.replace(/^knowledge\//, ''),
+      title: meta.id.replace(/^knowledge\//, ''),
+      tags: this.readRecord(meta.id.replace(/^knowledge\//, ''))?.metadata.tags ?? [],
+      domain: meta.domain ?? undefined,
+      status: meta.status as KnowledgeSummary['status'] | undefined,
+      confidence: meta.confidence as KnowledgeSummary['confidence'] | undefined,
+      updatedAt: meta.updatedAt ?? undefined,
+    }))
+  }
+
   list(): string[] {
     return readdirSync(this.knowledgeDir)
       .filter(f => f.endsWith('.md'))
@@ -298,5 +346,80 @@ export class KnowledgeMemory {
 
   listRecords(): KnowledgeRecord[] {
     return this.list().map(topic => this.readRecord(topic)).filter(Boolean) as KnowledgeRecord[]
+  }
+
+  mergeRecords(targetId: string, sourceIds: string[]): KnowledgeMergeResult | null {
+    const target = this.readRecord(targetId)
+    if (!target) return null
+
+    const sources = sourceIds
+      .filter(id => id !== targetId)
+      .map(id => this.readRecord(id))
+      .filter(Boolean) as KnowledgeRecord[]
+
+    if (sources.length === 0) return null
+
+    const mergeable = sources.filter(source => areKnowledgeRecordsMergeable(target, source))
+    if (mergeable.length === 0) return null
+
+    const now = new Date().toISOString()
+    const mergedContent = [target.content, ...mergeable.map(source => source.content)]
+      .map(content => content.trim())
+      .filter(Boolean)
+      .filter((content, index, array) => array.indexOf(content) === index)
+      .join('\n\n')
+
+    const mergedTags = Array.from(new Set([target.metadata.tags, ...mergeable.map(source => source.metadata.tags)].flat()))
+    const mergedEntities = Array.from(new Set([target.metadata.entities ?? [], ...mergeable.map(source => source.metadata.entities ?? [])].flat()))
+    const mergedSources = mergeUnique([target.metadata.source, ...mergeable.map(source => source.metadata.source)])
+
+    this.saveRecord({
+      id: target.id,
+      metadata: {
+        ...target.metadata,
+        updatedAt: now,
+        tags: mergedTags,
+        entities: mergedEntities,
+        source: mergedSources.join(', ') || target.metadata.source,
+      },
+      content: mergedContent,
+    })
+
+    const lineage = mergeable.map(source => ({
+      fromLayer: 'knowledge' as const,
+      fromId: source.id,
+      toLayer: 'knowledge' as const,
+      toId: target.id,
+      relationType: 'merged_from' as const,
+      createdAt: now,
+    }))
+
+    const auditTrail = [{
+      actionType: 'knowledge_merged' as const,
+      targetLayer: 'knowledge' as const,
+      targetId: target.id,
+      sourceRefs: mergeable.map(source => ({ layer: 'knowledge' as const, id: source.id })),
+      rationale: 'Merged duplicate knowledge records into canonical target.',
+      timestamp: now,
+    }]
+
+    for (const source of mergeable) {
+      this.saveRecord({
+        ...source,
+        metadata: {
+          ...source.metadata,
+          updatedAt: now,
+          status: 'archived',
+          source: `merged-into:${target.id}`,
+        },
+      })
+    }
+
+    return {
+      targetId: target.id,
+      mergedSourceIds: mergeable.map(source => source.id),
+      lineage,
+      auditTrail,
+    }
   }
 }

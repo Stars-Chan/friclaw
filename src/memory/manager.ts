@@ -75,6 +75,16 @@ function canPromoteKnowledgeToIdentity(record: { metadata: { status?: string; co
   return !matchesDenylist
 }
 
+const DEFAULT_RETRIEVAL_BUDGET = {
+  knowledgeItems: 3,
+  knowledgeChars: 320,
+  recentEpisodes: 5,
+  threadEpisodes: 3,
+  episodeChars: 700,
+  promptChars: 1800,
+  diagnosticsEnabled: true,
+} as const
+
 export class MemoryManager {
   identity!: IdentityMemory
   knowledge!: KnowledgeMemory
@@ -113,6 +123,45 @@ export class MemoryManager {
     return SHARED_MEMORY_MODELS
   }
 
+  listKnowledgeSummaries(limit = 100) {
+    return this.knowledge.listSummaries(limit)
+  }
+
+  listThreadPreviews(limit = 20) {
+    return this.episode.listThreadPreviews(limit)
+  }
+
+  readThread(threadId: string) {
+    const thread = this.episode.readThreadState(threadId)
+    if (!thread) return null
+    return {
+      thread,
+      episodes: this.episode.listThreadEpisodes(threadId, 10),
+    }
+  }
+
+  updateKnowledgeLifecycle(topic: string, status: KnowledgeLifecycleState) {
+    const record = this.knowledge.readRecord(topic)
+    if (!record) return null
+    this.knowledge.saveRecord({
+      ...record,
+      metadata: {
+        ...record.metadata,
+        status,
+      },
+    })
+    return this.knowledge.readRecord(topic)
+  }
+
+  updateThreadLifecycle(threadId: string, status: ThreadLifecycleState, patch?: { nextStep?: string; blockers?: string[] }) {
+    return this.episode.updateThreadState(threadId, {
+      status,
+      nextStep: patch?.nextStep,
+      blockers: patch?.blockers,
+      updatedAt: new Date().toISOString(),
+    })
+  }
+
   createLineageLink(input: Omit<LineageLink, 'createdAt'>): LineageLink {
     return {
       ...input,
@@ -148,9 +197,37 @@ export class MemoryManager {
     }
 
     const request = analyzeRequest(payload.messageText)
-    const knowledge = retrieveKnowledge(this, request, 3)
-    const episode = retrieveEpisode(this, request, payload.session)
-    return assembleMemoryContext({ knowledge, episode })
+    const budget = this.config.retrieval ?? DEFAULT_RETRIEVAL_BUDGET
+    const knowledge = retrieveKnowledge(this, request, budget.knowledgeItems, budget.knowledgeChars)
+    const episode = retrieveEpisode(this, request, payload.session, {
+      recentLimit: budget.recentEpisodes,
+      threadEpisodeLimit: budget.threadEpisodes,
+      maxChars: budget.episodeChars,
+    })
+    return assembleMemoryContext({
+      knowledge: knowledge.items,
+      episode: episode.item,
+      budget,
+      diagnostics: budget.diagnosticsEnabled
+        ? {
+            requestIntent: request.intent,
+            keywords: request.keywords,
+            entities: request.entities,
+            knowledge: knowledge.diagnostics,
+            episode: episode.diagnostics,
+            budget: {
+              config: budget,
+              usage: {
+                knowledgeItems: 0,
+                knowledgeChars: 0,
+                episodeChars: 0,
+                promptChars: 0,
+              },
+              clippedLayers: [],
+            },
+          }
+        : undefined,
+    })
   }
 
   collectPromotionCandidates(recentEpisodeIds?: string[]): PromotionCandidate[] {
@@ -197,7 +274,7 @@ export class MemoryManager {
     for (const episode of episodes) {
       if (!episode) continue
       if (episode.nextStep || (episode.blockers?.length ?? 0) > 0) {
-        candidates.push({
+        const candidate = this.knowledge.saveIdentityCandidate({
           sourceCategory: 'episode',
           sourceId: episode.id,
           targetCategory: 'knowledge',
@@ -224,6 +301,7 @@ export class MemoryManager {
             rationale: 'Generated from episode summary with durable continuation context.',
           })],
         })
+        candidates.push(candidate)
       }
     }
 
@@ -245,9 +323,23 @@ export class MemoryManager {
       })
       candidate.applied = true
       candidate.appliedTargetId = targetId
+      candidate.status = 'applied'
+      this.knowledge.saveIdentityCandidate(candidate)
     }
 
     return resolvedCandidates
+  }
+
+  listCandidates(targetCategory?: PromotionCandidate['targetCategory']) {
+    return this.knowledge.listCandidates(targetCategory)
+  }
+
+  readCandidate(id: string) {
+    return this.knowledge.readCandidate(id)
+  }
+
+  mergeKnowledge(targetId: string, sourceIds: string[]) {
+    return this.knowledge.mergeRecords(targetId, sourceIds)
   }
 
   reviewIdentityCandidate(id: string, input: {
@@ -350,7 +442,7 @@ export class MemoryManager {
     }
   }
 
-  private updateThreadStatus(status: EpisodeThreadStatus, threadId: string, patch?: { nextStep?: string; blockers?: string[] }): void {
+  private updateThreadStatus(status: ThreadLifecycleState, threadId: string, patch?: { nextStep?: string; blockers?: string[] }): void {
     this.episode.updateThreadState(threadId, {
       status,
       nextStep: patch?.nextStep,
@@ -364,7 +456,7 @@ export class MemoryManager {
   }
 
   pauseThread(threadId: string, patch?: { nextStep?: string; blockers?: string[] }): void {
-    this.updateThreadStatus('paused', threadId, patch)
+    this.updateThreadStatus('dormant', threadId, patch)
   }
 
   async shutdown(): Promise<void> {

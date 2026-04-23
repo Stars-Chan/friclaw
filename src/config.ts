@@ -14,11 +14,22 @@ const AgentSchema = z.object({
   allowedTools: z.array(z.string()).optional(), // 工具白名单，为空则跳过权限检查
 }).default({})
 
+const MemoryRetrievalSchema = z.object({
+  knowledgeItems: z.number().int().positive().default(3),
+  knowledgeChars: z.number().int().positive().default(320),
+  recentEpisodes: z.number().int().positive().default(5),
+  threadEpisodes: z.number().int().positive().default(3),
+  episodeChars: z.number().int().positive().default(700),
+  promptChars: z.number().int().positive().default(1800),
+  diagnosticsEnabled: z.boolean().default(true),
+}).default({})
+
 const MemorySchema = z.object({
   dir: z.string().default(join(homedir(), '.friclaw', 'memory')),
   searchLimit: z.number().default(10),
   vectorEnabled: z.boolean().default(false),
   vectorEndpoint: z.string().default('http://localhost:6333'),
+  retrieval: MemoryRetrievalSchema,
 }).default({})
 
 const WorkspacesSchema = z.object({
@@ -30,6 +41,19 @@ const WorkspacesSchema = z.object({
 const DashboardSchema = z.object({
   enabled: z.boolean().default(true),
   port: z.number().default(3000),
+}).default({})
+
+const ProactiveSchema = z.object({
+  enabled: z.boolean().default(false),
+  remindersEnabled: z.boolean().default(true),
+  dailySummaryEnabled: z.boolean().default(true),
+  patternSuggestionsEnabled: z.boolean().default(true),
+  reminderIntervalMinutes: z.number().int().positive().default(180),
+  dailySummaryHour: z.number().int().min(0).max(23).default(9),
+  quietHours: z.object({
+    start: z.number().int().min(0).max(23),
+    end: z.number().int().min(0).max(23),
+  }).optional(),
 }).default({})
 
 const LoggingSchema = z.object({
@@ -70,6 +94,7 @@ export const ConfigSchema = z.object({
   memory: MemorySchema,
   workspaces: WorkspacesSchema,
   dashboard: DashboardSchema,
+  proactive: ProactiveSchema,
   logging: LoggingSchema,
   daemon: DaemonSchema,
   gateways: GatewaysSchema,
@@ -84,6 +109,26 @@ function buildEnvOverrides(): Record<string, unknown> {
     },
     logging: {
       level: process.env.LOG_LEVEL,
+    },
+    proactive: {
+      enabled: process.env.FRICLAW_PROACTIVE_ENABLED !== undefined
+        ? process.env.FRICLAW_PROACTIVE_ENABLED === 'true'
+        : undefined,
+      remindersEnabled: process.env.FRICLAW_PROACTIVE_REMINDERS_ENABLED !== undefined
+        ? process.env.FRICLAW_PROACTIVE_REMINDERS_ENABLED === 'true'
+        : undefined,
+      dailySummaryEnabled: process.env.FRICLAW_PROACTIVE_DAILY_SUMMARY_ENABLED !== undefined
+        ? process.env.FRICLAW_PROACTIVE_DAILY_SUMMARY_ENABLED === 'true'
+        : undefined,
+      patternSuggestionsEnabled: process.env.FRICLAW_PROACTIVE_PATTERN_SUGGESTIONS_ENABLED !== undefined
+        ? process.env.FRICLAW_PROACTIVE_PATTERN_SUGGESTIONS_ENABLED === 'true'
+        : undefined,
+      reminderIntervalMinutes: process.env.FRICLAW_PROACTIVE_REMINDER_INTERVAL_MINUTES
+        ? Number(process.env.FRICLAW_PROACTIVE_REMINDER_INTERVAL_MINUTES)
+        : undefined,
+      dailySummaryHour: process.env.FRICLAW_PROACTIVE_DAILY_SUMMARY_HOUR
+        ? Number(process.env.FRICLAW_PROACTIVE_DAILY_SUMMARY_HOUR)
+        : undefined,
     },
     daemon: {
       enabled: process.env.FRICLAW_DAEMON_ENABLED !== undefined
@@ -104,6 +149,11 @@ function buildEnvOverrides(): Record<string, unknown> {
         ? process.env.FRICLAW_VECTOR_ENABLED === 'true'
         : undefined,
       vectorEndpoint: process.env.FRICLAW_VECTOR_ENDPOINT,
+      retrieval: {
+        diagnosticsEnabled: process.env.FRICLAW_MEMORY_DIAGNOSTICS_ENABLED !== undefined
+          ? process.env.FRICLAW_MEMORY_DIAGNOSTICS_ENABLED === 'true'
+          : undefined,
+      },
     },
     gateways: {
       feishu: {

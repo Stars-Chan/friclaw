@@ -9,7 +9,21 @@ let manager: MemoryManager
 
 beforeEach(async () => {
   tmpDir = mkdtempSync(join(tmpdir(), 'friclaw-test-'))
-  manager = new MemoryManager({ dir: tmpDir, searchLimit: 10, vectorEnabled: false, vectorEndpoint: '' })
+  manager = new MemoryManager({
+    dir: tmpDir,
+    searchLimit: 10,
+    vectorEnabled: false,
+    vectorEndpoint: '',
+    retrieval: {
+      knowledgeItems: 3,
+      knowledgeChars: 320,
+      recentEpisodes: 5,
+      threadEpisodes: 3,
+      episodeChars: 700,
+      promptChars: 1800,
+      diagnosticsEnabled: true,
+    },
+  })
   await manager.init()
 })
 
@@ -131,6 +145,80 @@ describe('MemoryManager', () => {
     expect(candidates.some(candidate => candidate.targetCategory === 'knowledge')).toBe(true)
   })
 
+  it('listKnowledgeSummaries() returns metadata-only summaries', () => {
+    manager.knowledge.saveRecord({
+      id: 'user-style',
+      metadata: {
+        title: 'user-style',
+        date: new Date().toISOString(),
+        tags: ['profile'],
+        domain: 'preference',
+        status: 'active',
+        confidence: 'high',
+      },
+      content: 'User prefers concise updates',
+    })
+
+    const summaries = manager.listKnowledgeSummaries()
+    expect(summaries).toMatchObject([
+      {
+        id: 'user-style',
+        title: 'user-style',
+        domain: 'preference',
+        status: 'active',
+      },
+    ])
+  })
+
+  it('listThreadPreviews() and readThread() expose thread-first read model', () => {
+    const threadId = manager.ensureThread({
+      sessionId: 'feishu:ou_abc',
+      platform: 'feishu',
+      chatId: 'ou_abc',
+      workspaceDir: '/tmp/workspace',
+    })
+    manager.episode.save('Thread summary for preview', ['memory'], {
+      threadId,
+      chatKey: 'feishu:ou_abc',
+      nextStep: 'Continue tomorrow',
+    })
+
+    const previews = manager.listThreadPreviews()
+    expect(previews.some(item => item.threadId === threadId)).toBe(true)
+
+    const thread = manager.readThread(threadId)
+    expect(thread?.thread.threadId).toBe(threadId)
+    expect(thread?.episodes).toHaveLength(1)
+  })
+
+  it('updateKnowledgeLifecycle() and updateThreadLifecycle() persist lifecycle changes', () => {
+    manager.knowledge.saveRecord({
+      id: 'user-style',
+      metadata: {
+        title: 'user-style',
+        date: new Date().toISOString(),
+        tags: ['profile'],
+        domain: 'preference',
+        status: 'active',
+        confidence: 'high',
+      },
+      content: 'User prefers concise updates',
+    })
+
+    const threadId = manager.ensureThread({
+      sessionId: 'feishu:ou_abc',
+      platform: 'feishu',
+      chatId: 'ou_abc',
+      workspaceDir: '/tmp/workspace',
+    })
+
+    const knowledge = manager.updateKnowledgeLifecycle('user-style', 'archived')
+    const thread = manager.updateThreadLifecycle(threadId, 'archived')
+
+    expect(knowledge?.metadata.status).toBe('archived')
+    expect(thread?.status).toBe('archived')
+  })
+
   it('collectPromotionCandidates() only promotes allowlisted active knowledge to identity', () => {
     manager.knowledge.saveRecord({
       id: 'user-style',
@@ -227,6 +315,39 @@ describe('MemoryManager', () => {
     const rolledBack = manager.rollbackIdentity()
     expect(rolledBack).toBeTruthy()
     expect(manager.identity.read().trim()).toBe(before.trim())
+  })
+
+  it('mergeKnowledge() merges duplicates through manager', () => {
+    manager.knowledge.saveRecord({
+      id: 'runtime-memory-primary',
+      metadata: {
+        title: 'runtime-memory',
+        date: new Date().toISOString(),
+        tags: ['memory', 'runtime'],
+        status: 'active',
+        confidence: 'high',
+        source: 'manual:primary',
+      },
+      content: 'Runtime memory keeps current retrieval context stable.',
+    })
+    manager.knowledge.saveRecord({
+      id: 'runtime-memory-duplicate',
+      metadata: {
+        title: 'runtime-memory',
+        date: new Date().toISOString(),
+        tags: ['memory', 'runtime'],
+        status: 'active',
+        confidence: 'medium',
+        source: 'manual:duplicate',
+      },
+      content: 'Runtime memory keeps current retrieval context stable.\n\nIt also preserves thread continuity.',
+    })
+
+    const merged = manager.mergeKnowledge('runtime-memory-primary', ['runtime-memory-duplicate'])
+
+    expect(merged?.mergedSourceIds).toEqual(['runtime-memory-duplicate'])
+    expect(manager.knowledge.readRecord('runtime-memory-primary')?.content).toContain('thread continuity')
+    expect(manager.knowledge.readRecord('runtime-memory-duplicate')?.metadata.status).toBe('archived')
   })
 
   it('applyPromotionCandidates() keeps same source idempotent and separates different sources', () => {

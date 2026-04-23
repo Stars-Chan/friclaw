@@ -5,7 +5,8 @@ export type KnowledgeStatus = 'active' | 'uncertain' | 'archived'
 export type KnowledgeLifecycleState = 'active' | 'uncertain' | 'archived'
 export type ThreadLifecycleState = 'active' | 'dormant' | 'closed' | 'archived'
 export type MemoryConfidence = 'low' | 'medium' | 'high'
-export type EpisodeThreadStatus = 'active' | 'paused' | 'closed' | 'summary_failed'
+export type EpisodeThreadStatus = 'active' | 'closed' | 'summary_failed'
+export type ThreadStatusInput = ThreadLifecycleState | 'paused' | 'summary_failed'
 export type EpisodeSummaryMode = 'summary' | 'fallback'
 export type PromotionSourceCategory = 'episode' | 'knowledge'
 export type PromotionTargetCategory = 'knowledge' | 'identity'
@@ -13,6 +14,13 @@ export type PromotionCandidateStatus = 'proposed' | 'approved' | 'rejected' | 'm
 export type MemoryReviewDecision = 'approve' | 'reject' | 'defer' | 'merge'
 export type MemoryLineageRelation = 'promoted_from' | 'merged_from' | 'derived_from'
 export type MemoryAuditAction = 'candidate_created' | 'candidate_reviewed' | 'candidate_applied' | 'identity_rolled_back' | 'knowledge_merged'
+
+export interface KnowledgeMergeResult {
+  targetId: string
+  mergedSourceIds: string[]
+  lineage: LineageLink[]
+  auditTrail: AuditRecord[]
+}
 
 export interface KnowledgeMetadata {
   title: string
@@ -30,6 +38,16 @@ export interface KnowledgeRecord {
   id: string
   metadata: KnowledgeMetadata
   content: string
+}
+
+export interface KnowledgeSummary {
+  id: string
+  title: string
+  tags: string[]
+  domain?: string
+  status?: KnowledgeLifecycleState
+  confidence?: MemoryConfidence
+  updatedAt?: string
 }
 
 export interface EpisodeMetadata {
@@ -55,7 +73,7 @@ export interface EpisodeRecord {
 export interface EpisodeThreadState {
   threadId: string
   chatKey: string
-  status: EpisodeThreadStatus
+  status: ThreadLifecycleState
   startedAt: string
   updatedAt: string
   sourceSessionId?: string
@@ -64,6 +82,19 @@ export interface EpisodeThreadState {
   title?: string
   nextStep?: string
   blockers?: string[]
+}
+
+export interface ThreadPreview {
+  threadId: string
+  chatKey: string
+  status: string
+  startedAt: string
+  updatedAt: string
+  title?: string
+  lastSummaryId?: string
+  nextStep?: string
+  blockers?: string[]
+  summaryPreview?: string
 }
 
 export interface LineageLink {
@@ -124,4 +155,31 @@ export interface IdentityVersionRecord {
   candidateId?: string
   review?: PromotionReview
   auditTrail?: AuditRecord[]
+}
+
+export interface ProactiveQuietHours {
+  start: number
+  end: number
+}
+
+export interface ProactivePreference {
+  enabled: boolean
+  remindersEnabled: boolean
+  dailySummaryEnabled: boolean
+  patternSuggestionsEnabled: boolean
+  reminderIntervalMinutes: number
+  dailySummaryHour: number
+  quietHours?: ProactiveQuietHours
+}
+
+export interface ProactiveInsight {
+  id: string
+  kind: 'reminder' | 'daily_summary' | 'pattern'
+  title: string
+  content: string
+  userId: string
+  createdAt: string
+  sourceThreadIds?: string[]
+  sourceCandidateIds?: string[]
+  metadata?: Record<string, string | number | boolean | string[]>
 }

@@ -45,14 +45,14 @@ describe('EpisodeMemory', () => {
 
   it('recent() ignores thread state markdown in episodes root', () => {
     episode.save('real summary')
-    writeFileSync(join(tmpDir, 'episodes', 'misplaced-thread.md'), `---\nthreadId: dashboard:test:1\nchatKey: dashboard:test\nstatus: paused\nstartedAt: 2026-04-12T00:00:00.000Z\nupdatedAt: 2026-04-12T00:00:00.000Z\n---\n`, 'utf-8')
+    writeFileSync(join(tmpDir, 'episodes', 'misplaced-thread.md'), `---\nthreadId: dashboard:test:1\nchatKey: dashboard:test\nstatus: dormant\nstartedAt: 2026-04-12T00:00:00.000Z\nupdatedAt: 2026-04-12T00:00:00.000Z\n---\n`, 'utf-8')
 
     const episodes = episode.recent(10)
     expect(episodes).toHaveLength(1)
     expect(episodes[0].summary).toBe('real summary')
   })
 
-  it('preserves paused thread state when saving a linked episode', () => {
+  it('normalizes paused thread state to dormant when saving a linked episode', () => {
     const thread = episode.createThread({
       platform: 'feishu',
       chatId: 'ou_abc',
@@ -63,15 +63,15 @@ describe('EpisodeMemory', () => {
     const id = episode.save('Pending follow-up', ['memory'], {
       threadId: thread.threadId,
       chatKey: thread.chatKey,
-      status: 'paused',
+      status: 'paused' as any,
       nextStep: 'Resume tomorrow',
     })
 
     expect(episode.read(id)?.status).toBe('paused')
-    expect(episode.readThreadState(thread.threadId)?.status).toBe('paused')
+    expect(episode.readThreadState(thread.threadId)?.status).toBe('dormant')
   })
 
-  it('does not reactivate a paused thread when status is omitted on later saves', () => {
+  it('does not reactivate a dormant thread when status is omitted on later saves', () => {
     const thread = episode.createThread({
       platform: 'feishu',
       chatId: 'ou_abc',
@@ -79,12 +79,32 @@ describe('EpisodeMemory', () => {
       workspaceDir: '/tmp/workspace',
     })
 
-    episode.updateThreadState(thread.threadId, { status: 'paused' })
+    episode.updateThreadState(thread.threadId, { status: 'dormant' })
     episode.save('Additional note', ['memory'], {
       threadId: thread.threadId,
       chatKey: thread.chatKey,
     })
 
-    expect(episode.readThreadState(thread.threadId)?.status).toBe('paused')
+    expect(episode.readThreadState(thread.threadId)?.status).toBe('dormant')
+  })
+
+  it('listThreadPreviews() returns linked summary previews', () => {
+    const thread = episode.createThread({
+      platform: 'feishu',
+      chatId: 'ou_abc',
+      sessionId: 'feishu:ou_abc',
+      workspaceDir: '/tmp/workspace',
+      title: 'memory work',
+    })
+    episode.save('Need to continue memory implementation with preview text', ['memory'], {
+      threadId: thread.threadId,
+      chatKey: thread.chatKey,
+      nextStep: 'Finish retrieval',
+    })
+
+    const previews = episode.listThreadPreviews()
+    expect(previews).toHaveLength(1)
+    expect(previews[0].threadId).toBe(thread.threadId)
+    expect(previews[0].summaryPreview).toContain('Need to continue memory implementation')
   })
 })
